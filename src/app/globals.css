@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #1b1f3a;
+  --panel: #2a2d4a;
+  --hi: #5a5f8f;
+  --lo: #121428;
+  --title: #3b3f8f;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: #e8e6f0;
+  font-family: ui-monospace, "Cascadia Mono", "Consolas", "Courier New", monospace;
+  -webkit-font-smoothing: none;
+}
+
+.retro-panel {
+  background: var(--panel);
+  border: 2px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi);
+  box-shadow: 2px 2px 0 #000;
+}
+
+.retro-title {
+  background: linear-gradient(90deg, var(--title), #6a3f8f);
+  padding: 2px 6px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.retro-button {
+  background: #3a3e66;
+  border: 2px solid;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi);
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.retro-button:active:not(:disabled),
+.retro-button-active {
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+  background: #50548a;
+}
+.retro-button-primary {
+  background: #8a4a2a;
+}
+.retro-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.retro-button:focus-visible {
+  outline: 2px solid #f5c542;
+  outline-offset: 1px;
+}
+
+canvas {
+  image-rendering: pixelated;
+}
