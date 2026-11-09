@@ -2,11 +2,24 @@ import "server-only";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
 import { DEFAULT_FOCUS_SECONDS } from "@/sim";
+import { supabaseEnabled } from "@/lib/supabase/env";
+import { sessionClient } from "@/lib/supabase/server";
 
 const COOKIE = "pomo_player";
 
-/** Identidade anônima por cookie httpOnly (UUID v4 aleatório, impossível de adivinhar). */
+export class UnauthorizedError extends Error {}
+
+/**
+ * Com Supabase: o id do jogador é o id do usuário autenticado (anônimo ou com e-mail),
+ * validado pelo servidor de Auth. Sem Supabase: cookie httpOnly com UUID aleatório.
+ */
 export async function getPlayerId(): Promise<string> {
+  if (supabaseEnabled) {
+    const sb = await sessionClient();
+    const { data, error } = await sb.auth.getUser();
+    if (error || !data.user) throw new UnauthorizedError("Sessão inválida");
+    return data.user.id;
+  }
   const jar = await cookies();
   const existing = jar.get(COOKIE)?.value;
   if (existing && /^[a-f0-9-]{36}$/.test(existing)) return existing;

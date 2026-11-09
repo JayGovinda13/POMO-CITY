@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { ensureSession } from "@/lib/supabase/client";
 import { applyCommand, applyCommands, type BuildingType, type CityState, type Command, type CycleReport } from "@/sim";
 
 export type Tool = BuildingType | "demolish" | null;
@@ -43,6 +44,8 @@ interface GameStore {
   busy: boolean;
 
   load(): Promise<void>;
+  /** Troca de conta: descarta a fila local e recarrega a cidade do novo usuário. */
+  reset(): Promise<void>;
   setTool(tool: Tool): void;
   clickTile(x: number, y: number): void;
   startFocus(): Promise<void>;
@@ -53,13 +56,16 @@ interface GameStore {
   showToast(msg: string): void;
 }
 
-async function call(path: string, body?: unknown): Promise<ServerSnapshot & { status: number }> {
+async function call(path: string, body?: unknown, retried = false): Promise<ServerSnapshot & { status: number }> {
+  await ensureSession();
   const res = await fetch(path, {
     method: body === undefined && path === "/api/city" ? "GET" : "POST",
     headers: body ? { "content-type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });
+  // Sessão expirada/removida: cria outra e tenta uma vez mais.
+  if (res.status === 401 && !retried) return call(path, body, true);
   return { ...(await res.json()), status: res.status };
 }
 
@@ -106,9 +112,14 @@ export const useGame = create<GameStore>()(
             accept(snap);
             const { phase, endsAt } = get();
             if (phase === "break" && endsAt && Date.now() > endsAt) set({ phase: "idle", endsAt: null });
-          } catch {
-            get().showToast("Sem conexão — jogando offline");
+          } catch (e) {
+            get().showToast((e as Error).message || "Sem conexão — jogando offline");
           }
+        },
+
+        async reset() {
+          set({ serverState: null, city: null, pending: [], phase: "loading", endsAt: null, report: null });
+          await get().load();
         },
 
         setTool(tool) {

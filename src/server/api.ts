@@ -2,7 +2,8 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { BREAK_SECONDS, BUILDINGS, LONG_BREAK_EVERY, LONG_BREAK_SECONDS, type BuildingType, type Command } from "@/sim";
 import type { PlayerRecord } from "./repo";
-import { focusMs } from "./session";
+import { ConflictError } from "./repo";
+import { focusMs, getPlayerId, UnauthorizedError } from "./session";
 
 export function snapshot(rec: PlayerRecord, extra: Record<string, unknown> = {}) {
   return NextResponse.json({
@@ -39,4 +40,18 @@ export function parseCommands(raw: unknown): Command[] | null {
     } else return null;
   }
   return out;
+}
+
+/** Envolve uma rota: resolve o jogador e converte erros conhecidos em respostas HTTP. */
+export function route(handler: (playerId: string, req: Request) => Promise<Response>) {
+  return async (req: Request) => {
+    try {
+      return await handler(await getPlayerId(), req);
+    } catch (e) {
+      if (e instanceof UnauthorizedError) return fail(401, e.message);
+      if (e instanceof ConflictError) return fail(503, e.message);
+      console.error(e);
+      return fail(500, "Erro interno");
+    }
+  };
 }

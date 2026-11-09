@@ -14,6 +14,23 @@ npm test             # testes da simulação
 
 Para testar rápido, encurte o foco: `FOCUS_SECONDS=10 npm run dev`.
 
+Sem configuração, o jogo roda em **modo local**: cidades em `.data/` e identidade por cookie.
+
+## Supabase (auth + banco)
+
+1. Crie um projeto em [supabase.com](https://supabase.com).
+2. **Authentication → Sign In / Providers**: ative *Allow anonymous sign-ins* (todo jogador começa como convidado).
+3. **Authentication → URL Configuration**: adicione `http://localhost:3000/auth/callback` (e a URL de produção) em *Redirect URLs*.
+4. Aplique a migração `supabase/migrations/20261109000000_cities.sql`, colando-a no **SQL Editor** ou rodando:
+   ```bash
+   npx supabase link --project-ref SEU-PROJETO && npx supabase db push
+   ```
+5. Copie `.env.example` para `.env.local` e preencha a URL, a *publishable key* e a *secret key* (**Project Settings → API Keys**).
+
+Para rodar o Supabase local com Docker: `npx supabase start` (o `supabase/config.toml` já habilita o login anônimo).
+
+**Modelo de segurança:** o navegador só consegue **ler** a própria cidade (RLS). Toda escrita passa pelas rotas da API, que usam a chave secreta depois de validar os comandos e o tempo do ciclo. Assim, nem o console nem a chave pública permitem forjar dinheiro ou Rank S. Cada ciclo concluído ou abandonado também é registrado em `cycle_log` para auditoria.
+
 ## Como jogar (MVP)
 
 1. Na **pausa**, construa: estradas ligadas à prefeitura, casas, fazendas, madeireiras, minas, serraria, fundição.
@@ -42,11 +59,12 @@ src/components/ HUD retrô em React + Tailwind
 
 - **Sincroniza ações, não estado:** o cliente envia a fila de comandos da pausa; o servidor os reaplica sobre o último estado válido e descarta os inválidos.
 - **Timer anti-cheat:** o servidor grava `startedAt/endsAt` e recusa `/complete` antecipado (HTTP 425), início duplicado (409) e replay. No cliente, o relógio é sempre `endsAt − Date.now()`, imune ao throttling de abas.
-- **Persistência:** o MVP salva em `.data/` (arquivos JSON), atrás da interface `PlayerRepo`. A próxima etapa é trocar por Supabase/Postgres (necessário em hospedagem serverless).
+- **Persistência:** `PlayerRepo` com duas implementações, Supabase/Postgres e arquivos locais. A gravação usa concorrência otimista (coluna `revision`): duas instâncias serverless processando o mesmo `/complete` nunca aplicam o ciclo em dobro.
+- **Contas:** login anônimo automático no Supabase Auth. O convidado pode vincular um e-mail (link mágico) sem perder a cidade.
 
 ## Próximos passos
 
-- [ ] Supabase: auth, `PlayerRepo` em Postgres
+- [x] Supabase: auth anônima + e-mail, `PlayerRepo` em Postgres com RLS
 - [ ] Mercado multiplayer com livro de ofertas por tipo/Rank e comerciante NPC
 - [ ] Energia, Tech Tree e mais biomas/recursos
 - [ ] Sprites pixel art no lugar das formas procedurais

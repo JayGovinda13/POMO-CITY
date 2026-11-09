@@ -21,6 +21,7 @@ import { Panel } from "./Panel";
 import { RankBadge, hex } from "./ranks";
 import { Timer } from "./Timer";
 import { CycleReportModal } from "./CycleReportModal";
+import { AccountButton } from "./AccountButton";
 
 const TOOL_ORDER: BuildingType[] = ["road", "house", "farm", "lumberyard", "mine", "sawmill", "smelter", "monument"];
 
@@ -65,6 +66,7 @@ export function Hud() {
         </span>
         <span>Ciclos hoje: {city.cyclesToday}</span>
         {pending > 0 && <span className="text-amber-300">{pending} obra(s) aguardando sincronia</span>}
+        <AccountButton />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col justify-between gap-2 md:flex-row">

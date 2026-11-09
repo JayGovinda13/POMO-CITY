@@ -1,7 +1,9 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { createCity, type CityState } from "@/sim";
+import { createCity, type CityState, type Rank } from "@/sim";
+import { supabaseEnabled } from "@/lib/supabase/env";
+import { adminClient } from "@/lib/supabase/server";
 
 export interface ActiveCycle {
   startedAt: number;
@@ -13,15 +15,82 @@ export interface PlayerRecord {
   activeCycle: ActiveCycle | null;
 }
 
+export interface CycleLogEntry {
+  startedAt: number;
+  endedAt: number;
+  outcome: "completed" | "abandoned";
+  rank?: Rank;
+  streak?: number;
+  rewarded?: boolean;
+}
+
+interface Loaded {
+  record: PlayerRecord;
+  revision: number;
+}
+
 /**
- * Persistência atrás de uma interface: o MVP usa arquivos JSON em `.data/`
- * (bom para desenvolvimento local). A próxima etapa troca por Supabase/Postgres
- * sem mexer nas rotas.
+ * Persistência com concorrência otimista: `save` só grava se a revisão no banco
+ * ainda for a que foi lida. Assim, duas instâncias serverless processando o mesmo
+ * jogador (ex.: /complete enviado duas vezes) nunca aplicam o ciclo em dobro.
  */
 export interface PlayerRepo {
-  get(playerId: string): Promise<PlayerRecord | null>;
-  save(playerId: string, record: PlayerRecord): Promise<void>;
+  load(playerId: string): Promise<Loaded | null>;
+  /** revision 0 = registro novo. Retorna false em caso de conflito. */
+  save(playerId: string, record: PlayerRecord, revision: number): Promise<boolean>;
+  logCycle(playerId: string, entry: CycleLogEntry): Promise<void>;
 }
+
+// ───────────────────────── Supabase / Postgres ─────────────────────────
+
+class SupabaseRepo implements PlayerRepo {
+  async load(id: string): Promise<Loaded | null> {
+    const { data, error } = await adminClient()
+      .from("cities")
+      .select("state, active_cycle, revision")
+      .eq("player_id", id)
+      .maybeSingle();
+    if (error) throw new Error(`cities.load: ${error.message}`);
+    if (!data) return null;
+    return { record: { state: data.state, activeCycle: data.active_cycle }, revision: Number(data.revision) };
+  }
+
+  async save(id: string, record: PlayerRecord, revision: number): Promise<boolean> {
+    const db = adminClient().from("cities");
+    const row = { state: record.state, active_cycle: record.activeCycle, revision: revision + 1 };
+    if (revision === 0) {
+      const { error } = await db.insert({ player_id: id, ...row });
+      if (error?.code === "23505") return false; // outra requisição criou a cidade antes
+      if (error) throw new Error(`cities.insert: ${error.message}`);
+      return true;
+    }
+    const { data, error } = await db
+      .update({ ...row, updated_at: new Date().toISOString() })
+      .eq("player_id", id)
+      .eq("revision", revision)
+      .select("player_id");
+    if (error) throw new Error(`cities.update: ${error.message}`);
+    return (data?.length ?? 0) > 0;
+  }
+
+  async logCycle(id: string, e: CycleLogEntry): Promise<void> {
+    const { error } = await adminClient()
+      .from("cycle_log")
+      .insert({
+        player_id: id,
+        started_at: new Date(e.startedAt).toISOString(),
+        ended_at: new Date(e.endedAt).toISOString(),
+        outcome: e.outcome,
+        rank: e.rank ?? null,
+        streak: e.streak ?? null,
+        rewarded: e.rewarded ?? null,
+      });
+    // O log é auditoria: uma falha aqui não deve desfazer um ciclo já gravado.
+    if (error) console.error("cycle_log.insert", error.message);
+  }
+}
+
+// ──────────────── Arquivos locais (desenvolvimento sem Supabase) ────────────────
 
 const DATA_DIR = path.join(process.cwd(), ".data", "players");
 const SAFE_ID = /^[a-f0-9-]{36}$/;
@@ -31,36 +100,72 @@ class FileRepo implements PlayerRepo {
     if (!SAFE_ID.test(id)) throw new Error("invalid player id");
     return path.join(DATA_DIR, `${id}.json`);
   }
-  async get(id: string) {
+  async load(id: string): Promise<Loaded | null> {
     try {
-      return JSON.parse(await fs.readFile(this.file(id), "utf8")) as PlayerRecord;
+      const raw = JSON.parse(await fs.readFile(this.file(id), "utf8"));
+      return { record: { state: raw.state, activeCycle: raw.activeCycle }, revision: raw.revision ?? 1 };
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
       throw e;
     }
   }
-  async save(id: string, record: PlayerRecord) {
+  async save(id: string, record: PlayerRecord, revision: number) {
+    const current = await this.load(id);
+    if ((current?.revision ?? 0) !== revision) return false;
     await fs.mkdir(DATA_DIR, { recursive: true });
     const tmp = `${this.file(id)}.${process.pid}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(record));
+    await fs.writeFile(tmp, JSON.stringify({ ...record, revision: revision + 1 }));
     await fs.rename(tmp, this.file(id));
+    return true;
   }
+  async logCycle() {}
 }
 
-export const repo: PlayerRepo = new FileRepo();
+let repoInstance: PlayerRepo | null = null;
+export function repo(): PlayerRepo {
+  repoInstance ??= supabaseEnabled ? new SupabaseRepo() : new FileRepo();
+  return repoInstance;
+}
 
-/** Serializa operações por jogador para evitar condições de corrida (duplo /complete etc.). */
+// ───────────────────────── Transação por jogador ─────────────────────────
+
+export interface TxContext {
+  /** Executa depois que o novo estado foi gravado com sucesso. */
+  afterCommit(fn: () => Promise<void>): void;
+}
+
+export class ConflictError extends Error {}
+
+const MAX_ATTEMPTS = 4;
+/** Fila por jogador dentro da mesma instância (evita conflitos desnecessários). */
 const locks = new Map<string, Promise<unknown>>();
-export async function withPlayer<T>(playerId: string, fn: (rec: PlayerRecord) => Promise<T> | T): Promise<T> {
-  const prev = locks.get(playerId) ?? Promise.resolve();
-  const run = prev.then(async () => {
-    let rec = await repo.get(playerId);
-    if (!rec) {
-      const seed = parseInt(playerId.replace(/-/g, "").slice(0, 8), 16);
-      rec = { state: createCity(seed, Date.now()), activeCycle: null };
-      await repo.save(playerId, rec);
+
+/**
+ * Lê o registro, roda `fn` (que pode alterá-lo) e grava se algo mudou.
+ * Em caso de conflito com outra instância, relê e tenta de novo.
+ */
+export async function withPlayer<T>(
+  playerId: string,
+  fn: (rec: PlayerRecord, tx: TxContext) => Promise<T> | T,
+  r: PlayerRepo = repo(),
+): Promise<T> {
+  const run = (locks.get(playerId) ?? Promise.resolve()).then(async () => {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const loaded = await r.load(playerId);
+      const revision = loaded?.revision ?? 0;
+      const rec: PlayerRecord = loaded?.record ?? {
+        state: createCity(parseInt(playerId.replace(/-/g, "").slice(0, 8), 16), Date.now()),
+        activeCycle: null,
+      };
+      const before = loaded ? JSON.stringify(rec) : "";
+      const hooks: (() => Promise<void>)[] = [];
+      const result = await fn(rec, { afterCommit: (h) => hooks.push(h) });
+      if (JSON.stringify(rec) === before) return result;
+      if (!(await r.save(playerId, rec, revision))) continue;
+      for (const h of hooks) await h();
+      return result;
     }
-    return fn(rec);
+    throw new ConflictError("Muitas alterações simultâneas — tente de novo");
   });
   locks.set(
     playerId,

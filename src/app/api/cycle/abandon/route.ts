@@ -1,15 +1,17 @@
 import { abandonCycle } from "@/sim";
-import { fail, snapshot } from "@/server/api";
+import { fail, route, snapshot } from "@/server/api";
 import { repo, withPlayer } from "@/server/repo";
-import { getPlayerId } from "@/server/session";
 
-export async function POST() {
-  const id = await getPlayerId();
-  return withPlayer(id, async (rec) => {
-    if (!rec.activeCycle) return fail(400, "Nenhum ciclo em andamento");
+export const POST = route((id) =>
+  withPlayer(id, (rec, tx) => {
+    const cycle = rec.activeCycle;
+    if (!cycle) return fail(400, "Nenhum ciclo em andamento");
     rec.state = abandonCycle(rec.state);
     rec.activeCycle = null;
-    await repo.save(id, rec);
+    const now = Date.now();
+    tx.afterCommit(() =>
+      repo().logCycle(id, { startedAt: cycle.startedAt, endedAt: now, outcome: "abandoned", streak: rec.state.streak }),
+    );
     return snapshot(rec);
-  });
-}
+  }),
+);
