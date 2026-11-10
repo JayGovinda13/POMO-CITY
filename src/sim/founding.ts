@@ -2,6 +2,23 @@ import { annualRain, biomeOf, REGION_BY_ID } from "./climate";
 import { BOND_VALUE, DIFFICULTY, creditRating, type Difficulty } from "./finance";
 import { ZONE, type CityState } from "./types";
 import { createCity } from "./world";
+import { MAP_SIZE } from "./config";
+import { COAST_NAMES, RELIEF_NAMES, WATER_NAMES, defaultMapOptions, type MapOptions } from "./terrain";
+import type { BiomeId } from "./types";
+
+/** Valida as opções do editor vindas do cliente (o que for inválido usa o padrão do bioma). */
+export function sanitizeMapOptions(raw: unknown, biome: BiomeId, wetness: number): MapOptions {
+  const d = defaultMapOptions(biome, wetness);
+  if (!raw || typeof raw !== "object") return d;
+  const o = raw as Record<string, unknown>;
+  return {
+    relief: typeof o.relief === "string" && o.relief in RELIEF_NAMES ? (o.relief as MapOptions["relief"]) : d.relief,
+    water: typeof o.water === "string" && o.water in WATER_NAMES ? (o.water as MapOptions["water"]) : d.water,
+    coast: typeof o.coast === "string" && o.coast in COAST_NAMES ? (o.coast as MapOptions["coast"]) : d.coast,
+    forest: o.forest === 0 || o.forest === 1 || o.forest === 2 || o.forest === 3 ? o.forest : d.forest,
+    variant: typeof o.variant === "number" && Number.isInteger(o.variant) && o.variant >= 0 && o.variant < 1e6 ? o.variant : 0,
+  };
+}
 
 /** Trimestre real (UTC) de um instante: 0 = Jan–Mar. */
 export const realQuarter = (now: number) => Math.floor(new Date(now).getUTCMonth() / 3);
@@ -50,6 +67,7 @@ export function foundCity(
   now: number,
   difficulty: Difficulty = "medio",
   rawName?: unknown,
+  map?: MapOptions,
 ): FoundResult {
   const name = sanitizeCityName(rawName);
   const region = REGION_BY_ID[regionId];
@@ -61,7 +79,9 @@ export function foundCity(
     return { ok: true, state: { ...structuredClone(s), regionId, ...(name ? { name } : {}), version: s.version + 1 } };
   }
   const wetness = Math.max(0, Math.min(1, annualRain(region) / 2000));
-  const fresh = createCity(s.seed, now, biomeOf(region), { wetness });
+  // Fase 9: mapa 40×40 com relevo, água e mata do editor (padrão: pelo bioma e pela chuva).
+  const biome = biomeOf(region);
+  const fresh = createCity(s.seed, now, biome, { wetness, size: MAP_SIZE, map: sanitizeMapOptions(map, biome, wetness) });
   // Dificuldade (Fase 4): dinheiro inicial e, no difícil, um título já emitido.
   const d = DIFFICULTY[difficulty];
   fresh.difficulty = difficulty;

@@ -11,7 +11,7 @@ export const POST = route(async (id, req) => {
   return withPlayer(id, (rec) => {
     // A escolha é permitida mesmo durante o foco: cidades antigas recebem o seletor ao abrir,
     // e o clima só passa a valer a partir do tempo calculado no fim do ciclo.
-    const r = foundCity(rec.state, regionId, Date.now(), difficulty, name);
+    const r = foundCity(rec.state, regionId, Date.now(), difficulty, name, body?.map);
     if (!r.ok) return fail(400, r.error);
     rec.state = r.state;
     return snapshot(rec);

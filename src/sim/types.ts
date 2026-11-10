@@ -44,10 +44,13 @@ export type BuildingType =
   | "bus_stop"
   | "train_station"
   | "airport"
-  | "seaport";
+  | "seaport"
+  | "tunnel"
+  | "desalination"
+  | "marina";
 
-/** 0 = terra, 1 = água */
-export type Terrain = 0 | 1;
+/** 0 = terra, 1 = água doce (rio, lago), 2 = mar (água salgada, Fase 9). */
+export type Terrain = 0 | 1 | 2;
 
 /** Camada de zoneamento: 0 = sem zona, 1 = residencial, 2 = comercial, 3 = industrial. */
 export const ZONE = { NONE: 0, R: 1, C: 2, I: 3 } as const;
@@ -80,7 +83,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -101,6 +104,10 @@ export interface CityState {
   width: number;
   height: number;
   terrain: Terrain[];
+  /** Altitude de cada tile, 0..3 (Fase 9). */
+  elevation: number[];
+  /** 1 = árvore no tile (Fase 9). */
+  trees: number[];
   buildings: Building[];
   nextId: number;
 
@@ -171,6 +178,7 @@ export type Command =
   | { type: "bond"; action: "issue" | "repay" }
   | { type: "insurance"; plan: "none" | "basico" | "completo" }
   | { type: "repair"; x: number; y: number }
+  | { type: "terraform"; action: "raise" | "lower" | "water" | "land" | "tree"; x: number; y: number }
   | {
       type: "zone";
       /** "none" remove o zoneamento de lotes vazios. */

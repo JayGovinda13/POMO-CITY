@@ -12,6 +12,7 @@
 import { BUILDINGS } from "./catalog";
 import { ROAD_ACCESS_DISTANCE } from "./config";
 import { ZONE, type Building, type CityState } from "./types";
+import { viaLinks } from "./terrain";
 
 /** Tempo-limite da viagem (em "quadras de estrada"). */
 export const MAX_TRIP = 14;
@@ -114,6 +115,7 @@ export function transportNodes(s: CityState): (Node | null)[] {
   for (const b of s.buildings) {
     const i = b.y * s.width + b.x;
     if (b.type === "road") out[i] = (b.condition ?? 100) >= 30 ? "road" : null;
+    else if (b.type === "tunnel") out[i] = "road";
     else if (b.type === "onramp") out[i] = "onramp";
     else if (b.type === "highway") out[i] = "highway";
     else if (b.type === "rail") out[i] = "rail";
@@ -130,6 +132,8 @@ export function computeTraffic(s: CityState): TrafficResult {
   const W = s.width;
   const n = W * s.height;
   const nodes = transportNodes(s);
+  const tunnelSet = new Set(s.buildings.filter((b) => b.type === "tunnel").map((b) => b.y * W + b.x));
+  const isTunnel = (k: number) => tunnelSet.has(k);
   const load = new Float32Array(n);
   const capacity = new Float32Array(n);
   const congested = new Uint8Array(n);
@@ -244,6 +248,8 @@ export function computeTraffic(s: CityState): TrafficResult {
         const v = y * W + x;
         const to = nodes[v];
         if (!to || !LINKS[from].includes(to)) continue;
+        // Altitude (Fase 9): desnível maior que 1 só por túnel.
+        if (!viaLinks(s, u, v, isTunnel)) continue;
         const nd = d + COST[to];
         if (nd < dist[v]) {
           dist[v] = nd;

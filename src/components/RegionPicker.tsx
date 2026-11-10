@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { MapEditor } from "./MapEditor";
 import {
   BIOMES,
   CLIMATE_TYPES,
@@ -12,6 +13,9 @@ import {
   searchRegions,
   seasonName,
   DIFFICULTY,
+  annualRain,
+  defaultMapOptions,
+  type MapOptions,
   CITY_NAME_MAX,
   sanitizeCityName,
   type Continent,
@@ -36,6 +40,13 @@ export function RegionPicker() {
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("medio");
   const [name, setName] = useState("");
+  const [mapOpts, setMapOpts] = useState<MapOptions | null>(null);
+  // Ao trocar de região, o editor volta ao padrão do novo bioma e da nova chuva.
+  const biome = selected ? biomeOf(selected) : null;
+  const wetness = selected ? Math.max(0, Math.min(1, annualRain(selected) / 2000)) : 0.5;
+  useEffect(() => {
+    if (selected) setMapOpts(defaultMapOptions(biomeOf(selected), Math.max(0, Math.min(1, annualRain(selected) / 2000))));
+  }, [selected]);
 
   const results = useMemo(() => searchRegions(query), [query]);
   const byContinent = useMemo(() => {
@@ -127,6 +138,9 @@ export function RegionPicker() {
                 ))}
               </fieldset>
             )}
+            {!keepsMap && selected && biome && mapOpts && (
+              <MapEditor seed={city.seed} biome={biome} wetness={wetness} value={mapOpts} onChange={setMapOpts} />
+            )}
             <label className="block">
               <span className="text-zinc-400">Nome da cidade</span>
               <input
@@ -143,7 +157,9 @@ export function RegionPicker() {
               type="button"
               className="retro-button retro-button-primary w-full py-2"
               disabled={!selected || busy}
-              onClick={() => selected && useGame.getState().chooseRegion(selected.id, difficulty, sanitizeCityName(name) ?? undefined)}
+              onClick={() =>
+                selected && useGame.getState().chooseRegion(selected.id, difficulty, sanitizeCityName(name) ?? undefined, mapOpts ?? undefined)
+              }
             >
               Fundar {sanitizeCityName(name) ?? "a cidade"} em {selected?.name ?? "…"}
             </button>

@@ -8,6 +8,39 @@ import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
 import { lockReason } from "./unlocks";
 import { sanitizeCityName } from "./founding";
 import { buildingAt, idx, inBounds } from "./world";
+import { RANK_TERRAFORM, TERRAFORM, isWater, MAX_ELEVATION } from "./terrain";
+import { addTo } from "./inventory";
+import { RANKS, type BuildingType, type Rank } from "./types";
+import type { MaterialCost } from "./catalog";
+
+/** Ponte (Fase 9): via sobre a água custa 4× em dinheiro e 2× em materiais. */
+export const BRIDGE_MONEY = 4;
+export const BRIDGE_MATERIALS = 2;
+
+/** Custo real de uma construção naquele tile (ponte sobre a água custa mais). */
+export function buildCost(s: CityState, type: BuildingType, x: number, y: number): { money: number; materials: MaterialCost[]; bridge: boolean } {
+  const def = BUILDINGS[type];
+  const bridge = !!def.linear && inBounds(s, x, y) && isWater(s.terrain[idx(s, x, y)]);
+  const k = bridge ? BRIDGE_MATERIALS : 1;
+  return {
+    money: def.cost * (bridge ? BRIDGE_MONEY : 1),
+    materials: (def.materials ?? []).map((m) => ({ ...m, qty: m.qty * k })),
+    bridge,
+  };
+}
+
+/** Rank do foco atual (para o desconto da terraplanagem). */
+const currentRank = (s: CityState): Rank => RANKS[Math.max(0, Math.min(Math.max(1, s.streak), RANKS.length) - 1)];
+
+/** Custo da terraplanagem com o desconto do Rank atual. */
+export const terraformCost = (s: CityState, action: keyof typeof TERRAFORM) => Math.ceil(TERRAFORM[action].cost * RANK_TERRAFORM[currentRank(s)]);
+
+/** Corta a árvore do tile (se houver): rende 1 madeira. */
+function clearTree(s: CityState, i: number) {
+  if (!s.trees?.[i]) return;
+  s.trees[i] = 0;
+  addTo(s.inventory, "wood", "D", 1);
+}
 
 export type CommandResult = { ok: true; state: CityState } | { ok: false; error: string };
 
@@ -37,7 +70,7 @@ export function zoneArea(s: CityState, cmd: Extract<Command, { type: "zone" }>):
     for (let x = ax; x <= bx; x++) {
       const i = idx(s, x, y);
       // Água, construções, linhas e lotes já desenvolvidos ficam de fora.
-      if (s.terrain[i] !== 0 || occupied.has(i) || s.wires[i] || s.zoneLevel[i] > 0) continue;
+      if (isWater(s.terrain[i]) || occupied.has(i) || s.wires[i] || s.zoneLevel[i] > 0) continue;
       if (s.zoneType[i] === code && (code === ZONE.NONE || s.zoneDensity[i] === density)) continue;
       tiles.push(i);
       if (cmd.zone !== "none") cost += ZONES[cmd.zone].cost[density];
@@ -119,14 +152,14 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
 
   if (cmd.type === "pipe") {
     // Canos ficam no subsolo: passam sob estradas, lotes e construções (Fase 6).
-    if (s.terrain[i] !== 0) return "Canos não passam sob a água";
+    if (isWater(s.terrain[i])) return "Canos não passam sob a água";
     if (s.pipes[i]) return "Já existe um cano aqui";
     if (s.money < PIPE_COST) return "Dinheiro insuficiente";
     return null;
   }
 
   if (cmd.type === "wire") {
-    if (s.terrain[i] !== 0) return "Linhas não passam sobre a água";
+    if (isWater(s.terrain[i])) return "Linhas não passam sobre a água";
     if (s.wires[i]) return "Já existe uma linha aqui";
     if (here && !BUILDINGS[here.type].linear) return "Linhas só cruzam vias ou terreno livre";
     if (s.zoneLevel[i] > 0) return "Lote ocupado";
@@ -139,7 +172,9 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     if (!def || !def.buildable) return "Construção inválida";
     const lock = lockReason(def.requires, s);
     if (lock) return lock;
-    if (s.terrain[i] !== 0) return "Não dá para construir na água";
+    // Vias atravessam a água como ponte (Fase 9); o resto precisa de terra firme.
+    if (isWater(s.terrain[i]) && !def.linear) return "Não dá para construir na água (vias viram ponte)";
+    if (def.minElevation && (s.elevation?.[i] ?? 0) < def.minElevation) return `Só em terreno de nível ${def.minElevation}+ (morro)`;
     if (here) return "Tile ocupado";
     if (s.zoneLevel[i] > 0) return "Lote já desenvolvido — demolir primeiro";
     if (s.wires[i] && !def.linear) return "Há uma linha de transmissão aqui";
@@ -147,25 +182,64 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
       const touchesWater = DIRS4.some(([dx, dy]) => {
         const x = cmd.x + dx;
         const y = cmd.y + dy;
-        return inBounds(s, x, y) && s.terrain[idx(s, x, y)] === 1;
+        return inBounds(s, x, y) && isWater(s.terrain[idx(s, x, y)]);
       });
       if (!touchesWater) return "Precisa encostar na água";
     }
+    if (def.needsSeaAdjacent) {
+      const touchesSea = DIRS4.some(([dx, dy]) => {
+        const x = cmd.x + dx;
+        const y = cmd.y + dy;
+        return inBounds(s, x, y) && s.terrain[idx(s, x, y)] === 2;
+      });
+      if (!touchesSea) return "Precisa encostar no mar";
+    }
     // Materiais: do estoque; o que faltar é comprado no mercado externo (até o Rank B).
-    const quote = quoteMaterials(s, def.materials);
+    const bc = buildCost(s, cmd.building, cmd.x, cmd.y);
+    const quote = quoteMaterials(s, bc.materials);
     if (quote.impossible) return quote.impossible;
-    if (s.money < def.cost + quote.importCost) {
+    if (s.money < bc.money + quote.importCost) {
       return quote.importCost
-        ? `Dinheiro insuficiente ($${def.cost} + $${quote.importCost} de materiais importados)`
+        ? `Dinheiro insuficiente ($${bc.money} + $${quote.importCost} de materiais importados)`
         : "Dinheiro insuficiente";
     }
+    return null;
+  }
+
+  if (cmd.type === "terraform") {
+    const t = TERRAFORM[cmd.action];
+    if (!t) return "Ação inválida";
+    if (here) return "Tile ocupado";
+    if (s.zoneLevel[i] > 0) return "Lote desenvolvido — demolir primeiro";
+    const e = s.elevation?.[i] ?? 0;
+    const water = isWater(s.terrain[i]);
+    if (cmd.action === "raise") {
+      if (water) return "Aterre a água primeiro";
+      if (e >= MAX_ELEVATION) return `Altitude máxima: ${MAX_ELEVATION}`;
+    } else if (cmd.action === "lower") {
+      if (water) return "Já é água";
+      if (e <= 0) return "Já está no nível do chão";
+    } else if (cmd.action === "water") {
+      if (water) return "Já é água";
+      if (e > 0) return "Rebaixe até o nível 0 antes de cavar";
+      if (s.wires[i] || s.pipes[i]) return "Remova linhas e canos antes";
+    } else if (cmd.action === "land") {
+      if (s.terrain[i] !== 1) return s.terrain[i] === 2 ? "O mar não pode ser aterrado" : "Já é terra";
+    } else if (cmd.action === "tree") {
+      if (water) return "Árvore não nasce na água";
+      if (s.trees?.[i]) return "Já há uma árvore aqui";
+      if (s.wires[i]) return "Há uma linha de transmissão aqui";
+    }
+    const cost = terraformCost(s, cmd.action);
+    const woodImport = t.wood ? quoteMaterials(s, [{ resource: "wood", qty: t.wood }]).importCost : 0;
+    if (s.money < cost + woodImport) return "Dinheiro insuficiente";
     return null;
   }
 
   if (cmd.type === "demolish") {
     if (cmd.underground) return s.pipes[i] ? null : "Não há cano aqui";
     if (here?.type === "cityhall") return "A prefeitura não pode ser demolida";
-    if (!here && !s.wires[i] && !s.zoneType[i]) return "Nada para demolir";
+    if (!here && !s.wires[i] && !s.zoneType[i] && !s.trees?.[i]) return "Nada para demolir";
     return null;
   }
   return "Comando desconhecido";
@@ -222,15 +296,32 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     next.money -= PIPE_COST;
   } else if (cmd.type === "demolish" && cmd.underground) {
     next.pipes[idx(next, cmd.x, cmd.y)] = 0;
+  } else if (cmd.type === "terraform") {
+    const i = idx(next, cmd.x, cmd.y);
+    next.money -= terraformCost(s, cmd.action);
+    if (cmd.action === "raise") next.elevation[i]++;
+    else if (cmd.action === "lower") next.elevation[i]--;
+    else if (cmd.action === "water") {
+      clearTree(next, i);
+      next.terrain[i] = 1;
+      next.zoneType[i] = ZONE.NONE;
+      next.zoneDensity[i] = 0;
+    } else if (cmd.action === "land") {
+      payMaterials(next, [{ resource: "wood", qty: TERRAFORM.land.wood! }]);
+      next.terrain[i] = 0;
+    } else next.trees[i] = 1;
   } else if (cmd.type === "wire") {
+    clearTree(next, idx(next, cmd.x, cmd.y));
     next.wires[idx(next, cmd.x, cmd.y)] = 1;
     next.money -= WIRE_COST;
   } else if (cmd.type === "build") {
-    const def = BUILDINGS[cmd.building];
     const i = idx(next, cmd.x, cmd.y);
-    next.money -= def.cost;
+    const bc = buildCost(s, cmd.building, cmd.x, cmd.y);
+    next.money -= bc.money;
     // Gasta o mínimo de qualidade necessário (preserva o premium) e importa o que faltar.
-    payMaterials(next, def.materials);
+    payMaterials(next, bc.materials);
+    // A árvore do tile vira madeira (Fase 9).
+    clearTree(next, i);
     // Obras públicas desfazem o zoneamento do tile (como no modelo clássico).
     next.zoneType[i] = ZONE.NONE;
     next.zoneDensity[i] = 0;
@@ -242,6 +333,7 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     if (here) next.buildings = next.buildings.filter((b) => b !== here && !(b.x === cmd.x && b.y === cmd.y));
     else if (next.zoneLevel[i] > 0) next.zoneLevel[i] = 0;
     else if (next.wires[i]) next.wires[i] = 0;
+    else if (next.trees?.[i] && !next.zoneType[i]) clearTree(next, i);
     else {
       next.zoneType[i] = ZONE.NONE;
       next.zoneDensity[i] = 0;

@@ -8,6 +8,7 @@
 import { BUILDINGS } from "./catalog";
 import { buildingStatus, laborStats, type BuildingStatus } from "./status";
 import { computeTraffic, type TrafficResult } from "./traffic";
+import { isWater } from "./terrain";
 import { START_EQ, START_LIFE } from "./config";
 import { ZONE, type CityState } from "./types";
 
@@ -107,6 +108,7 @@ export function computeServices(
   const health = new Float32Array(n);
   const lvBonus = new Float32Array(n);
   const cleaning = new Float32Array(n);
+  const treeValue = new Float32Array(n);
   const eff = (id: number) => status.get(id)?.efficiency ?? 1;
 
   let attraction = 0;
@@ -172,6 +174,16 @@ export function computeServices(
     const ratio = Math.min(2, traffic.load[i] / traffic.capacity[i]);
     spread(s, pollution, i % s.width, Math.floor(i / s.width), 1, 1 + ratio * 6, "add");
   }
+  // Árvores (Fase 9): cada uma limpa um pouco o ar e valoriza o entorno (raio 2).
+  if (s.trees) {
+    for (let i = 0; i < n; i++) {
+      if (!s.trees[i]) continue;
+      const x = i % s.width;
+      const y = Math.floor(i / s.width);
+      spread(s, cleaning, x, y, 1, 2, "add");
+      spread(s, treeValue, x, y, 2, 2, "add");
+    }
+  }
   for (let i = 0; i < n; i++) pollution[i] = clamp(pollution[i] - cleaning[i]);
 
   // ── Crime: densidade e desemprego aumentam; polícia derruba. Prisão reforça com crime alto. ──
@@ -204,13 +216,15 @@ export function computeServices(
       for (let dx = -2; dx <= 2; dx++) {
         const nx = x + dx;
         const ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < s.width && ny < s.height && s.terrain[ny * s.width + nx] === 1) {
+        if (nx >= 0 && ny >= 0 && nx < s.width && ny < s.height && isWater(s.terrain[ny * s.width + nx])) {
           water = 10;
           break;
         }
       }
     }
-    landValue[i] = clamp(35 + center + water + lvBonus[i] - pollution[i] * 0.5 - crime[i] * 0.3);
+    // Fase 9: morros têm vista (+3 por nível) e árvores valorizam (até +12).
+    const view = (s.elevation?.[i] ?? 0) * 3;
+    landValue[i] = clamp(35 + center + water + view + Math.min(12, treeValue[i]) + lvBonus[i] - pollution[i] * 0.5 - crime[i] * 0.3);
   }
 
   const pop = Math.max(1, s.population);

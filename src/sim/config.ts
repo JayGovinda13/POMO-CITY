@@ -1,4 +1,7 @@
-export const MAP_SIZE = 24;
+/** Tamanho dos mapas fundados a partir da Fase 9 (40×40). Cidades antigas mantêm o tamanho. */
+export const MAP_SIZE = 40;
+/** Tamanho padrão de createCity sem opções (cidade provisória antes da fundação e testes). */
+export const LEGACY_MAP_SIZE = 24;
 export const STARTING_MONEY = 1000;
 
 /** Ciclos acima deste limite no mesmo dia contam, mas não geram recompensa. */

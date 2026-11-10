@@ -827,6 +827,46 @@ building("seaport", 40, (c, oy) => {
   c.rect(28, oy, 3, 2, "z")
 })
 
+// ───────────────────────────── terreno (Fase 9) ─────────────────────────────
+
+building("tunnel", 32, (c, oy) => {
+  c.poly(ground(oy, 0), "a")
+  // Morro de pedra com a boca do túnel e a estrada entrando.
+  c.poly([2, oy + 8, 8, oy - 4, 16, oy - 9, 24, oy - 4, 30, oy + 8, 16, oy + 2], "m")
+  c.poly([16, oy - 9, 24, oy - 4, 30, oy + 8, 18, oy + 1], "M")
+  c.ellipse(13, oy + 3, 5, 5, "Z")
+  c.rect(8, oy + 3, 11, 5, "Z")
+  c.ellipse(13, oy + 3, 3, 3, "k")
+  c.rect(10, oy + 3, 7, 5, "k")
+  c.line(7, oy + 8, 19, oy + 8, "j")
+  c.hline(12, oy + 11, 3, "y")
+})
+building("desalination", 40, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 10, H: 12, top: "J", left: "H", right: "J", dx: -4, dy: -1 })
+  windows(c, b, { floors: 1, fh: 9, col: "q", lit: "c", every: 2 })
+  // Tanques de membrana e tubulação azul até o mar.
+  for (const [x, y] of [[21, oy + 4], [25, oy + 8]]) {
+    c.rect(x - 3, y - 9, 6, 9, "c")
+    c.rect(x + 1, y - 9, 2, 9, "b")
+    c.ellipse(x, y - 9, 3, 1, "H")
+  }
+  c.line(4, oy + 9, 16, oy + 15, "K")
+})
+building("marina", 30, (c, oy) => {
+  c.poly(ground(oy, 0), "b")
+  // Píer de madeira com barcos a vela.
+  c.poly([4, oy + 8, 16, oy + 2, 18, oy + 3, 6, oy + 9], "P")
+  c.poly([14, oy + 3, 26, oy + 9, 24, oy + 10, 12, oy + 4], "P")
+  for (const [x, y] of [[9, oy + 12], [21, oy + 5]]) {
+    c.rect(x - 3, y, 7, 2, "Y")
+    c.vline(x, y - 9, 9, "D")
+    c.poly([x + 1, y - 9, x + 1, y - 1, x + 5, y - 1], "H")
+  }
+  c.rect(25, oy + 2, 4, 4, "w")
+  c.rect(25, oy + 1, 4, 1, "r")
+})
+
 // Poste de transmissão.
 sprite("power_pole", { w: 8, h: 16, outline: "k" }, (c) => {
   c.vline(3, 2, 14, "D")
@@ -910,4 +950,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })

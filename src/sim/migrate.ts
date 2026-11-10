@@ -1,5 +1,6 @@
 import { DEFAULT_POLICIES, START_EQ, START_LIFE } from "./config";
 import { CURRENT_SCHEMA_VERSION, ZONE, type CityState } from "./types";
+import { legacyTrees } from "./terrain";
 
 /**
  * Atualiza estados salvos em versões antigas para o formato atual.
@@ -76,6 +77,15 @@ export function migrateState(raw: CityState): CityState {
     s.funding = Object.assign({ police: 100, fire: 100, health: 100, education: 100 }, s.funding);
     s.eq = START_EQ;
     s.lifeExpectancy = START_LIFE;
+  }
+
+  if (from < 10) {
+    // v9 → v10: relevo plano e as árvores que já apareciam como decoração viram camada real.
+    s.elevation = new Array(s.width * s.height).fill(0);
+    s.trees = legacyTrees(s);
+    // Árvore não convive com construção ou lote desenvolvido.
+    for (const b of s.buildings) s.trees[b.y * s.width + b.x] = 0;
+    for (let i = 0; i < s.trees.length; i++) if (s.zoneType[i] || s.wires[i]) s.trees[i] = 0;
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

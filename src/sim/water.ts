@@ -32,6 +32,7 @@ const near = (s: CityState, x: number, y: number, pred: (i: number) => boolean) 
     return nx >= 0 && ny >= 0 && nx < s.width && ny < s.height && pred(ny * s.width + nx);
   });
 
+/** Perto de água doce (rio, lago): a bomba rende o dobro. Água do mar não serve para bomba. */
 export const isNearWater = (s: CityState, b: Pick<Building, "x" | "y">) => near(s, b.x, b.y, (i) => s.terrain[i] === 1);
 
 export function tileWaterDemand(s: CityState, i: number, buildingAtTile: Map<number, Building>): number {
@@ -103,6 +104,8 @@ export function computeWater(
     if (def.kind === "pump") out = def.capacity * (isNearWater(s, b) ? 2 : 1) * effects.water * eff;
     else if (def.kind === "treatment") out = Math.min(TREATMENT_MAX, (demandByComp.get(comp[i]) ?? 0) * TREATMENT_SHARE) * eff;
     else if (def.kind === "well") out = def.capacity * effects.water;
+    // Dessalinizadora (Fase 9): a água do mar não depende de chuva.
+    else if (def.kind === "desal") out = def.capacity * eff;
     else if (def.kind === "tower") {
       const st = b.damaged ? 0 : (b.water ?? 0);
       net(comp[i]).towers.push(b.id);

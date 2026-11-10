@@ -25,6 +25,13 @@ import {
   roadAccess,
   computeServices,
   computeTraffic,
+  RESOURCES,
+  TERRAFORM,
+  terraformCost,
+  quoteMaterials,
+  equivalentAvailable,
+  type MaterialCost,
+  type TerraformAction,
   MAX_TRIP,
   cityDisplayName,
   wealthOf,
@@ -44,15 +51,17 @@ import { MarketButton } from "./MarketPanel";
 import { BudgetButton } from "./BudgetPanel";
 import { CitizensButton } from "./CitizensPanel";
 import { DonateButton } from "./DonateButton";
+import { ResourcesButton } from "./ResourcesButton";
 import { MusicButton } from "./Music";
 import { MOOD_ICON, Portrait } from "./Portrait";
 
-type CategoryId = "vias" | "zonas" | BuildCategory | "view";
+type CategoryId = "vias" | "zonas" | "terreno" | BuildCategory | "view";
 
 const CATEGORIES: { id: CategoryId; icon: string; title: string }[] = [
   { id: "vias", icon: "🛣️", title: "Vias e energia elétrica" },
   { id: "zonas", icon: "🏘️", title: "Zonas" },
-  { id: "transport", icon: "🚆", title: "Transporte (rodovias, trilhos, ônibus, portos)" },
+  { id: "transport", icon: "🚆", title: "Transporte (rodovias, trilhos, túneis, ônibus, portos)" },
+  { id: "terreno", icon: "⛰️", title: "Terreno (relevo, água, árvores)" },
   { id: "energy", icon: "⚡", title: "Usinas" },
   { id: "water", icon: "💧", title: "Água" },
   { id: "services", icon: "🚓", title: "Serviços (polícia, bombeiros, saúde, educação)" },
@@ -69,6 +78,7 @@ function categoryOf(tool: Tool): CategoryId | null {
   if (tool === "road" || tool === "wire") return "vias";
   if (tool === "pipe") return "water";
   if (tool.startsWith("zone-")) return "zonas";
+  if (tool.startsWith("terra-")) return "terreno";
   return BUILDINGS[tool as BuildingType]?.category ?? null;
 }
 
@@ -130,6 +140,7 @@ export function Hud() {
         </span>
         {weather && <WeatherChip weather={weather} focus={phase === "focus"} />}
         <span title="Caixa da prefeitura">💰 ${city.money}</span>
+        <ResourcesButton />
         <span title={`Moradores / moradia · ${labor.publicFilled + labor.zoneFilled}/${labor.totalJobs} empregos ocupados${labor.unemployed ? ` · ${labor.unemployed} sem emprego` : ""}`}>
           👥 {city.population}/{labor.housing}
           {labor.unemployed > 0 && <span className="text-amber-300"> ({labor.unemployed} s/ emprego)</span>}
@@ -202,10 +213,11 @@ function TileInfo({
   const i = y * city.width + x;
   const b = buildingAt(city, x, y);
   const zone = city.zoneType[i];
-  if (!b && !zone && !city.wires[i] && !city.pipes[i]) return null;
+  if (!b && !zone && !city.wires[i] && !city.pipes[i] && !city.trees?.[i] && !city.elevation?.[i] && !city.terrain[i]) return null;
 
   return (
     <div className="space-y-0.5">
+      {city.terrain[i] !== 0 && !b && <strong>{city.terrain[i] === 2 ? "🌊 Mar (água salgada)" : "💧 Água doce"}</strong>}
       {b ? (
         <>
           <strong>{BUILDINGS[b.type].name}</strong>
@@ -250,6 +262,8 @@ function TileInfo({
           {access[i] < 0 && <p className="text-red-300">Longe demais da estrada (máx. 3 tiles)</p>}
         </>
       ) : null}
+      {(city.elevation?.[i] ?? 0) > 0 && <p className="text-zinc-400">⛰️ Altitude {city.elevation[i]}</p>}
+      {city.trees?.[i] === 1 && !b && <p className="text-emerald-300">🌳 Árvore (demolir rende 1 🪵)</p>}
       {city.wires[i] === 1 && <p className="text-zinc-400">Linha de transmissão</p>}
       {city.pipes[i] === 1 && <p className="text-zinc-400">Cano no subsolo</p>}
       {(b ? !BUILDINGS[b.type].linear && b.type !== "onramp" : city.zoneLevel[i] > 0) && (
@@ -334,6 +348,8 @@ function ToolButton({
   color,
   lock,
   onPicked,
+  title: customTitle,
+  materials: customMaterials,
 }: {
   onPicked?: () => void;
   tool: Tool;
@@ -343,20 +359,35 @@ function ToolButton({
   costSuffix?: string;
   color?: number;
   lock?: string | null;
+  title?: string;
+  materials?: MaterialCost[];
 }) {
   const selected = useGame((s) => s.tool === tool);
   const setTool = useGame((s) => s.setTool);
+  const city = useGame((s) => s.city);
   const def = tool && tool in BUILDINGS ? BUILDINGS[tool as BuildingType] : null;
-  const mats = def?.materials?.length
-    ? "\nMateriais: " +
-      def.materials.map((m) => `${m.qty} ${RESOURCE_NAMES[m.resource]}${m.minRank && m.minRank !== "D" ? ` ${m.minRank}+` : ""}`).join(", ") +
-      " (o que faltar é comprado)"
+  // Custo em recursos (Fase 9): o que a obra gasta do estoque; o que faltar vira importação.
+  const materials = customMaterials ?? def?.materials ?? [];
+  const quote = city && materials.length ? quoteMaterials(city, materials) : null;
+  const chips = materials.map((m) => {
+    const have = city ? equivalentAvailable(city.inventory, m.resource, m.minRank) : 0;
+    return { ...m, have, short: have < m.qty };
+  });
+  const mats = chips.length
+    ? "\n\nRecursos por obra:\n" +
+      chips
+        .map(
+          (m) =>
+            `${RESOURCES[m.resource].icon} ${m.qty} ${RESOURCE_NAMES[m.resource]}${m.minRank && m.minRank !== "D" ? ` ${m.minRank}+` : ""} — tem ${m.have}${m.short ? ` (faltam ${m.qty - m.have})` : ""}`,
+        )
+        .join("\n") +
+      (quote?.importCost ? `\nO que falta será importado por $${quote.importCost}.` : "\nTudo sai do estoque da cidade.")
     : "";
   const title = lock
     ? lock
     : def
-      ? `${def.description}\nCusto $${def.cost} · manutenção $${def.upkeep}/ciclo${mats}`
-      : label;
+      ? `${def.description}\nCusto $${def.cost} + recursos · manutenção $${def.upkeep}/ciclo${def.linear ? " · sobre a água vira ponte (4× $, 2× recursos)" : ""}${mats}`
+      : `${customTitle ?? label}${mats}`;
   return (
     <button
       type="button"
@@ -369,7 +400,20 @@ function ToolButton({
       className={`retro-button flex w-full items-center gap-1 ${selected ? "retro-button-active" : ""}`}
     >
       {color !== undefined && <span className="inline-block h-2 w-2 shrink-0" style={{ background: hex(color) }} />}
-      <span className="flex-1 truncate text-left">{lock ? `🔒 ${label}` : label}</span>
+      <span className="flex min-w-0 flex-1 flex-col text-left">
+        <span className="truncate">{lock ? `🔒 ${label}` : label}</span>
+        {chips.length > 0 && (
+          <span className="flex flex-wrap gap-x-1.5 text-[10px] leading-tight">
+            {chips.map((m) => (
+              <span key={m.resource} className={m.short ? "text-red-300" : "text-emerald-300"}>
+                {RESOURCES[m.resource].icon}
+                {m.qty}
+              </span>
+            ))}
+            {quote && quote.importCost > 0 && <span className="text-amber-300">+${quote.importCost} import.</span>}
+          </span>
+        )}
+      </span>
       {cost !== undefined && (
         <span className="text-zinc-400">
           ${cost}
@@ -555,9 +599,27 @@ function Toolbar({ locked }: { locked: boolean }) {
               <ToolButton tool="pipe" disabled={locked} label="Cano (subsolo)" cost={PIPE_COST} color={0x4a7ab0} onPicked={close} />
             )}
             {open === "view" && <OverlayPicker />}
+            {open === "terreno" && (
+              <>
+                <p className="text-[11px] text-zinc-400">Arraste para aplicar. Fica mais barato com foco de Rank alto (até −40% no S).</p>
+                {(Object.keys(TERRAFORM) as TerraformAction[]).map((a) => (
+                  <ToolButton
+                    key={a}
+                    tool={`terra-${a}`}
+                    disabled={locked}
+                    label={TERRAFORM[a].name}
+                    cost={terraformCost(city, a)}
+                    title={TERRAFORM[a].description}
+                    materials={TERRAFORM[a].wood ? [{ resource: "wood", qty: TERRAFORM[a].wood! }] : undefined}
+                    onPicked={close}
+                  />
+                ))}
+              </>
+            )}
             {open !== "vias" &&
               open !== "zonas" &&
               open !== "view" &&
+              open !== "terreno" &&
               (Object.keys(BUILDINGS) as BuildingType[])
                 .filter((t) => BUILDINGS[t].buildable && BUILDINGS[t].category === open)
                 .map((t) => {

@@ -46,7 +46,7 @@ Toda mecânica importada passa por cinco filtros:
 | 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ✅ Concluída (dessalinização na Fase 9) |
 | 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ✅ Concluída (marina na Fase 9, hotéis/turismo na Fase 12) |
 | 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ✅ Concluída |
-| 9 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ⏳ |
+| 9 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ✅ Concluída (mapa 40×40) |
 | 10 | Eras, invenções e recompensas | Árvore tecnológica por ano, vida útil de usinas, marcos de população | ⏳ |
 | 11 | Informação | Gráficos, jornal da cidade, ferramenta de consulta, minimapa | ⏳ |
 | 12 | Grandes eventos e metas | Eventos sorteados com anos de antecedência (ex.: uma copa) e metas para a cidade | ⏳ |
@@ -529,7 +529,7 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
 - Visão 🚗 Trânsito, carga por tile no painel do tile, relatório, jornal e novos empregos
   (motorista, maquinista, estivador).
 
-## Fase 9 — Terreno e paisagem
+## Fase 9 — Terreno e paisagem ✅
 
 *Manual: Terrain/Landscape tools.*
 
@@ -537,6 +537,42 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
 - **Árvores** aumentam o valor do solo. **Água** pode ser criada (caro, pago com Rank).
 - **Editor de mapa antes de fundar a cidade:** rios, costa, lagos e floresta, combinando com o bioma
   derivado do clima. O mapa é sempre fictício (não reproduz um lugar real).
+
+**Implementado (`src/sim/terrain.ts`):**
+
+- Cidades novas são **40×40**. As antigas mantêm o tamanho e ganham relevo plano e as árvores que
+  já apareciam como decoração (schema v10).
+- **Editor de mapa** na fundação:
+  - relevo plano, com colinas ou montanhoso;
+  - água: seco, lagos, rio, ou rio e lagos;
+  - mar em qualquer lado, com **água salgada**;
+  - mata de 0 a 3;
+  - 🎲 para gerar outro mapa;
+  - prévia ao vivo. A mesma seed e as mesmas opções geram o mesmo mapa no servidor.
+- **Altitude** de 0 a 3:
+  - terraços com paredões na visão isométrica;
+  - morros escondem o que está atrás;
+  - vias vencem 1 nível por **rampa** (desenhada no paredão);
+  - 2 níveis ou mais só por **túnel**, construído em terreno de nível 2+;
+  - morros valorizam o solo pela vista (+3 por nível).
+- **Pontes:** estrada, rodovia e trilho atravessam a água, custando 4× em dinheiro e 2× em recursos.
+- **Terraplanagem**, com desconto pelo Rank do foco (até −40% no S):
+  - elevar e rebaixar;
+  - criar água (só no nível 0);
+  - aterrar água doce, gastando madeira;
+  - plantar árvore.
+- **Árvores:**
+  - valorizam o solo e limpam o ar;
+  - construir em cima, lote crescendo ou demolir a árvore rende 1 madeira.
+- **Dessalinizadora** (encostada no mar, 80 de água, não depende da chuva) e **marina** (lazer à
+  beira d'água).
+- Enchentes atingem primeiro os lotes baixos à beira d'água.
+- **Recursos visíveis:**
+  - ícone 📦 na barra superior com o estoque de cada recurso;
+  - ao clicar, a previsão da estação: produção, consumo, saldo, quantas estações o estoque dura,
+    preço de importação e custo da falta por estação;
+  - cada construção mostra o custo em recursos (vermelho quando falta) e quanto será importado;
+  - ao construir com falta, um aviso mostra o que foi importado e por quanto.
 
 ## Fase 10 — Eras, invenções e recompensas
 

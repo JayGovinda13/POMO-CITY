@@ -117,13 +117,18 @@ export function applyDisaster(
       [-1, 0],
       [0, 1],
       [0, -1],
-    ].some(([dx, dy]) => next.terrain[(y + dy) * next.width + (x + dx)] === 1);
+    ].some(([dx, dy]) => {
+      const t = next.terrain[(y + dy) * next.width + (x + dx)];
+      return t === 1 || t === 2;
+    });
   };
   for (let i = developed.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [developed[i], developed[j]] = [developed[j], developed[i]];
   }
-  if (kind === "enchente") developed.sort((a, b) => Number(nearWater(b)) - Number(nearWater(a)));
+  // Enchente (Fase 9): primeiro os lotes à beira d'água, e entre eles os mais baixos.
+  const low = (i: number) => -(next.elevation?.[i] ?? 0);
+  if (kind === "enchente") developed.sort((a, b) => Number(nearWater(b)) - Number(nearWater(a)) || low(b) - low(a));
   let lotsDamaged = 0;
   let lotLevelsLost = 0;
   let firefighters = 0;

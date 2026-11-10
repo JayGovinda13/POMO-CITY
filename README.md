@@ -73,6 +73,26 @@ só com dinheiro), mas produzir sai mais barato. Recursos de Rank alto rendem ma
 S = 1,4×). Em **🏪 Mercado**, defina o que fazer com o excedente de cada recurso; armazéns e silos
 ampliam o estoque.
 
+## Recursos
+
+- O ícone 📦 na barra superior mostra quanto há de cada recurso: 🌾 comida, 🪵 madeira,
+  🪨 minério, 🪚 tábuas, ⚙️ metal e 🛍️ bens.
+- Clicando nele, aparece a previsão da próxima estação:
+  - quanto a cidade produz e consome de cada um;
+  - por quantas estações o estoque aguenta;
+  - quanto custaria importar o que falta.
+- Cada construção mostra o custo em recursos: verde se há no estoque, vermelho se falta.
+- O que falta é importado, e o preço sobe nas crises de clima. Produzir na cidade protege o caixa.
+
+## Terreno (Fase 9)
+
+- Cidades novas têm mapa 40×40, desenhado no editor da fundação: relevo, rio, lagos, mar e mata.
+- Ferramentas ⛰️: elevar e rebaixar terreno, criar água, aterrar e plantar árvores. Ficam mais
+  baratas com foco de Rank alto.
+- Vias sobem 1 nível por rampa; para mais, use túnel.
+- Sobre a água, vias viram ponte.
+- Dessalinizadora no litoral e marina à beira d'água.
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

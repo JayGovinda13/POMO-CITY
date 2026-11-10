@@ -13,12 +13,19 @@ import {
   type CycleReport,
   type DisasterReport,
   type ZoneKind,
+  type TerraformAction,
+  type MapOptions,
+  RESOURCES,
+  buildCost,
+  quoteMaterials,
 } from "@/sim";
 
 /** Ferramentas de zona: "zone-R-light", "zone-I-dense", "zone-none-light" (remover zona). */
 export type ZoneTool = `zone-${ZoneKind | "none"}-${"light" | "dense"}`;
 /** "pan" = ✋ Mover: arrastar com clique normal move a câmera. */
-export type Tool = BuildingType | "demolish" | "wire" | "pipe" | "pan" | ZoneTool | null;
+/** Terraplanagem (Fase 9): "terra-raise", "terra-lower", "terra-water", "terra-land", "terra-tree". */
+export type TerraTool = `terra-${TerraformAction}`;
+export type Tool = BuildingType | "demolish" | "wire" | "pipe" | "pan" | ZoneTool | TerraTool | null;
 /** "water" = visão subterrânea (canos e abastecimento). */
 export type Overlay = "none" | "power" | "zones" | "water" | "crime" | "pollution" | "landValue" | "coverage" | "traffic";
 
@@ -88,7 +95,7 @@ interface GameStore {
   /** "Novo jogo": cidade nova, mesma sequência de foco. */
   newGame(): Promise<void>;
   /** Fundação: escolhe a região climática da cidade. */
-  chooseRegion(regionId: string, difficulty?: "facil" | "medio" | "dificil", name?: string): Promise<boolean>;
+  chooseRegion(regionId: string, difficulty?: "facil" | "medio" | "dificil", name?: string, map?: MapOptions): Promise<boolean>;
   dismissDisaster(): void;
   /** Troca de conta: descarta a fila local e recarrega a cidade do novo usuário. */
   reset(): Promise<void>;
@@ -214,10 +221,10 @@ export const useGame = create<GameStore>()(
           }
         },
 
-        async chooseRegion(regionId, difficulty = "medio", name) {
+        async chooseRegion(regionId, difficulty = "medio", name, map) {
           set({ busy: true });
           try {
-            const snap = await call("/api/city/region", { regionId, difficulty, name });
+            const snap = await call("/api/city/region", { regionId, difficulty, name, map });
             if (snap.error) {
               get().showToast(snap.error);
               return false;
@@ -255,10 +262,16 @@ export const useGame = create<GameStore>()(
             get().showToast("Foco! A cidade só aceita obras na pausa.");
             return false;
           }
+          // Materiais que faltam viram compra no mercado: o jogador vê quanto a falta custou.
+          const quote = cmd.type === "build" ? quoteMaterials(city, buildCost(city, cmd.building, cmd.x, cmd.y).materials) : null;
           const r = applyCommand(city, cmd);
           if (!r.ok) {
             get().showToast(r.error);
             return false;
+          }
+          if (quote && quote.importCost > 0) {
+            const what = quote.imports.map((m) => `${m.units} ${RESOURCES[m.res].icon} ${RESOURCES[m.res].name}`).join(", ");
+            get().showToast(`Faltou ${what}: importado por $${quote.importCost}. Produzir na cidade sairia mais barato.`);
           }
           set({ pending: [...get().pending, cmd], city: r.state });
           return true;
@@ -278,6 +291,10 @@ export const useGame = create<GameStore>()(
             // Na visão subterrânea, demolir remove o cano do tile.
             if (get().overlay === "water") get().queue({ type: "demolish", x, y, underground: true });
             else get().queue({ type: "demolish", x, y });
+            return;
+          }
+          if (tool.startsWith("terra-")) {
+            get().queue({ type: "terraform", action: tool.slice(6) as TerraformAction, x, y });
             return;
           }
           if (tool === "wire") get().queue({ type: "wire", x, y });

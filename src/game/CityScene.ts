@@ -8,7 +8,21 @@ const TH = 16; // altura do tile isométrico
 const ZOOMS = [1, 2, 3, 4];
 const V = Phaser.Math.Vector2;
 
-const iso = (x: number, y: number) => ({ sx: ((x - y) * TW) / 2, sy: ((x + y) * TH) / 2 });
+/** Pixels por nível de altitude (Fase 9). */
+const EH = 8;
+/** Altitude do mapa atual (definida a cada redesenho); iso() já devolve o tile na altura certa. */
+let ELEV: { w: number; h: number; e: number[] } | null = null;
+const elevAt = (x: number, y: number) => {
+  if (!ELEV) return 0;
+  const xi = Math.round(x);
+  const yi = Math.round(y);
+  if (xi < 0 || yi < 0 || xi >= ELEV.w || yi >= ELEV.h) return 0;
+  return ELEV.e[yi * ELEV.w + xi] ?? 0;
+};
+const setElevation = (city: CityState) => {
+  ELEV = city.elevation?.length ? { w: city.width, h: city.height, e: city.elevation } : null;
+};
+const iso = (x: number, y: number) => ({ sx: ((x - y) * TW) / 2, sy: ((x + y) * TH) / 2 - elevAt(x, y) * EH });
 
 function shade(color: number, f: number) {
   const r = Math.min(255, Math.round(((color >> 16) & 0xff) * f));
@@ -163,11 +177,27 @@ export class CityScene extends Phaser.Scene {
   private tileAt(p: Phaser.Input.Pointer): Tile | null {
     const city = useGame.getState().city;
     if (!city) return null;
+    setElevation(city);
     const w = this.cameras.main.getWorldPoint(p.x, p.y);
-    const fx = (w.x / (TW / 2) + w.y / (TH / 2)) / 2;
-    const fy = (w.y / (TH / 2) - w.x / (TW / 2)) / 2;
-    const x = Math.floor(fx + 0.5);
-    const y = Math.floor(fy + 0.5);
+    const pick = (k: number) => {
+      const wy = w.y + k * EH;
+      const fx = (w.x / (TW / 2) + wy / (TH / 2)) / 2;
+      const fy = (wy / (TH / 2) - w.x / (TW / 2)) / 2;
+      return { x: Math.floor(fx + 0.5), y: Math.floor(fy + 0.5) };
+    };
+    let best = pick(0);
+    let bestDepth = -Infinity;
+    for (let k = 0; k <= 3; k++) {
+      const c = pick(k);
+      if (c.x < 0 || c.y < 0 || c.x >= city.width || c.y >= city.height) continue;
+      if (elevAt(c.x, c.y) !== k) continue;
+      const depth = c.x + c.y + k * 0.01;
+      if (depth > bestDepth) {
+        bestDepth = depth;
+        best = c;
+      }
+    }
+    const { x, y } = best;
     if (x < 0 || y < 0 || x >= city.width || y >= city.height) return null;
     return { x, y };
   }
@@ -177,7 +207,8 @@ export class CityScene extends Phaser.Scene {
     if (!t) return;
     // Estrada, linha e demolição podem ser "pintadas" arrastando; o resto é um clique.
     const tool = useGame.getState().tool;
-    const paintable = tool === "road" || tool === "highway" || tool === "rail" || tool === "wire" || tool === "pipe" || tool === "demolish";
+    const paintable =
+      tool === "road" || tool === "highway" || tool === "rail" || tool === "wire" || tool === "pipe" || tool === "demolish" || !!tool?.startsWith("terra-");
     if (this.painted.size > 0 && !paintable) return;
     // Mouse rápido pula tiles entre dois eventos: preenche o caminho (Bresenham na grade),
     // para uma estrada arrastada nunca ficar com buracos.
@@ -225,6 +256,7 @@ export class CityScene extends Phaser.Scene {
   private redraw() {
     const { city } = useGame.getState();
     if (!city) return;
+    setElevation(city);
     if (!this.textures.exists("city")) return this.redrawShapes();
     this.terrainG.clear();
     this.buildG.clear();
@@ -237,30 +269,10 @@ export class CityScene extends Phaser.Scene {
     return this.textures.get("city").has(name) ? name : null;
   }
 
-  /** Terreno: desenhado uma vez numa RenderTexture (refeito só se o mapa mudar). */
-  private drawTerrain(city: CityState) {
-    const key = `${city.seed}:${city.biome}:${city.terrain.join("")}`;
-    if (key === this.lastTerrainKey) return;
-    this.lastTerrainKey = key;
-    this.terrainRT?.destroy();
-    const minX = -city.height * (TW / 2);
-    const width = (city.width + city.height) * (TW / 2);
-    const height = (city.width + city.height) * (TH / 2);
-    const rt = this.add.renderTexture(minX, -TH / 2, width, height).setOrigin(0, 0).setDepth(0);
-    for (let y = 0; y < city.height; y++)
-      for (let x = 0; x < city.width; x++) {
-        const { sx, sy } = iso(x, y);
-        const v = tileHash(city.seed, x, y) & 1;
-        const water = city.terrain[y * city.width + x] === 1;
-        const name = (water ? this.frame(`water_${v}`) : this.frame(`ground_${city.biome}_${v}`)) ?? "ground_plains_0";
-        rt.drawFrame("city", name, sx - TW / 2 - minX, sy - TH / 2 + TH / 2);
-      }
-    this.terrainRT = rt;
-  }
-
   private redrawSprites(city: CityState) {
     const { serverState } = useGame.getState();
-    this.drawTerrain(city);
+    this.terrainRT?.destroy();
+    this.terrainRT = undefined;
 
     const power = computePower(city);
     const status = buildingStatus(city, power.powered);
@@ -269,19 +281,27 @@ export class CityScene extends Phaser.Scene {
     // Vias se ligam a vizinhos compatíveis: estrada ↔ estrada/acesso/estação; rodovia ↔ rodovia/acesso;
     // trilho ↔ trilho/estação.
     const LINKS: Record<string, string[]> = {
-      road: ["road", "onramp", "bus_stop"],
+      road: ["road", "onramp", "bus_stop", "tunnel"],
       highway: ["highway", "onramp"],
       rail: ["rail", "train_station"],
     };
-    const linkMask = (type: string, x: number, y: number) => {
-      const ok = (nx: number, ny: number) =>
-        nx >= 0 && ny >= 0 && nx < city.width && ny < city.height && LINKS[type].includes(buildingAt.get(ny * city.width + nx)?.type ?? "");
-      return (ok(x - 1, y) ? 1 : 0) | (ok(x, y - 1) ? 2 : 0) | (ok(x + 1, y) ? 4 : 0) | (ok(x, y + 1) ? 8 : 0);
+    const E = (x: number, y: number) => city.elevation?.[y * city.width + x] ?? 0;
+    /** Vias se ligam se o desnível é vencível por rampa (≤ 1) ou se uma delas é túnel (Fase 9). */
+    const linked = (type: string, x: number, y: number, nx: number, ny: number) => {
+      if (nx < 0 || ny < 0 || nx >= city.width || ny >= city.height) return false;
+      const other = buildingAt.get(ny * city.width + nx)?.type ?? "";
+      if (!LINKS[type]?.includes(other)) return false;
+      return Math.abs(E(x, y) - E(nx, ny)) <= 1 || other === "tunnel";
     };
+    const linkMask = (type: string, x: number, y: number) =>
+      (linked(type, x, y, x - 1, y) ? 1 : 0) | (linked(type, x, y, x, y - 1) ? 2 : 0) | (linked(type, x, y, x + 1, y) ? 4 : 0) | (linked(type, x, y, x, y + 1) ? 8 : 0);
+    const SOIL = 0x7a5a3a;
+    const grass = BIOMES[city.biome].grass;
+    const RAMP: Record<string, number> = { road: 0x4d4d57, highway: 0x7b796f, rail: 0xa9a37e };
 
     this.flatLayer.removeAll(true);
     this.spriteLayer.removeAll(true);
-    const lots = this.lotG.clear();
+    this.lotG.clear();
     const fx = this.fxG.clear();
     // 2,5D: sombra projetada no chão (luz vindo de cima-esquerda), proporcional à altura.
     const shadows = this.buildG.clear();
@@ -307,11 +327,68 @@ export class CityScene extends Phaser.Scene {
         true,
       );
     };
-    const decorDensity: Record<string, number> = { forest: 0.32, plains: 0.07, desert: 0.08, tundra: 0.14, mountains: 0.2 };
-
-    // Ordem de profundidade: diagonais (x + y) crescentes.
+    // Ordem de profundidade: diagonais (x + y) crescentes. Na camada de chão, cada diagonal desenha
+    // terreno, paredões (penhascos e rampas) e lotes antes da seguinte — morros escondem o que há atrás.
     for (let d = 0; d <= city.width + city.height - 2; d++) {
-      for (let x = Math.max(0, d - city.height + 1); x <= Math.min(d, city.width - 1); x++) {
+      const x0 = Math.max(0, d - city.height + 1);
+      const x1 = Math.min(d, city.width - 1);
+      for (let x = x0; x <= x1; x++) {
+        const y = d - x;
+        const i = y * city.width + x;
+        const { sx, sy } = iso(x, y);
+        const v = tileHash(city.seed, x, y) & 1;
+        const t = city.terrain[i];
+        const name = (t ? this.frame(`water_${v}`) : this.frame(`ground_${city.biome}_${v}`)) ?? "ground_plains_0";
+        const img = this.add.image(sx, sy, "city", name);
+        if (t === 2) img.setTint(0x8ab0d8); // mar: azul mais profundo
+        this.flatLayer.add(img);
+      }
+      const g = this.add.graphics();
+      this.flatLayer.add(g);
+      for (let x = x0; x <= x1; x++) {
+        const y = d - x;
+        const i = y * city.width + x;
+        const { sx, sy } = iso(x, y);
+        const e = E(x, y);
+        const here = buildingAt.get(i);
+        const water = city.terrain[i] !== 0;
+        // Paredões: faces de frente (+x à direita, +y à esquerda) até a altura do vizinho; na borda
+        // do mapa, até a base (efeito maquete).
+        for (const [nx, ny, side] of [
+          [x + 1, y, "R"],
+          [x, y + 1, "L"],
+        ] as const) {
+          const edge = nx >= city.width || ny >= city.height;
+          const en = edge ? -0.75 : E(nx, ny);
+          if (e <= en) continue;
+          const dh = (e - en) * EH;
+          const A = side === "R" ? [sx + TW / 2, sy] : [sx - TW / 2, sy];
+          const B = [sx, sy + TH / 2];
+          const other = edge ? undefined : buildingAt.get(ny * city.width + nx);
+          const ramp = here && other && Math.abs(e - en) === 1 && RAMP[here.type] && linked(here.type, x, y, nx, ny);
+          const base = water ? 0x2f558f : ramp ? RAMP[here!.type] : SOIL;
+          g.fillStyle(shade(base, side === "R" ? 0.95 : 0.75), 1);
+          g.fillPoints([new V(A[0], A[1]), new V(B[0], B[1]), new V(B[0], B[1] + dh), new V(A[0], A[1] + dh)], true);
+          if (ramp && here!.type !== "rail") {
+            // Faixa central da rampa.
+            g.lineStyle(1, here!.type === "road" ? 0xe8c94a : 0xf4f1e8, 1);
+            g.lineBetween((A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[0] + B[0]) / 2, (A[1] + B[1]) / 2 + dh);
+          } else if (!water && !ramp) {
+            // Beirada de grama e estratos do solo.
+            g.lineStyle(1, grass, 1);
+            g.lineBetween(A[0], A[1] + 1, B[0], B[1] + 1);
+            g.lineStyle(1, shade(base, 0.6), 0.6);
+            for (let k = EH; k < dh; k += EH) g.lineBetween(A[0], A[1] + k, B[0], B[1] + k);
+          }
+        }
+        // Pilares da ponte (via sobre a água).
+        if (here && water && BUILDINGS[here.type].linear) {
+          g.fillStyle(0x5a4a3a, 1);
+          g.fillRect(sx - 9, sy + 2, 2, 4);
+          g.fillRect(sx + 7, sy + 2, 2, 4);
+        }
+      }
+      for (let x = x0; x <= x1; x++) {
         const y = d - x;
         const i = y * city.width + x;
         const { sx, sy } = iso(x, y);
@@ -327,6 +404,7 @@ export class CityScene extends Phaser.Scene {
           if (cond < 30) img.setTint(0xb05a40);
           else if (cond < 70) img.setTint(0xc8a888);
           this.flatLayer.add(img);
+          if (city.terrain[i] !== 0) img.setTint(0xd8d0c0); // ponte: tabuleiro mais claro
         } else if (b) {
           const name = this.frame(b.type) ?? "farm";
           const img = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
@@ -348,10 +426,12 @@ export class CityScene extends Phaser.Scene {
           if (lvl === 0) {
             // Lote vazio: terreno tingido com a cor da zona (mais forte se denso).
             const color = ZONES[kind].color;
-            lots.fillStyle(color, dense ? 0.5 : 0.32);
-            this.diamond(lots, sx, sy, 0.9);
-            lots.lineStyle(1, shade(color, 0.6), 0.85);
-            this.diamondOutline(lots, sx, sy, 0.9);
+            const lg = this.add.graphics();
+            this.flatLayer.add(lg);
+            lg.fillStyle(color, dense ? 0.5 : 0.32);
+            this.diamond(lg, sx, sy, 0.9);
+            lg.lineStyle(1, shade(color, 0.6), 0.85);
+            this.diamondOutline(lg, sx, sy, 0.9);
           } else {
             const name = this.frame(`zone_${kind}_${dense ? "D" : "L"}${lvl}`) ?? `zone_${kind}_L1`;
             const img = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1);
@@ -359,15 +439,13 @@ export class CityScene extends Phaser.Scene {
             castShadow(sx, sy, img.height - TH);
             if (!power.powered[i]) this.alert(fx, sx, baseY - img.height, 0xf5e04a);
           }
-        } else if (city.terrain[i] === 0 && !city.wires[i]) {
-          // Vegetação decorativa em terreno livre (determinística; some quando o tile é usado).
-          const h = tileHash(city.seed ^ 0x9e37, x, y);
-          if ((h % 1000) / 1000 < (decorDensity[city.biome] ?? 0.1)) {
-            const name = this.frame(`decor_${city.biome}_${(h >> 10) & 1}`);
-            if (name) {
-              this.spriteLayer.add(this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1));
-              castShadow(sx, sy, 12, 0.5);
-            }
+        }
+        // Árvores (Fase 9): camada real; somem quando o tile é ocupado.
+        if (!b && city.trees?.[i] && !city.zoneLevel[i] && !city.wires[i] && city.terrain[i] === 0) {
+          const name = this.frame(`decor_${city.biome}_${tileHash(city.seed ^ 0x9e37, x, y) & 1}`);
+          if (name) {
+            this.spriteLayer.add(this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1));
+            castShadow(sx, sy, 12, 0.5);
           }
         }
 
@@ -516,7 +594,7 @@ export class CityScene extends Phaser.Scene {
       for (let y = 0; y < city.height; y++)
         for (let x = 0; x < city.width; x++) {
           const { sx, sy } = iso(x, y);
-          const water = city.terrain[y * city.width + x] === 1;
+          const water = city.terrain[y * city.width + x] !== 0;
           const base = water ? 0x2f5f9e : biome.grass;
           g.fillStyle((x + y) % 2 === 0 ? base : shade(base, 0.92), 1);
           this.diamond(g, sx, sy);

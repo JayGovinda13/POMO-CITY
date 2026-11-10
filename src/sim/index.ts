@@ -22,3 +22,4 @@ export * from "./insurance";
 export * from "./water";
 export * from "./services";
 export * from "./traffic";
+export * from "./terrain";

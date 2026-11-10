@@ -34,6 +34,10 @@ export interface BuildingDef {
   };
   /** Precisa estar encostado em água (ex.: hidrelétrica). */
   needsWaterAdjacent?: boolean;
+  /** Precisa encostar no mar (água salgada, Fase 9). */
+  needsSeaAdjacent?: boolean;
+  /** Fase 9: só em terreno alto (nível mínimo). */
+  minElevation?: number;
   cost: number;
   materials?: MaterialCost[];
   /** Custo de manutenção cobrado a cada ciclo concluído. */
@@ -52,7 +56,7 @@ export interface BuildingDef {
     tierCap: Rank;
   };
   /** Água (Fase 6): bomba, poço da prefeitura, caixa d'água ou estação de tratamento. */
-  water?: { kind: "pump" | "well" | "tower" | "treatment"; capacity: number };
+  water?: { kind: "pump" | "well" | "tower" | "treatment" | "desal"; capacity: number };
   /** Serviço público (Fase 7): cobertura em raio ou atendimento por capacidade. */
   service?: {
     kind: "police" | "fire" | "prison" | "hospital" | "school" | "college" | "library" | "museum" | "leisure";
@@ -111,6 +115,20 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 0,
     linear: true,
   },
+  tunnel: {
+    category: "transport",
+    name: "Túnel",
+    description: "Estrada que atravessa o morro: liga vias com qualquer desnível. Só em terreno de nível 2+.",
+    buildable: true,
+    cost: 120,
+    materials: [{ resource: "ore", qty: 2 }, { resource: "metal", qty: 1 }],
+    upkeep: 2,
+    workers: 0,
+    needsRoad: false,
+    minElevation: 2,
+    color: 0x3a3a42,
+    height: 0,
+  },
   onramp: {
     category: "transport",
     name: "Acesso à rodovia",
@@ -145,6 +163,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     description: "Em pares: quem mora e trabalha perto de pontos vai de ônibus e alivia as ruas (raio 4).",
     buildable: true,
     cost: 60,
+    materials: [{ resource: "planks", qty: 1 }, { resource: "metal", qty: 1 }],
     upkeep: 2,
     workers: 1,
     needsRoad: true,
@@ -400,6 +419,40 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     color: 0x5a8a9a,
     height: 14,
   },
+  // ── Fase 9: água salgada e orla ──
+  desalination: {
+    name: "Dessalinizadora",
+    description: "No litoral: transforma água do mar em 80 de água potável (2× uma bomba de rio). Cara e gasta muita energia.",
+    buildable: true,
+    category: "water",
+    requires: { population: 100 },
+    cost: 1200,
+    materials: [{ resource: "metal", qty: 10 }, { resource: "planks", qty: 4 }],
+    upkeep: 10,
+    workers: 4,
+    powerUse: 6,
+    needsRoad: true,
+    needsSeaAdjacent: true,
+    water: { kind: "desal", capacity: 80 },
+    color: 0x7ab0d0,
+    height: 14,
+  },
+  marina: {
+    name: "Marina",
+    description: "À beira d'água: barcos e passeio. Valoriza muito o entorno e atrai moradores.",
+    buildable: true,
+    category: "leisure",
+    requires: { population: 60 },
+    cost: 600,
+    materials: [{ resource: "planks", qty: 8 }, { resource: "metal", qty: 2 }],
+    upkeep: 4,
+    workers: 2,
+    needsRoad: true,
+    needsWaterAdjacent: true,
+    service: { kind: "leisure", radius: 5, landValue: 18, cleans: 3, demand: 0.06 },
+    color: 0x4a8ab0,
+    height: 10,
+  },
   // ── Fase 7: serviços e lazer ──
   police: {
     name: "Delegacia",
@@ -530,6 +583,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     buildable: true,
     category: "leisure",
     cost: 20,
+    materials: [{ resource: "wood", qty: 2 }],
     upkeep: 0,
     workers: 0,
     needsRoad: false,
@@ -543,6 +597,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     buildable: true,
     category: "leisure",
     cost: 150,
+    materials: [{ resource: "wood", qty: 3 }, { resource: "food", qty: 2 }],
     upkeep: 1,
     workers: 0,
     needsRoad: false,
@@ -654,13 +709,13 @@ export const ZONES: Record<ZoneKind, ZoneDef> = {
 export const WIRE_COST = 2;
 export const PIPE_COST = 3;
 
-export const RESOURCES: Record<ResourceId, { name: string; color: number }> = {
-  food: { name: "Comida", color: 0xc9a94a },
-  wood: { name: "Madeira", color: 0x8a5a2b },
-  ore: { name: "Minério", color: 0x7d7f8a },
-  planks: { name: "Tábuas", color: 0xb07a3c },
-  metal: { name: "Metal", color: 0xa34a3a },
-  goods: { name: "Bens", color: 0x6a7ad0 },
+export const RESOURCES: Record<ResourceId, { name: string; color: number; icon: string; use: string }> = {
+  food: { name: "Comida", color: 0xc9a94a, icon: "🌾", use: "Moradores comem 0,5 por pessoa a cada estação; parques usam um pouco." },
+  wood: { name: "Madeira", color: 0x8a5a2b, icon: "🪵", use: "Estradas, praças, aquecimento no frio e a serraria (vira tábuas)." },
+  ore: { name: "Minério", color: 0x7d7f8a, icon: "🪨", use: "A fundição transforma em metal; túneis usam direto." },
+  planks: { name: "Tábuas", color: 0xb07a3c, icon: "🪚", use: "Quase toda construção e o crescimento dos lotes." },
+  metal: { name: "Metal", color: 0xa34a3a, icon: "⚙️", use: "Construções grandes, prédios densos, rodovias e trilhos." },
+  goods: { name: "Bens", color: 0x6a7ad0, icon: "🛍️", use: "Moradores consomem a partir de 30 habitantes; a indústria fabrica." },
 };
 
 /** Produção assimétrica: cada bioma favorece matérias-primas diferentes. */

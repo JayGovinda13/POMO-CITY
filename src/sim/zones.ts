@@ -5,6 +5,7 @@ import { demandModifiers } from "./finance";
 import { CRIME_HIGH, POLLUTION_HIGH, computeServices, serviceDemand, type ServiceFields } from "./services";
 import { TRIP_LIMIT_POPULATION, computeTraffic, trafficDemand, type TrafficResult } from "./traffic";
 import { ZONE_KINDS, type CityState, type Rank, type ZoneKind } from "./types";
+import { addTo } from "./inventory";
 
 export type Demand = Record<ZoneKind, number>;
 
@@ -124,6 +125,10 @@ export function developZones(
       for (const i of ordered.slice(0, Math.ceil(slots * d))) {
         if (opts.pay && !opts.pay(kind, s.zoneDensity[i] === 1)) continue;
         s.zoneLevel[i]++;
+        if (s.trees?.[i]) {
+          s.trees[i] = 0;
+          addTo(s.inventory, "wood", "D", 1);
+        }
         grown++;
       }
     } else if (d < -0.3) {

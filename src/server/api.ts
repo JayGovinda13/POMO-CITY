@@ -77,6 +77,12 @@ export function parseCommands(raw: unknown): Command[] | null {
       out.push({ type: "budget", taxes, funding });
       continue;
     }
+    if (r.type === "terraform") {
+      if (!num(r.x) || !num(r.y)) return null;
+      if (r.action !== "raise" && r.action !== "lower" && r.action !== "water" && r.action !== "land" && r.action !== "tree") return null;
+      out.push({ type: "terraform", action: r.action, x: r.x, y: r.y });
+      continue;
+    }
     if (r.type === "rename") {
       if (typeof r.name !== "string" || r.name.length > 200) return null;
       out.push({ type: "rename", name: r.name });
