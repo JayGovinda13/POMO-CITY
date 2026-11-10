@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useGame } from "@/store/game";
+import { AccountButton } from "./AccountButton";
 
 /** Menu do jogo: sair guardando a sequência ou começar um novo jogo (só com o foco encerrado). */
 export function GameMenu() {
@@ -13,8 +14,8 @@ export function GameMenu() {
 
   return (
     <>
-      <button type="button" className="retro-button" onClick={() => setOpen(true)}>
-        ☰ Menu
+      <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Menu" aria-label="Menu">
+        ☰
       </button>
       {open && (
         <div className="pointer-events-auto fixed inset-0 z-10 grid place-items-center bg-black/50 p-4">
@@ -60,6 +61,9 @@ export function GameMenu() {
               >
                 📖 Tutorial
               </button>
+              <div className="flex justify-center">
+                <AccountButton />
+              </div>
               <button type="button" className="retro-button w-full" onClick={() => setOpen(false)}>
                 Voltar à cidade
               </button>

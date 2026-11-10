@@ -30,8 +30,8 @@ export function BudgetButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Impostos, verbas, decretos, títulos e livro-caixa">
-        🏛 Orçamento
+      <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Orçamento" aria-label="Orçamento">
+        🏛
       </button>
       {open && <BudgetModal onClose={() => setOpen(false)} />}
     </>

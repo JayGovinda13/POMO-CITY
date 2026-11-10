@@ -9,6 +9,7 @@ import {
   RESOURCE_IDS,
   currentEffects,
   exportPrice,
+  getQty,
   importPrice,
   stockOf,
   storageCapacity,
@@ -24,8 +25,8 @@ export function MarketButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Preços, estoque e o que fazer com o excedente">
-        🏪 Mercado
+      <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Mercado e estoque" aria-label="Mercado e estoque">
+        🏪
       </button>
       {open && <MarketModal onClose={() => setOpen(false)} />}
     </>
@@ -43,7 +44,7 @@ function MarketModal({ onClose }: { onClose: () => void }) {
     <div className="pointer-events-auto fixed inset-0 z-10 grid place-items-center bg-black/60 p-3">
       <section className="retro-panel flex max-h-[90dvh] w-full max-w-3xl flex-col text-xs">
         <header className="retro-title flex">
-          Mercado externo e estoque
+          Mercado e estoque
           <button type="button" className="ml-auto" aria-label="Fechar" onClick={onClose}>
             ✕
           </button>
@@ -69,8 +70,11 @@ function MarketModal({ onClose }: { onClose: () => void }) {
                 {RESOURCE_IDS.map((res) => (
                   <tr key={res} className="border-t border-zinc-700">
                     <td className="py-1">{RESOURCES[res].name}</td>
-                    <td className={stockOf(city.inventory, res) >= capacity[res] ? "text-amber-300" : ""}>
-                      {stockOf(city.inventory, res)}/{capacity[res]}
+                    <td>
+                      <span className={stockOf(city.inventory, res) >= capacity[res] ? "text-amber-300" : ""}>
+                        {stockOf(city.inventory, res)}/{capacity[res]}
+                      </span>
+                      <RankList entries={RANKS.filter((r) => getQty(city.inventory, res, r) > 0).map((r) => [r, getQty(city.inventory, res, r)])} />
                     </td>
                     <td>${importPrice(res, "D", effects).toFixed(2)}</td>
                     <td>

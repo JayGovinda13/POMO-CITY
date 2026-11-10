@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "@/store/game";
+import { effectiveStreak, rankForStreak } from "@/sim";
+import { RankBadge } from "./ranks";
 
 function beep() {
   try {
@@ -73,12 +75,13 @@ export function Timer() {
   }, [phase, endsAt, remaining]);
 
   const focusMin = config ? Math.round(config.focusSeconds / 60) : 25;
+  const city = useGame((s) => s.city);
+  const pending = useGame((s) => s.pending.length);
+  const nextRank = city ? rankForStreak(effectiveStreak(city, now) + 1) : null;
 
   return (
     <div className="retro-panel pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 px-3 py-2">
-      <span className="text-zinc-300">
-        {phase === "focus" ? "🍅 FOCO" : phase === "break" ? "☕ PAUSA — gestão liberada" : "Pronto"}
-      </span>
+      <span className="text-zinc-300">{phase === "focus" ? "🍅 Foco" : phase === "break" ? "☕ Pausa" : "Pronto"}</span>
       <span className="font-mono text-2xl tabular-nums text-amber-300">
         {phase === "idle" || phase === "loading" ? fmt((config?.focusSeconds ?? 1500) * 1000) : fmt(remaining)}
       </span>
@@ -104,6 +107,19 @@ export function Timer() {
             </button>
           )}
         </>
+      )}
+      {city && nextRank && (
+        <span
+          className="flex items-center gap-1 text-zinc-300"
+          title={`Sequência de ${city.streak} ciclo(s)${city.streakFrozen ? " (guardada)" : ""} · ${city.cyclesToday} ciclo(s) hoje. O próximo lote sai com este Rank.`}
+        >
+          🔥 {city.streak} <RankBadge rank={nextRank} />
+        </span>
+      )}
+      {pending > 0 && (
+        <span className="text-amber-300" title="Alterações feitas na pausa; são enviadas ao iniciar o próximo foco.">
+          • {pending} pendente(s)
+        </span>
       )}
     </div>
   );

@@ -74,7 +74,7 @@ export function AccountButton() {
 
   return (
     <>
-      <button type="button" className="retro-button ml-auto" onClick={() => setOpen(true)}>
+      <button type="button" className="retro-button" onClick={() => setOpen(true)}>
         {anonymous ? "👤 Convidado" : `👤 ${user?.email}`}
       </button>
       {open && (

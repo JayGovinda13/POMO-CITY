@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BIOMES,
   BUILDINGS,
-  RANKS,
-  RESOURCES,
   WIRE_COST,
   ZONE_KINDS,
   ZONES,
@@ -15,50 +13,54 @@ import {
   REGION_BY_ID,
   weatherAt,
   computeDemand,
-  stockOf,
-  storageCapacity,
   RESOURCE_NAMES,
   citizensView,
   moodSummary,
   computePower,
-  effectiveStreak,
-  getQty,
   laborStats,
   lockReason,
-  rankForStreak,
   roadAccess,
   type BuildCategory,
   type BuildingType,
-  type ResourceId,
   type ZoneKind,
 } from "@/sim";
 import { parseZoneTool, useGame, type Overlay, type Tool } from "@/store/game";
 import { bus } from "@/game/bus";
 import { Panel } from "./Panel";
-import { RankBadge, hex } from "./ranks";
+import { hex } from "./ranks";
 import { Timer } from "./Timer";
 import { CycleReportModal } from "./CycleReportModal";
-import { AccountButton } from "./AccountButton";
 import { GameMenu } from "./GameMenu";
 import { MarketButton } from "./MarketPanel";
 import { BudgetButton } from "./BudgetPanel";
 import { CitizensButton } from "./CitizensPanel";
 import { MOOD_ICON, Portrait } from "./Portrait";
 
-const GROUPS: { title: string; category: BuildCategory }[] = [
-  { title: "Energia", category: "energy" },
-  { title: "Produção", category: "production" },
-  { title: "Armazenagem", category: "storage" },
-  { title: "Especial", category: "special" },
+type CategoryId = "vias" | "zonas" | BuildCategory | "view";
+
+const CATEGORIES: { id: CategoryId; icon: string; title: string }[] = [
+  { id: "vias", icon: "🛣️", title: "Vias e energia elétrica" },
+  { id: "zonas", icon: "🏘️", title: "Zonas" },
+  { id: "energy", icon: "⚡", title: "Usinas" },
+  { id: "production", icon: "🌾", title: "Produção" },
+  { id: "storage", icon: "📦", title: "Armazenagem" },
+  { id: "special", icon: "🗽", title: "Especial" },
+  { id: "view", icon: "👁️", title: "Visualizar" },
 ];
+
+/** Categoria da ferramenta selecionada (para destacar o ícone certo). */
+function categoryOf(tool: Tool): CategoryId | null {
+  if (!tool || tool === "pan" || tool === "demolish") return null;
+  if (tool === "road" || tool === "wire") return "vias";
+  if (tool.startsWith("zone-")) return "zonas";
+  return BUILDINGS[tool as BuildingType]?.category ?? null;
+}
 
 export function Hud() {
   const city = useGame((s) => s.city);
   const phase = useGame((s) => s.phase);
   const toast = useGame((s) => s.toast);
-  const pending = useGame((s) => s.pending.length);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
-  const [toolsOpen, setToolsOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 768);
 
   useEffect(() => {
     const offs = [
@@ -74,14 +76,13 @@ export function Hud() {
     const power = computePower(city);
     const status = buildingStatus(city, power.powered);
     const labor = laborStats(city, status);
+    const people = citizensView(city);
     return {
       power,
       status,
       labor,
-      ...(() => {
-        const people = citizensView(city);
-        return { people, demand: computeDemand(city, labor, moodSummary(people).approval) };
-      })(),
+      people,
+      demand: computeDemand(city, labor, moodSummary(people).approval),
       access: roadAccess(city),
       weather: weatherAt(city),
     };
@@ -93,140 +94,39 @@ export function Hud() {
 
   const { power, status, labor, demand, access, weather, people } = derived;
   const region = city.regionId ? REGION_BY_ID[city.regionId] : null;
-  const capacity = storageCapacity(city);
-  const nextRank = rankForStreak(effectiveStreak(city, Date.now()) + 1);
-  const locked = phase === "focus";
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-2 text-xs">
-      {/* Barra superior */}
-      <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-1">
+      {/* Barra superior: só o essencial; o resto fica nos ícones à direita. */}
+      <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1">
         <strong className="tracking-widest text-amber-300">POMO-CITY</strong>
-        <span title="1 ciclo de foco = 1 estação (3 meses)">
+        <span title={`${region ? `${region.name} · ` : ""}${BIOMES[city.biome].name} · 1 ciclo de foco = 1 estação`}>
           📅 {weather ? `${weather.season} · ` : ""}
           {cityPeriodLabel(city)}
         </span>
-        <span>
-          {region ? `${region.name} · ` : ""}
-          {BIOMES[city.biome].name}
-        </span>
-        <span>💰 ${city.money}</span>
-        <span title="População / moradia">
+        {weather && <WeatherChip weather={weather} focus={phase === "focus"} />}
+        <span title="Caixa da prefeitura">💰 ${city.money}</span>
+        <span title={`Moradores / moradia · ${labor.publicFilled + labor.zoneFilled}/${labor.totalJobs} empregos ocupados${labor.unemployed ? ` · ${labor.unemployed} sem emprego` : ""}`}>
           👥 {city.population}/{labor.housing}
-        </span>
-        <span title="Empregos preenchidos / total · desempregados">
-          💼 {labor.publicFilled + labor.zoneFilled}/{labor.totalJobs}
-          {labor.unemployed > 0 && <span className="text-red-300"> ({labor.unemployed} sem emprego)</span>}
+          {labor.unemployed > 0 && <span className="text-amber-300"> ({labor.unemployed} s/ emprego)</span>}
         </span>
         <PowerMeter used={power.supplied} demand={power.demand} capacity={power.capacity} />
         <DemandIndicator demand={demand} />
-        <span className="flex items-center gap-1">
-          Sequência {city.streak} · próximo lote <RankBadge rank={nextRank} />
+        <span className="ml-auto flex items-center gap-1">
+          <CitizensButton />
+          <MarketButton />
+          <BudgetButton />
+          <GameMenu />
         </span>
-        <span>Ciclos hoje: {city.cyclesToday}</span>
-        {pending > 0 && <span className="text-amber-300">{pending} obra(s) aguardando sincronia</span>}
-        <CitizensButton />
-        <MarketButton />
-        <BudgetButton />
-        <AccountButton />
-        <GameMenu />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col justify-between gap-2 md:flex-row">
-        {/* Ferramentas */}
-        <section className="retro-panel pointer-events-auto w-full self-start md:w-56">
-          <button
-            type="button"
-            className="retro-title flex w-full items-center text-left"
-            onClick={() => setToolsOpen((v) => !v)}
-            aria-expanded={toolsOpen}
-          >
-            Construir <span className="ml-auto">{toolsOpen ? "▾" : "▸"}</span>
-          </button>
-          {toolsOpen && (
-            <div className="max-h-[45dvh] space-y-2 overflow-y-auto p-2 md:max-h-[70dvh]">
-              <ToolButton tool="pan" disabled={false} label="✋ Mover a câmera" />
-              <ToolGroup title="Infraestrutura">
-                <ToolButton tool="road" disabled={locked} label={BUILDINGS.road.name} cost={BUILDINGS.road.cost} color={BUILDINGS.road.color} />
-                <ToolButton tool="wire" disabled={locked} label="Linha de transmissão" cost={WIRE_COST} color={0x3a2a1a} />
-              </ToolGroup>
-              <ZoneTools disabled={locked} population={city.population} />
-              {GROUPS.map((g) => (
-                <ToolGroup key={g.category} title={g.title}>
-                  {(Object.keys(BUILDINGS) as BuildingType[])
-                    .filter((t) => BUILDINGS[t].buildable && BUILDINGS[t].category === g.category)
-                    .map((t) => {
-                      const lock = lockReason(BUILDINGS[t].requires, city);
-                      return (
-                        <ToolButton
-                          key={t}
-                          tool={t}
-                          disabled={locked || !!lock}
-                          lock={lock}
-                          label={BUILDINGS[t].name}
-                          cost={BUILDINGS[t].cost}
-                          color={BUILDINGS[t].color}
-                        />
-                      );
-                    })}
-                </ToolGroup>
-              ))}
-              <ToolButton tool="demolish" disabled={locked} label="🧨 Demolir" />
-              <OverlayPicker />
-              {locked && <p className="text-red-300">Em foco: obras bloqueadas.</p>}
-            </div>
-          )}
-        </section>
-
-        {/* Clima + armazém + inspeção */}
-        <div className="flex w-full flex-col gap-2 md:w-60 md:self-start">
-        {weather && <WeatherPanel weather={weather} focus={phase === "focus"} />}
-        <Panel title="Armazém" className="w-full">
-          <table className="w-full border-collapse text-center">
-            <thead>
-              <tr>
-                <th className="text-left font-normal text-zinc-400">Recurso</th>
-                {RANKS.map((r) => (
-                  <th key={r}>
-                    <RankBadge rank={r} />
-                  </th>
-                ))}
-                <th className="font-normal text-zinc-400" title="Estoque total / capacidade">
-                  Cap.
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(Object.keys(RESOURCES) as ResourceId[]).map((res) => (
-                <tr key={res}>
-                  <td className="text-left">{RESOURCES[res].name}</td>
-                  {RANKS.map((r) => {
-                    const q = getQty(city.inventory, res, r);
-                    return (
-                      <td key={r} className={q ? "" : "text-zinc-600"}>
-                        {q}
-                      </td>
-                    );
-                  })}
-                  <td className={stockOf(city.inventory, res) >= capacity[res] ? "text-amber-300" : "text-zinc-400"}>
-                    {capacity[res]}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {hover && (
-            <TileInfo
-              x={hover.x}
-              y={hover.y}
-              status={status}
-              powered={power.powered}
-              access={access}
-              people={people}
-            />
-          )}
-        </Panel>
-        </div>
+      <div className="flex min-h-0 flex-1 items-start justify-between gap-2">
+        <Toolbar locked={phase === "focus"} />
+        {hover && (
+          <div className="retro-panel pointer-events-auto w-56 p-2">
+            <TileInfo x={hover.x} y={hover.y} status={status} powered={power.powered} access={access} people={people} />
+          </div>
+        )}
       </div>
 
       <Timer />
@@ -261,7 +161,7 @@ function TileInfo({
   if (!b && !zone && !city.wires[i]) return null;
 
   return (
-    <div className="mt-2 space-y-0.5 border-t border-zinc-600 pt-2">
+    <div className="space-y-0.5">
       {b ? (
         <>
           <strong>{BUILDINGS[b.type].name}</strong>
@@ -301,16 +201,7 @@ function TileInfo({
   );
 }
 
-function ToolGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h3 className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">{title}</h3>
-      <div className="grid grid-cols-2 gap-1 md:grid-cols-1">{children}</div>
-    </div>
-  );
-}
-
-function ZoneTools({ disabled, population }: { disabled: boolean; population: number }) {
+function ZoneTools({ disabled, population, onPicked }: { disabled: boolean; population: number; onPicked?: () => void }) {
   const tool = useGame((s) => s.tool);
   const current = parseZoneTool(tool);
   const [dense, setDense] = useState(current?.dense ?? false);
@@ -336,7 +227,7 @@ function ZoneTools({ disabled, population }: { disabled: boolean; population: nu
           densa
         </label>
       </div>
-      <div className="grid grid-cols-2 gap-1 md:grid-cols-1">
+      <div className="grid grid-cols-1 gap-1">
         {(ZONE_KINDS as ZoneKind[]).map((z) => (
           <ToolButton
             key={z}
@@ -346,9 +237,10 @@ function ZoneTools({ disabled, population }: { disabled: boolean; population: nu
             cost={ZONES[z].cost[density === "dense" ? 1 : 0]}
             costSuffix="/tile"
             color={ZONES[z].color}
+            onPicked={onPicked}
           />
         ))}
-        <ToolButton tool="zone-none-light" disabled={disabled} label="Remover zona" />
+        <ToolButton tool="zone-none-light" disabled={disabled} label="Remover zona" onPicked={onPicked} />
       </div>
       <p className="mt-1 text-[10px] text-zinc-500">Arraste para zonear uma área.</p>
     </div>
@@ -363,7 +255,9 @@ function ToolButton({
   costSuffix = "",
   color,
   lock,
+  onPicked,
 }: {
+  onPicked?: () => void;
   tool: Tool;
   disabled: boolean;
   label: string;
@@ -390,13 +284,16 @@ function ToolButton({
       type="button"
       disabled={disabled}
       title={title}
-      onClick={() => setTool(tool)}
-      className={`retro-button flex items-center gap-1 ${selected ? "retro-button-active" : ""}`}
+      onClick={() => {
+        setTool(tool);
+        onPicked?.();
+      }}
+      className={`retro-button flex w-full items-center gap-1 ${selected ? "retro-button-active" : ""}`}
     >
       {color !== undefined && <span className="inline-block h-2 w-2 shrink-0" style={{ background: hex(color) }} />}
       <span className="flex-1 truncate text-left">{lock ? `🔒 ${label}` : label}</span>
       {cost !== undefined && (
-        <span className="hidden text-zinc-400 md:inline">
+        <span className="text-zinc-400">
           ${cost}
           {costSuffix}
         </span>
@@ -519,5 +416,101 @@ function PeopleHere({ label, list }: { label: string; list: ReturnType<typeof ci
         {list.length > 8 && <span className="self-center text-zinc-400">+{list.length - 8}</span>}
       </div>
     </div>
+  );
+}
+
+/** Barra de ícones: cada categoria abre um mini-menu só quando clicada. */
+function Toolbar({ locked }: { locked: boolean }) {
+  const city = useGame((s) => s.city)!;
+  const tool = useGame((s) => s.tool);
+  const setTool = useGame((s) => s.setTool);
+  const [open, setOpen] = useState<CategoryId | null>(null);
+  const activeCat = categoryOf(tool);
+  const close = () => setOpen(null);
+
+  const iconBtn = (key: string, icon: string, title: string, active: boolean, onClick: () => void, disabled = false) => (
+    <button
+      key={key}
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
+      className={`retro-button grid h-9 w-9 place-items-center p-0 text-base ${active ? "retro-button-active" : ""}`}
+    >
+      {icon}
+    </button>
+  );
+
+  return (
+    <div className="pointer-events-auto relative flex items-start gap-1">
+      <nav className="retro-panel flex flex-col gap-1 p-1" aria-label="Ferramentas">
+        {iconBtn("pan", "✋", "Mover a câmera (arrastar)", tool === "pan", () => setTool("pan"))}
+        {CATEGORIES.map((c) =>
+          iconBtn(c.id, c.icon, c.title, open === c.id || (c.id !== "view" && activeCat === c.id), () => setOpen(open === c.id ? null : c.id), locked && c.id !== "view"),
+        )}
+        {iconBtn("demolish", "🧨", "Demolir", tool === "demolish", () => setTool("demolish"), locked)}
+      </nav>
+      {open && (
+        <section className="retro-panel w-56">
+          <header className="retro-title flex">
+            {CATEGORIES.find((c) => c.id === open)!.title}
+            <button type="button" className="ml-auto" aria-label="Fechar" onClick={close}>
+              ✕
+            </button>
+          </header>
+          <div className="max-h-[60dvh] space-y-1 overflow-y-auto p-2">
+            {open === "vias" && (
+              <>
+                <ToolButton tool="road" disabled={locked} label={BUILDINGS.road.name} cost={BUILDINGS.road.cost} color={BUILDINGS.road.color} onPicked={close} />
+                <ToolButton tool="wire" disabled={locked} label="Linha de transmissão" cost={WIRE_COST} color={0x3a2a1a} onPicked={close} />
+              </>
+            )}
+            {open === "zonas" && <ZoneTools disabled={locked} population={city.population} onPicked={close} />}
+            {open === "view" && <OverlayPicker />}
+            {open !== "vias" &&
+              open !== "zonas" &&
+              open !== "view" &&
+              (Object.keys(BUILDINGS) as BuildingType[])
+                .filter((t) => BUILDINGS[t].buildable && BUILDINGS[t].category === open)
+                .map((t) => {
+                  const lock = lockReason(BUILDINGS[t].requires, city);
+                  return (
+                    <ToolButton
+                      key={t}
+                      tool={t}
+                      disabled={locked || !!lock}
+                      lock={lock}
+                      label={BUILDINGS[t].name}
+                      cost={BUILDINGS[t].cost}
+                      color={BUILDINGS[t].color}
+                      onPicked={close}
+                    />
+                  );
+                })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+const WEATHER_ICON = (w: NonNullable<ReturnType<typeof weatherAt>>) =>
+  w.label === "Seca severa" ? "🌵" : w.rain > 450 ? "🌧️" : w.temp < 5 ? "❄️" : w.temp > 28 ? "🔥" : w.rain > 200 ? "🌦️" : "☀️";
+
+/** Clima compacto na barra; clique abre a previsão completa. */
+function WeatherChip({ weather, focus }: { weather: NonNullable<ReturnType<typeof weatherAt>>; focus: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative">
+      <button type="button" className="retro-button px-1" onClick={() => setOpen((v) => !v)} title="Previsão da estação">
+        {WEATHER_ICON(weather)} {Math.round(weather.temp)}°C
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-10 mt-1 w-60">
+          <WeatherPanel weather={weather} focus={focus} />
+        </div>
+      )}
+    </span>
   );
 }

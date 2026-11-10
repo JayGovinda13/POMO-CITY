@@ -16,8 +16,14 @@ export function CitizensButton() {
   if (!city) return null;
   return (
     <>
-      <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Moradores e humor da cidade">
-        👥 {views.length} · {MOOD_ICON.feliz} {m.feliz} {MOOD_ICON.ok} {m.ok} {MOOD_ICON.triste} {m.triste}
+      <button
+        type="button"
+        className="retro-button"
+        onClick={() => setOpen(true)}
+        title={`Moradores: ${MOOD_ICON.feliz} ${m.feliz} felizes · ${MOOD_ICON.ok} ${m.ok} ok · ${MOOD_ICON.triste} ${m.triste} tristes`}
+        aria-label="Moradores"
+      >
+        {m.triste > m.feliz ? MOOD_ICON.triste : m.feliz > 0 ? MOOD_ICON.feliz : MOOD_ICON.ok} {views.length}
       </button>
       {open && <CitizensModal views={views} onClose={() => setOpen(false)} />}
     </>
