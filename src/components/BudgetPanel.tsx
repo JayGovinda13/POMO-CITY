@@ -27,6 +27,7 @@ import {
   type InsurancePlan,
 } from "@/sim";
 import { useGame } from "@/store/game";
+import { Bank, Xmark } from "./icons";
 
 type Tab = "impostos" | "decretos" | "titulos" | "seguro" | "caixa";
 
@@ -36,7 +37,7 @@ export function BudgetButton() {
   return (
     <>
       <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Orçamento" aria-label="Orçamento">
-        🏛
+        <Bank />
       </button>
       {open && <BudgetModal onClose={() => setOpen(false)} />}
     </>
@@ -60,7 +61,7 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
         <header className="retro-title flex">
           Orçamento da prefeitura — caixa ${city.money}
           <button type="button" className="ml-auto" aria-label="Fechar" onClick={onClose}>
-            ✕
+            <Xmark />
           </button>
         </header>
         <div className="flex flex-wrap gap-1 p-2">

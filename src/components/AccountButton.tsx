@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { browserClient } from "@/lib/supabase/client";
 import { useGame } from "@/store/game";
+import { Xmark } from "./icons";
 
 /** Conta: o jogador começa anônimo e pode vincular um e-mail para jogar em outros aparelhos. */
 export function AccountButton() {
@@ -83,7 +84,7 @@ export function AccountButton() {
             <header className="retro-title flex">
               Conta
               <button type="button" className="ml-auto" aria-label="Fechar" onClick={() => setOpen(false)}>
-                ✕
+                <Xmark />
               </button>
             </header>
             <div className="space-y-2 p-3">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { DONATE_URL, PIX, SUGGESTED_AMOUNTS, donationsEnabled, linkEnabled, pixEnabled } from "@/lib/donate";
 import { pixPayload } from "@/lib/pix";
+import { Donate, Xmark } from "./icons";
 
 /**
  * Botão "Apoiar o POMO-CITY". Doações não dão vantagem no jogo: o foco continua sendo o único
@@ -21,7 +22,8 @@ export function DonateButton({ variant = "icon" }: { variant?: "icon" | "full" }
         title="Apoiar o POMO-CITY"
         aria-label="Apoiar o POMO-CITY"
       >
-        💝{variant === "full" && " Apoiar o POMO-CITY"}
+        <Donate />
+        {variant === "full" && " Apoiar o POMO-CITY"}
       </button>
       {open && <DonateModal onClose={() => setOpen(false)} />}
     </>
@@ -61,9 +63,9 @@ function DonateModal({ onClose }: { onClose: () => void }) {
     <div className="pointer-events-auto fixed inset-0 z-30 grid place-items-center bg-black/60 p-3">
       <section className="retro-panel max-h-[92dvh] w-full max-w-sm overflow-y-auto text-xs" role="dialog" aria-labelledby="donate-title">
         <header id="donate-title" className="retro-title flex">
-          💝 Apoie o POMO-CITY
+          <Donate /> Apoie o POMO-CITY
           <button type="button" className="ml-auto" aria-label="Fechar" onClick={onClose}>
-            ✕
+            <Xmark />
           </button>
         </header>
         <div className="space-y-3 p-3">

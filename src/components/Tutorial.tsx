@@ -59,7 +59,7 @@ const STEPS: Step[] = [
           até <strong>S</strong>. Recursos de Rank alto rendem mais (A = 1,3×, S = 1,4×) e algumas construções exigem Rank S.
         </p>
         <p>
-          Para sair, use <strong>☰ Menu → Sair</strong> com o foco encerrado: a sequência fica guardada. Abandonar o foco ou fechar o jogo
+          Para sair, use <strong>Menu → Sair</strong> com o foco encerrado: a sequência fica guardada. Abandonar o foco ou fechar o jogo
           durante ele causa um <strong>desastre</strong>; fechar sem o menu depois de focar causa um desastre leve.
         </p>
       </>
@@ -87,7 +87,7 @@ const STEPS: Step[] = [
       <p>
         A prefeitura gera 20 MW. Leve energia com <strong>linhas de transmissão</strong> (elas cruzam estradas) e construa usinas:
         eólica, termelétrica (queima madeira) e hidrelétrica (na água). Se faltar energia, há <strong>apagão</strong>: lotes sem luz
-        declinam e construções operam a 50%. Use a visão <strong>⚡ Energia</strong> para conferir.
+        declinam e construções operam a 50%. Use a visão <strong>Energia</strong> para conferir.
       </p>
     ),
   },
@@ -96,7 +96,7 @@ const STEPS: Step[] = [
     body: (
       <p>
         Moradores comem, usam lenha no frio e consomem bens; obras gastam madeira, tábuas e metal. O que faltar a cidade{" "}
-        <strong>compra automaticamente</strong> — mas produzir sai mais barato. Em <strong>🏪 Mercado</strong> você decide o que fazer
+        <strong>compra automaticamente</strong> — mas produzir sai mais barato. Em <strong>Mercado</strong> você decide o que fazer
         com o excedente; armazéns e silos aumentam o estoque.
       </p>
     ),
@@ -105,7 +105,7 @@ const STEPS: Step[] = [
     title: "Orçamento",
     body: (
       <p>
-        Em <strong>🏛 Orçamento</strong>: ajuste os <strong>impostos</strong> de cada zona (alto arrecada, mas espanta), a{" "}
+        Em <strong>Orçamento</strong>: ajuste os <strong>impostos</strong> de cada zona (alto arrecada, mas espanta), a{" "}
         <strong>verba</strong> de transportes e energia (sem verba, estradas se desgastam), ative <strong>decretos</strong>, emita{" "}
         <strong>títulos</strong> (empréstimos) e veja no <strong>livro-caixa</strong> a projeção exata do próximo ciclo.
       </p>
@@ -116,7 +116,7 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Cada morador em <strong>👥</strong> tem nome, emprego e humor (😊 😐 ☹️). Emprego, luz, comida e o seu foco os deixam felizes;
+          Cada morador (botão <strong>Moradores</strong>) tem nome, emprego e humor (😊 😐 ☹️). Emprego, luz, comida e o seu foco os deixam felizes;
           cidades felizes atraem mais gente.
         </p>
         <p>
@@ -186,7 +186,7 @@ export function Tutorial() {
                 Não, obrigado
               </button>
             </div>
-            <p className="text-zinc-500">Você pode abrir o tutorial depois em ☰ Menu.</p>
+            <p className="text-zinc-500">Você pode abrir o tutorial depois no Menu.</p>
           </div>
         </section>
       </div>

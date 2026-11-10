@@ -6,6 +6,7 @@ import { DisasterModal } from "./DisasterModal";
 import { AdSlot } from "./AdSlot";
 import { DonateButton } from "./DonateButton";
 import { MusicButton } from "./Music";
+import { City, Coins, FireFlame, Group } from "./icons";
 
 /** Tela inicial: Continuar a cidade salva ou começar um novo jogo. */
 export function TitleScreen() {
@@ -32,13 +33,15 @@ export function TitleScreen() {
           {!fresh && (
             <div className="space-y-1 border-2 border-zinc-700 bg-zinc-900/60 p-3">
               <p className="text-zinc-400">Cidade salva</p>
-              <p className="text-base text-amber-300">🏙 {cityDisplayName(city)}</p>
+              <p className="text-base text-amber-300">
+                <City /> {cityDisplayName(city)}
+              </p>
               <p>
                 {region ? `${region.name} · ${BIOMES[city.biome].name}` : BIOMES[city.biome].name} — {cityPeriodLabel(city)}
                 {weather && ` (${weather.season})`}
               </p>
               <p>
-                👥 {city.population} · 💰 ${city.money} · 🔥 sequência {city.streak}
+                <Group /> {city.population} · <Coins /> ${city.money} · <FireFlame /> sequência {city.streak}
                 {city.streakFrozen && <span className="text-emerald-300"> (guardada)</span>}
               </p>
             </div>

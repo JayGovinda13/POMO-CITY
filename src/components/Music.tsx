@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DEFAULT_MUSIC, loadMusicSettings, music, saveMusicSettings, type MusicChoice, type MusicSettings } from "@/audio/player";
 import { GENRES, TRACKS, TRACK_IDS, tracksOf, type GenreId, type TrackId } from "@/audio/tracks";
 import { useGame } from "@/store/game";
+import { MusicDoubleNote, SoundOff } from "./icons";
 
 // Configurações da música compartilhadas entre o controlador e o botão.
 let settings: MusicSettings = DEFAULT_MUSIC;
@@ -104,7 +105,7 @@ export function MusicButton({ variant = "icon" }: { variant?: "icon" | "full" })
         aria-label="Música"
         onClick={() => setOpen((o) => !o)}
       >
-        {s.choice === "off" ? "🔇" : "🎵"}
+        {s.choice === "off" ? <SoundOff /> : <MusicDoubleNote />}
         {variant === "full" && ` ${playing}`}
       </button>
       {open && (

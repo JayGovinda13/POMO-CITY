@@ -50,7 +50,7 @@ export function DisasterModal() {
               {d.insurance.payout > 0 ? (
                 <span className="text-emerald-300">🛡 O seguro pagou ${d.insurance.payout}.</span>
               ) : d.insurance.plan === "none" ? (
-                <span className="text-zinc-400">Sem seguro — contrate um em 🏛 Orçamento → Seguro.</span>
+                <span className="text-zinc-400">Sem seguro — contrate um em Orçamento → Seguro.</span>
               ) : d.insurance.waitingLeft > 0 ? (
                 <span className="text-amber-300">Seguro em carência (faltavam {d.insurance.waitingLeft} ciclos): sem indenização.</span>
               ) : (

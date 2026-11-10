@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CITY_NAME_MAX, cityDisplayName, sanitizeCityName } from "@/sim";
 import { useGame } from "@/store/game";
 import { AccountButton } from "./AccountButton";
+import { Menu, Xmark } from "./icons";
 
 /** Menu do jogo: sair guardando a sequência ou começar um novo jogo (só com o foco encerrado). */
 export function GameMenu() {
@@ -16,7 +17,7 @@ export function GameMenu() {
   return (
     <>
       <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Menu" aria-label="Menu">
-        ☰
+        <Menu />
       </button>
       {open && (
         <div className="pointer-events-auto fixed inset-0 z-10 grid place-items-center bg-black/50 p-4">
@@ -24,7 +25,7 @@ export function GameMenu() {
             <header className="retro-title flex">
               Menu
               <button type="button" className="ml-auto" aria-label="Fechar" onClick={() => setOpen(false)}>
-                ✕
+                <Xmark />
               </button>
             </header>
             <div className="space-y-2 p-3 text-xs">

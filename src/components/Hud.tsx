@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BIOMES,
   BUILDINGS,
@@ -54,22 +54,23 @@ import { DonateButton } from "./DonateButton";
 import { ResourcesButton } from "./ResourcesButton";
 import { MusicButton } from "./Music";
 import { MOOD_ICON, Portrait } from "./Portrait";
+import { Car, HomeSale, Industry, ShieldAlert, Calendar, City, Coins, DragHandGesture, Droplet, Eye, Farm, Flash, GraduationCap, Group, Heart, MapIcon, MapsGoStraight, Packages, SeaWaves, Shield, Tower, Train, Trash, Tree, WeatherIcon, Xmark } from "./icons";
 
 type CategoryId = "vias" | "zonas" | "terreno" | BuildCategory | "view";
 
-const CATEGORIES: { id: CategoryId; icon: string; title: string }[] = [
-  { id: "vias", icon: "🛣️", title: "Vias e energia elétrica" },
-  { id: "zonas", icon: "🏘️", title: "Zonas" },
-  { id: "transport", icon: "🚆", title: "Transporte (rodovias, trilhos, túneis, ônibus, portos)" },
-  { id: "terreno", icon: "⛰️", title: "Terreno (relevo, água, árvores)" },
-  { id: "energy", icon: "⚡", title: "Usinas" },
-  { id: "water", icon: "💧", title: "Água" },
-  { id: "services", icon: "🚓", title: "Serviços (polícia, bombeiros, saúde, educação)" },
-  { id: "leisure", icon: "🌳", title: "Lazer (praças, parques, atrações)" },
-  { id: "production", icon: "🌾", title: "Produção" },
-  { id: "storage", icon: "📦", title: "Armazenagem" },
-  { id: "special", icon: "🗽", title: "Especial" },
-  { id: "view", icon: "👁️", title: "Visualizar" },
+const CATEGORIES: { id: CategoryId; icon: ReactNode; title: string }[] = [
+  { id: "vias", icon: <MapsGoStraight />, title: "Vias e energia elétrica" },
+  { id: "zonas", icon: <City />, title: "Zonas" },
+  { id: "transport", icon: <Train />, title: "Transporte (rodovias, trilhos, túneis, ônibus, portos)" },
+  { id: "terreno", icon: <MapIcon />, title: "Terreno (relevo, água, árvores)" },
+  { id: "energy", icon: <Flash />, title: "Usinas" },
+  { id: "water", icon: <Droplet />, title: "Água" },
+  { id: "services", icon: <Shield />, title: "Serviços (polícia, bombeiros, saúde, educação)" },
+  { id: "leisure", icon: <Tree />, title: "Lazer (praças, parques, atrações)" },
+  { id: "production", icon: <Farm />, title: "Produção" },
+  { id: "storage", icon: <Packages />, title: "Armazenagem" },
+  { id: "special", icon: <Tower />, title: "Especial" },
+  { id: "view", icon: <Eye />, title: "Visualizar" },
 ];
 
 /** Categoria da ferramenta selecionada (para destacar o ícone certo). */
@@ -132,17 +133,19 @@ export function Hud() {
       {/* Barra superior: só o essencial; o resto fica nos ícones à direita. */}
       <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1">
         <strong className="tracking-widest text-amber-300" title="POMO-CITY">
-          🏙 {cityDisplayName(city)}
+          <City /> {cityDisplayName(city)}
         </strong>
         <span title={`${region ? `${region.name} · ` : ""}${BIOMES[city.biome].name} · 1 ciclo de foco = 1 estação`}>
-          📅 {weather ? `${weather.season} · ` : ""}
+          <Calendar /> {weather ? `${weather.season} · ` : ""}
           {cityPeriodLabel(city)}
         </span>
         {weather && <WeatherChip weather={weather} focus={phase === "focus"} />}
-        <span title="Caixa da prefeitura">💰 ${city.money}</span>
+        <span title="Caixa da prefeitura">
+          <Coins /> ${city.money}
+        </span>
         <ResourcesButton />
         <span title={`Moradores / moradia · ${labor.publicFilled + labor.zoneFilled}/${labor.totalJobs} empregos ocupados${labor.unemployed ? ` · ${labor.unemployed} sem emprego` : ""}`}>
-          👥 {city.population}/{labor.housing}
+          <Group /> {city.population}/{labor.housing}
           {labor.unemployed > 0 && <span className="text-amber-300"> ({labor.unemployed} s/ emprego)</span>}
         </span>
         <PowerMeter used={power.supplied} demand={power.demand} capacity={power.capacity} />
@@ -150,13 +153,13 @@ export function Hud() {
           title={`Água: consumo ${water.demand} · produção ${water.produced}${water.stored ? ` + ${water.stored} nas caixas d'água` : ""}`}
           className={water.shortage ? "text-red-300" : ""}
         >
-          💧 {water.supplied}/{Math.round(water.produced + water.stored)}
+          <Droplet /> {water.supplied}/{Math.round(water.produced + water.stored)}
           {water.shortage && " — falta!"}
         </span>
         <span
           title={`Educação (QE ${Math.round(city.eq)}/150): escolas levam até 90, faculdades até 140.\nExpectativa de vida: ${Math.round(city.lifeExpectancy)} anos (hospitais).\nCrime médio ${Math.round(services.avg.crime)} · poluição ${Math.round(services.avg.pollution)} · valor do solo ${Math.round(services.avg.landValue)}`}
         >
-          🎓 {Math.round(city.eq)} · ❤️ {Math.round(city.lifeExpectancy)}a
+          <GraduationCap /> {Math.round(city.eq)} · <Heart /> {Math.round(city.lifeExpectancy)}a
         </span>
         <DemandIndicator demand={demand} />
         <span className="ml-auto flex items-center gap-1">
@@ -217,7 +220,15 @@ function TileInfo({
 
   return (
     <div className="space-y-0.5">
-      {city.terrain[i] !== 0 && !b && <strong>{city.terrain[i] === 2 ? "🌊 Mar (água salgada)" : "💧 Água doce"}</strong>}
+      {city.terrain[i] !== 0 && !b && <strong>{city.terrain[i] === 2 ? (
+            <>
+              <SeaWaves /> Mar (água salgada)
+            </>
+          ) : (
+            <>
+              <Droplet /> Água doce
+            </>
+          )}</strong>}
       {b ? (
         <>
           <strong>{BUILDINGS[b.type].name}</strong>
@@ -267,7 +278,13 @@ function TileInfo({
       {city.wires[i] === 1 && <p className="text-zinc-400">Linha de transmissão</p>}
       {city.pipes[i] === 1 && <p className="text-zinc-400">Cano no subsolo</p>}
       {(b ? !BUILDINGS[b.type].linear && b.type !== "onramp" : city.zoneLevel[i] > 0) && (
-        <p className={watered[i] ? "text-sky-300" : "text-zinc-500"}>{watered[i] ? "💧 Com água" : "Sem água encanada"}</p>
+        <p className={watered[i] ? "text-sky-300" : "text-zinc-500"}>{watered[i] ? (
+            <>
+              <Droplet /> Com água
+            </>
+          ) : (
+            "Sem água encanada"
+          )}</p>
       )}
       {(b ? !BUILDINGS[b.type].linear && b.type !== "onramp" : city.zoneLevel[i] > 0) && (
         <p className="text-zinc-300">
@@ -427,16 +444,16 @@ function ToolButton({
 function OverlayPicker() {
   const overlay = useGame((s) => s.overlay);
   const setOverlay = useGame((s) => s.setOverlay);
-  const options: { id: Overlay; label: string }[] = [
+  const options: { id: Overlay; label: ReactNode }[] = [
     { id: "none", label: "Normal" },
-    { id: "power", label: "⚡ Energia" },
+    { id: "power", label: <><Flash /> Energia</> },
     { id: "zones", label: "Zonas" },
-    { id: "water", label: "💧 Água" },
-    { id: "crime", label: "🚨 Crime" },
-    { id: "pollution", label: "🏭 Poluição" },
-    { id: "landValue", label: "💎 Valor" },
-    { id: "coverage", label: "🚓 Cobertura" },
-    { id: "traffic", label: "🚗 Trânsito" },
+    { id: "water", label: <><Droplet /> Água</> },
+    { id: "crime", label: <><ShieldAlert /> Crime</> },
+    { id: "pollution", label: <><Industry /> Poluição</> },
+    { id: "landValue", label: <><HomeSale /> Valor</> },
+    { id: "coverage", label: <><Shield /> Cobertura</> },
+    { id: "traffic", label: <><Car /> Trânsito</> },
   ];
   return (
     <div>
@@ -461,7 +478,7 @@ function PowerMeter({ used, demand, capacity }: { used: number; demand: number; 
   const short = demand > capacity;
   return (
     <span title={`Consumo ${demand} MW · capacidade ${capacity} MW`} className={short ? "text-red-300" : ""}>
-      ⚡ {used}/{capacity} MW{short && " — apagão!"}
+      <Flash /> {used}/{capacity} MW{short && " — apagão!"}
     </span>
   );
 }
@@ -556,7 +573,7 @@ function Toolbar({ locked }: { locked: boolean }) {
   const activeCat = categoryOf(tool);
   const close = () => setOpen(null);
 
-  const iconBtn = (key: string, icon: string, title: string, active: boolean, onClick: () => void, disabled = false) => (
+  const iconBtn = (key: string, icon: ReactNode, title: string, active: boolean, onClick: () => void, disabled = false) => (
     <button
       key={key}
       type="button"
@@ -573,18 +590,18 @@ function Toolbar({ locked }: { locked: boolean }) {
   return (
     <div className="pointer-events-auto relative flex items-start gap-1">
       <nav className="retro-panel flex flex-col gap-1 p-1" aria-label="Ferramentas">
-        {iconBtn("pan", "✋", "Mover a câmera (arrastar)", tool === "pan", () => setTool("pan"))}
+        {iconBtn("pan", <DragHandGesture />, "Mover a câmera (arrastar)", tool === "pan", () => setTool("pan"))}
         {CATEGORIES.map((c) =>
           iconBtn(c.id, c.icon, c.title, open === c.id || (c.id !== "view" && activeCat === c.id), () => setOpen(open === c.id ? null : c.id), locked && c.id !== "view"),
         )}
-        {iconBtn("demolish", "🧨", "Demolir", tool === "demolish", () => setTool("demolish"), locked)}
+        {iconBtn("demolish", <Trash />, "Demolir", tool === "demolish", () => setTool("demolish"), locked)}
       </nav>
       {open && (
         <section className="retro-panel w-56">
           <header className="retro-title flex">
             {CATEGORIES.find((c) => c.id === open)!.title}
             <button type="button" className="ml-auto" aria-label="Fechar" onClick={close}>
-              ✕
+              <Xmark />
             </button>
           </header>
           <div className="max-h-[60dvh] space-y-1 overflow-y-auto p-2">
@@ -644,8 +661,6 @@ function Toolbar({ locked }: { locked: boolean }) {
   );
 }
 
-const WEATHER_ICON = (w: NonNullable<ReturnType<typeof weatherAt>>) =>
-  w.label === "Seca severa" ? "🌵" : w.rain > 450 ? "🌧️" : w.temp < 5 ? "❄️" : w.temp > 28 ? "🔥" : w.rain > 200 ? "🌦️" : "☀️";
 
 /** Clima compacto na barra; clique abre a previsão completa. */
 function WeatherChip({ weather, focus }: { weather: NonNullable<ReturnType<typeof weatherAt>>; focus: boolean }) {
@@ -653,7 +668,7 @@ function WeatherChip({ weather, focus }: { weather: NonNullable<ReturnType<typeo
   return (
     <span className="relative">
       <button type="button" className="retro-button px-1" onClick={() => setOpen((v) => !v)} title="Previsão da estação">
-        {WEATHER_ICON(weather)} {Math.round(weather.temp)}°C
+        <WeatherIcon weather={weather} /> {Math.round(weather.temp)}°C
       </button>
       {open && (
         <div className="absolute left-0 top-full z-10 mt-1 w-60">

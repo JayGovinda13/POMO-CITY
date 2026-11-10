@@ -19,6 +19,7 @@ import {
 } from "@/sim";
 import { useGame } from "@/store/game";
 import { RankBadge } from "./ranks";
+import { Shop, Xmark } from "./icons";
 
 /** Botão "Mercado" na barra superior. */
 export function MarketButton() {
@@ -26,7 +27,7 @@ export function MarketButton() {
   return (
     <>
       <button type="button" className="retro-button" onClick={() => setOpen(true)} title="Mercado e estoque" aria-label="Mercado e estoque">
-        🏪
+        <Shop />
       </button>
       {open && <MarketModal onClose={() => setOpen(false)} />}
     </>
@@ -46,7 +47,7 @@ function MarketModal({ onClose }: { onClose: () => void }) {
         <header className="retro-title flex">
           Mercado e estoque
           <button type="button" className="ml-auto" aria-label="Fechar" onClick={onClose}>
-            ✕
+            <Xmark />
           </button>
         </header>
         <div className="space-y-2 overflow-y-auto p-3">

@@ -151,7 +151,7 @@ export function RegionPicker() {
                 aria-label="Nome da cidade"
                 className="mt-1 w-full border-2 border-zinc-600 bg-zinc-900 px-2 py-1 text-sm"
               />
-              <span className="text-[11px] text-zinc-500">Pode mudar depois em ☰ Menu. Em branco, a cidade usa o nome da região.</span>
+              <span className="text-[11px] text-zinc-500">Pode mudar depois no Menu. Em branco, a cidade usa o nome da região.</span>
             </label>
             <button
               type="button"

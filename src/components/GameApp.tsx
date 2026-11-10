@@ -9,6 +9,7 @@ import { RegionPicker } from "./RegionPicker";
 import { DisasterModal } from "./DisasterModal";
 import { Tutorial } from "./Tutorial";
 import { MusicController } from "./Music";
+import { Icons } from "./icons";
 
 // Phaser acessa window/canvas: carregamos apenas no cliente.
 const PhaserGame = dynamic(() => import("@/game/PhaserGame"), { ssr: false });
@@ -41,13 +42,14 @@ export function GameApp() {
 
   if (screen === "menu")
     return (
-      <>
+      <Icons>
         <MusicController />
         <TitleScreen />
-      </>
+      </Icons>
     );
 
   return (
+    <Icons>
     <main className="relative h-dvh w-full overflow-hidden">
       <MusicController />
       <PhaserGame />
@@ -56,5 +58,6 @@ export function GameApp() {
       <DisasterModal />
       <Tutorial />
     </main>
+    </Icons>
   );
 }

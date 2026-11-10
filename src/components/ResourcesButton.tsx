@@ -26,6 +26,7 @@ import {
   type ResourceId,
 } from "@/sim";
 import { useGame } from "@/store/game";
+import { Packages } from "./icons";
 
 export interface ResourceOutlook {
   res: ResourceId;
@@ -137,7 +138,7 @@ export function ResourcesButton() {
         aria-label="Recursos"
         title="Estoque de recursos (clique para a previsão da estação)"
       >
-        <span>📦</span>
+        <Packages />
         {outlook.map((o) => (
           <span key={o.res} className={tone(o)} title={`${RESOURCES[o.res].name}: ${o.stock}/${o.capacity}`}>
             {RESOURCES[o.res].icon}

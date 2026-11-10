@@ -5,6 +5,7 @@ import { generateNewspaper, type CityState, type CycleReport, type NewsStory } f
 import { AdSlot } from "./AdSlot";
 import { MOOD_ICON, Portrait } from "./Portrait";
 import { RankBadge } from "./ranks";
+import { FireFlame } from "./icons";
 
 const TONE: Record<NewsStory["tone"], string> = { good: "text-emerald-800", bad: "text-red-800", neutral: "text-stone-800" };
 
@@ -60,7 +61,7 @@ export function NewspaperView({
             <section className="border-2 border-stone-800 p-2 text-xs">
               <h4 className="mb-1 font-serif font-bold uppercase">Resumo da estação</h4>
               <p className="flex items-center gap-1">
-                Lote: <RankBadge rank={report.rank} /> · 🔥 {report.streak}
+                Lote: <RankBadge rank={report.rank} /> · <FireFlame /> {report.streak}
               </p>
               <p>
                 Saldo:{" "}

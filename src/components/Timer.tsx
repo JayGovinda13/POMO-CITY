@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGame } from "@/store/game";
 import { effectiveStreak, rankForStreak } from "@/sim";
 import { RankBadge } from "./ranks";
+import { FireFlame } from "./icons";
 
 function beep() {
   try {
@@ -113,7 +114,7 @@ export function Timer() {
           className="flex items-center gap-1 text-zinc-300"
           title={`Sequência de ${city.streak} ciclo(s)${city.streakFrozen ? " (guardada)" : ""} · ${city.cyclesToday} ciclo(s) hoje. O próximo lote sai com este Rank.`}
         >
-          🔥 {city.streak} <RankBadge rank={nextRank} />
+          <FireFlame /> {city.streak} <RankBadge rank={nextRank} />
         </span>
       )}
       {pending > 0 && (

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { WEALTH_NAMES, citizensView, moodSummary, type CitizenView, type Mood } from "@/sim";
 import { useGame } from "@/store/game";
 import { MOOD_ICON, Portrait } from "./Portrait";
+import { EmojiQuite, EmojiSad, EmojiSatisfied, Xmark } from "./icons";
 
 type Filter = "todos" | Mood | "sem emprego";
 
@@ -23,7 +24,7 @@ export function CitizensButton() {
         title={`Moradores: ${MOOD_ICON.feliz} ${m.feliz} felizes · ${MOOD_ICON.ok} ${m.ok} ok · ${MOOD_ICON.triste} ${m.triste} tristes`}
         aria-label="Moradores"
       >
-        {m.triste > m.feliz ? MOOD_ICON.triste : m.feliz > 0 ? MOOD_ICON.feliz : MOOD_ICON.ok} {views.length}
+        {m.triste > m.feliz ? <EmojiSad /> : m.feliz > 0 ? <EmojiSatisfied /> : <EmojiQuite />} {views.length}
       </button>
       {open && <CitizensModal views={views} onClose={() => setOpen(false)} />}
     </>
@@ -47,7 +48,7 @@ function CitizensModal({ views, onClose }: { views: CitizenView[]; onClose: () =
         <header className="retro-title flex">
           Moradores — {views.length}
           <button type="button" className="ml-auto" aria-label="Fechar" onClick={onClose}>
-            ✕
+            <Xmark />
           </button>
         </header>
         <div className="flex flex-wrap items-center gap-2 p-2">
