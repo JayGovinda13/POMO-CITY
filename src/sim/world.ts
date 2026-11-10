@@ -101,6 +101,8 @@ export function createCity(seed: number, now: number, biome?: BiomeId, opts: { w
     nextBondId: 1,
     ordinances: {},
     difficulty: "medio",
+    insurance: { plan: "none", since: 0, bonusMalus: 1, lastClaimCycle: null },
+    breaks: 0,
     streak: 0,
     streakFrozen: false,
     disasterCount: 0,

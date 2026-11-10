@@ -149,6 +149,14 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
     });
   }
 
+  if (report.insuranceLapsed) {
+    stories.unshift({
+      title: "Seguradora cancela a apólice da cidade",
+      body: "Sem dinheiro em caixa para o prêmio, a cidade ficou sem seguro. Recontratar exige nova carência.",
+      tone: "bad",
+    });
+  }
+
   const active = ORDINANCE_IDS.filter((id) => isActive(state, id));
   if (active.length) {
     stories.push({ title: "Em vigor", body: active.map((id) => ORDINANCES[id].name).join(" · "), tone: "neutral" });

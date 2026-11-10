@@ -20,10 +20,15 @@ import {
   type Department,
   type OrdinanceId,
   type ZoneKind,
+  INSURANCE_WAITING,
+  PLANS,
+  cityValue as valueOfCity,
+  waitingLeft,
+  type InsurancePlan,
 } from "@/sim";
 import { useGame } from "@/store/game";
 
-type Tab = "impostos" | "decretos" | "titulos" | "caixa";
+type Tab = "impostos" | "decretos" | "titulos" | "seguro" | "caixa";
 
 /** Botão "Orçamento" na barra superior. */
 export function BudgetButton() {
@@ -46,6 +51,7 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
     { id: "impostos", label: "Impostos e verbas" },
     { id: "decretos", label: "Decretos" },
     { id: "titulos", label: "Títulos" },
+    { id: "seguro", label: "Seguro" },
     { id: "caixa", label: "Livro-caixa" },
   ];
   return (
@@ -68,6 +74,7 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
           {tab === "impostos" && <TaxesTab city={city} />}
           {tab === "decretos" && <OrdinancesTab city={city} />}
           {tab === "titulos" && <BondsTab city={city} />}
+          {tab === "seguro" && <InsuranceTab city={city} />}
           {tab === "caixa" && <LedgerTab city={city} />}
         </div>
       </section>
@@ -246,6 +253,7 @@ const FIN_ROWS: { key: keyof CycleReport["finance"]; label: string; sign: 1 | -1
   { key: "ordinanceCost", label: "Decretos (custo)", sign: -1 },
   { key: "imports", label: "Compras automáticas", sign: -1 },
   { key: "interest", label: "Juros dos títulos", sign: -1 },
+  { key: "insurance", label: "Seguro (prêmio)", sign: -1 },
 ];
 
 function LedgerTab({ city }: { city: CityState }) {
@@ -295,6 +303,61 @@ function LedgerTab({ city }: { city: CityState }) {
       </table>
       <p className="text-zinc-500">
         A projeção é exata se nada mudar até o fim do próximo ciclo (obras, políticas e decretos pendentes já entram nela).
+      </p>
+    </div>
+  );
+}
+
+function InsuranceTab({ city }: { city: CityState }) {
+  const policy = city.insurance;
+  const left = waitingLeft(city);
+  const estimate = (plan: Exclude<InsurancePlan, "none">) =>
+    Math.max(1, Math.ceil(valueOfCity(city) * PLANS[plan].rate * policy.bonusMalus));
+  return (
+    <div className="space-y-2">
+      <p className="text-zinc-400">
+        Abandonar um foco ou fechar o jogo sem o menu causa desastres. O seguro paga parte do prejuízo — mas só depois de{" "}
+        {INSURANCE_WAITING} ciclos concluídos desde a contratação (carência). Trocar de plano reinicia a carência.
+      </p>
+      <p>
+        Situação:{" "}
+        {policy.plan === "none" ? (
+          <strong className="text-red-300">sem seguro</strong>
+        ) : (
+          <>
+            <strong>{PLANS[policy.plan].name}</strong> —{" "}
+            {left > 0 ? <span className="text-amber-300">carência: faltam {left} ciclo(s)</span> : <span className="text-emerald-300">cobrindo</span>}
+          </>
+        )}{" "}
+        · bônus/malus ×{policy.bonusMalus.toFixed(2)}
+      </p>
+      <ul className="space-y-1">
+        {(Object.keys(PLANS) as Exclude<InsurancePlan, "none">[]).map((plan) => (
+          <li key={plan} className={`flex items-center gap-2 border-2 p-1 ${policy.plan === plan ? "border-amber-400" : "border-zinc-700"}`}>
+            <span className="flex-1">
+              <strong>{PLANS[plan].name}</strong>
+              <span className="block text-zinc-400">{PLANS[plan].description}</span>
+            </span>
+            <span className="text-red-300">~${estimate(plan)}/ciclo</span>
+            <button
+              type="button"
+              className="retro-button"
+              disabled={locked() || policy.plan === plan}
+              onClick={() => useGame.getState().queue({ type: "insurance", plan })}
+            >
+              {policy.plan === plan ? "Atual" : "Contratar"}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {policy.plan !== "none" && (
+        <button type="button" className="retro-button" disabled={locked()} onClick={() => useGame.getState().queue({ type: "insurance", plan: "none" })}>
+          Cancelar seguro
+        </button>
+      )}
+      <p className="text-zinc-500">
+        O prêmio cai a cada ano sem sinistro (mais ainda com sequências longas de foco) e sobe depois de cada indenização. Sem
+        dinheiro para o prêmio, a apólice é cancelada.
       </p>
     </div>
   );

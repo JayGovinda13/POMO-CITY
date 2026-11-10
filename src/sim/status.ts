@@ -26,14 +26,15 @@ export function buildingStatus(s: CityState, powered?: Uint8Array): Map<number, 
     const def = BUILDINGS[b.type];
     const connected = !def.needsRoad || isRoadConnected(s, b, network);
     let staffed = 0;
-    if (connected && def.workers > 0) {
+    // Construção danificada por desastre não opera nem contrata até ser reparada.
+    if (connected && def.workers > 0 && !b.damaged) {
       staffed = Math.min(def.workers, freeWorkers);
       freeWorkers -= staffed;
     }
     const needsPower = (def.powerUse ?? 0) > 0;
     const hasPower = !powered || !needsPower || powered[b.y * s.width + b.x] === 1;
     const staffRatio = def.workers === 0 ? 1 : staffed / def.workers;
-    const efficiency = !connected ? 0 : staffRatio * (hasPower ? 1 : UNPOWERED_EFFICIENCY);
+    const efficiency = !connected || b.damaged ? 0 : staffRatio * (hasPower ? 1 : UNPOWERED_EFFICIENCY);
     out.set(b.id, { connected, staffed, required: def.workers, powered: hasPower, efficiency });
   }
   return out;

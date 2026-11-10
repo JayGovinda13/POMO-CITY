@@ -40,6 +40,8 @@ export interface Building {
   y: number;
   /** Estradas: conservação 0..100 (abaixo de 30, danificada). Ausente = 100. */
   condition?: number;
+  /** Danificada por desastre: não opera até ser reparada (Fase 5). */
+  damaged?: boolean;
 }
 
 export interface Bond {
@@ -54,7 +56,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -104,6 +106,10 @@ export interface CityState {
   /** Decretos ativos → ciclo em que foram ativados. */
   ordinances: Partial<Record<"imposto_vendas" | "imposto_renda" | "jogos" | "conservacao_energia" | "embelezamento" | "festival" | "premio_produtividade", number>>;
   difficulty: "facil" | "medio" | "dificil";
+  // ── Fase 5: riscos ──
+  insurance: { plan: "none" | "basico" | "completo"; since: number; bonusMalus: number; lastClaimCycle: number | null };
+  /** Ciclos quebrados seguidos (zera ao concluir um ciclo); agrava os desastres. */
+  breaks: number;
   /** Política de excedente por recurso (Fase 3). */
   policies: Record<ResourceId, { mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }>;
   /** Ciclos de foco consecutivos (com decaimento, nunca zera de uma vez). */
@@ -128,6 +134,8 @@ export type Command =
   | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: { transport: number; energy: number } }
   | { type: "ordinance"; id: keyof CityState["ordinances"]; active: boolean }
   | { type: "bond"; action: "issue" | "repay" }
+  | { type: "insurance"; plan: "none" | "basico" | "completo" }
+  | { type: "repair"; x: number; y: number }
   | {
       type: "zone";
       /** "none" remove o zoneamento de lotes vazios. */
@@ -171,6 +179,8 @@ export interface CycleReport {
   /** Clima da estação vivida (null se a cidade ainda não escolheu a região). */
   weather: WeatherSummary | null;
   zones: { grown: number; declined: number };
+  /** Seguro: a apólice foi cancelada por falta de dinheiro para o prêmio. */
+  insuranceLapsed?: boolean;
   /** Humor dos moradores ao fim do ciclo, e quem chegou/saiu. */
   citizens?: { feliz: number; ok: number; triste: number; arrived: number; left: number };
   jobs: { total: number; filled: number; unemployed: number };
@@ -209,4 +219,5 @@ export interface FinanceBreakdown {
   upkeepEnergy: number;
   upkeepOther: number;
   interest: number;
+  insurance: number;
 }

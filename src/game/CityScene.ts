@@ -324,7 +324,11 @@ export class CityScene extends Phaser.Scene {
           castShadow(sx, sy, img.height - TH);
           const st = status.get(b.id);
           const top = baseY - img.height;
-          if (st && !st.connected) this.alert(fx, sx, top, 0xe03030);
+          // Danificada por desastre: escurecida e com alerta cinza até o reparo.
+          if (b.damaged) {
+            img.setTint(0x6a5a5a);
+            this.alert(fx, sx, top, 0xb0b0b0);
+          } else if (st && !st.connected) this.alert(fx, sx, top, 0xe03030);
           else if (st && !st.powered) this.alert(fx, sx, top, 0xf5e04a);
           else if (st && st.efficiency < 1) this.alert(fx, sx, top, 0xf0a030);
         } else if (zone) {

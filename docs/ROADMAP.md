@@ -42,8 +42,8 @@ Toda mecânica importada passa por cinco filtros:
 | 2 | Clima e estações | Escolha da região (só o clima), hemisfério, estações, chuvas e secas, bioma; menu e sessão | ✅ Concluída |
 | 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ✅ Concluída |
 | 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ✅ Concluída |
-| 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | 🟡 Desastres entregues; falta o seguro · ⏳ Próxima |
-| 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ |
+| 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | ✅ Concluída |
+| 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ Próxima |
 | 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ |
 | 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ⏳ |
 | 9 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ⏳ |
@@ -354,7 +354,18 @@ pode ser vendido ou estocado.
 - **Livro-caixa** com receitas e despesas por categoria, além da projeção do próximo ciclo.
 - Nível de dificuldade no início: dinheiro inicial e demanda externa (fácil, médio, difícil).
 
-## Fase 5 — Ciclos quebrados, desastres e seguro
+## Fase 5 — Ciclos quebrados, desastres e seguro ✅
+
+### Entregue (seguro e desastres mais duros)
+
+| Entrega | Onde |
+|---------|------|
+| **Seguro opcional** em 🏛 Orçamento → Seguro: Básico (50%, franquia $100, 0,4% do valor da cidade por estação) e Completo (90%, franquia $50, 0,8%). **Carência de 4 ciclos** concluídos; trocar de plano reinicia. Sem dinheiro para o prêmio, a apólice é cancelada (e o jornal noticia). | `insurance.ts`, `insuranceSystem`, `BudgetPanel.tsx` |
+| **Bônus/malus:** −0,05 no multiplicador a cada ano sem sinistro (−0,07 com sequência de 8+), +0,2 a cada indenização; de ×0,6 a ×2. | `insuranceSystem`, `applyDisaster` |
+| **Indenização automática** no momento do desastre: prejuízo (lotes, estoque, limpeza e reparos) − franquia × cobertura, mostrada na janela do desastre. | `applyDisaster`, `DisasterModal.tsx` |
+| **Gravidade crescente:** cada ciclo quebrado seguido soma +50% (até 2×) e quebrar uma sequência de 5+ pesa +25%; concluir um ciclo zera a contagem. | `disasterIntensity`, `breaks` |
+| **Construções danificadas** (desastre normal) param de operar até o **reparo** (30% do custo), pelo botão no lote ou na janela do desastre. | comando `repair`, `status.ts` |
+
 
 *Manual: Disasters.*
 

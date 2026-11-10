@@ -13,6 +13,7 @@ import {
   REGION_BY_ID,
   weatherAt,
   computeDemand,
+  repairCost,
   RESOURCE_NAMES,
   citizensView,
   moodSummary,
@@ -173,6 +174,18 @@ function TileInfo({
             if (!st) return null;
             return (
               <>
+                {b.damaged && (
+                  <div className="space-y-1">
+                    <p className="text-red-300">🔧 Danificada por desastre: parada até o reparo.</p>
+                    <button
+                      type="button"
+                      className="retro-button retro-button-primary w-full"
+                      onClick={() => useGame.getState().queue({ type: "repair", x: b.x, y: b.y })}
+                    >
+                      Reparar (${repairCost(b.type)})
+                    </button>
+                  </div>
+                )}
                 {BUILDINGS[b.type].needsRoad && !st.connected && <p className="text-red-300">Sem estrada ligada à prefeitura</p>}
                 {!st.powered && <p className="text-yellow-300">Sem energia: operando a 50%</p>}
                 {st.required > 0 && (

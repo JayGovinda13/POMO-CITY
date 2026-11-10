@@ -7,8 +7,9 @@ export const POST = route((id) =>
     const cycle = rec.activeCycle;
     if (!cycle) return fail(400, "Nenhum ciclo em andamento");
     // Ciclo quebrado: a sequência cai e a cidade sofre um desastre.
-    const broken = applyDisaster(abandonCycle(rec.state), "normal", "abandoned");
-    rec.state = broken.state;
+    // O desastre vê a sequência que foi quebrada; depois a sequência cai.
+    const broken = applyDisaster(rec.state, "normal", "abandoned");
+    rec.state = abandonCycle(broken.state);
     rec.activeCycle = null;
     const now = Date.now();
     tx.afterCommit(() =>

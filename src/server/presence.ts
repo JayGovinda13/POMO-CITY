@@ -30,8 +30,9 @@ export function settlePresence(playerId: string, rec: PlayerRecord, now: number,
   let disaster: DisasterReport | null = null;
   const cycle = rec.activeCycle;
   if (cycle) {
-    const broken = applyDisaster(abandonCycle(rec.state), "normal", "closed_during_focus");
-    rec.state = broken.state;
+    // O desastre vê a sequência que foi quebrada; depois a sequência cai.
+    const broken = applyDisaster(rec.state, "normal", "closed_during_focus");
+    rec.state = abandonCycle(broken.state);
     rec.activeCycle = null;
     disaster = broken.report;
     const leftAt = p.leftAt;

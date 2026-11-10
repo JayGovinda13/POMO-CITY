@@ -2,6 +2,7 @@ import { BUILDINGS, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
 import { BOND_VALUE, MAX_TAX, ORDINANCES, creditRating } from "./finance";
+import { PLANS, repairCost } from "./insurance";
 import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
 import { lockReason } from "./unlocks";
@@ -92,7 +93,21 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     return "Ação inválida";
   }
 
+  if (cmd.type === "insurance") {
+    if (cmd.plan !== "none" && !(cmd.plan in PLANS)) return "Plano inválido";
+    if (cmd.plan === s.insurance.plan) return "Esse já é o plano atual";
+    return null;
+  }
+
   if (!isInt(cmd.x) || !isInt(cmd.y) || !inBounds(s, cmd.x, cmd.y)) return "Fora do mapa";
+
+  if (cmd.type === "repair") {
+    const b = buildingAt(s, cmd.x, cmd.y);
+    if (!b?.damaged) return "Nada danificado aqui";
+    const cost = repairCost(b.type);
+    if (s.money < cost) return `Reparo custa $${cost}`;
+    return null;
+  }
   const i = idx(s, cmd.x, cmd.y);
   const here = buildingAt(s, cmd.x, cmd.y);
 
@@ -149,6 +164,13 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
 
   if (cmd.type === "policy") {
     next.policies = { ...next.policies, [cmd.resource]: { mode: cmd.mode, value: cmd.value } };
+  } else if (cmd.type === "insurance") {
+    // Contratar ou trocar de plano reinicia a carência; o bônus/malus acompanha a cidade.
+    next.insurance = { ...next.insurance, plan: cmd.plan, since: next.cyclesCompleted };
+  } else if (cmd.type === "repair") {
+    const b = next.buildings.find((x) => x.x === cmd.x && x.y === cmd.y)!;
+    next.money -= repairCost(b.type);
+    delete b.damaged;
   } else if (cmd.type === "budget") {
     if (cmd.taxes) next.taxes = { R: cmd.taxes.R, C: cmd.taxes.C, I: cmd.taxes.I };
     if (cmd.funding) next.funding = { transport: cmd.funding.transport, energy: cmd.funding.energy };

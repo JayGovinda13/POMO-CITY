@@ -60,6 +60,12 @@ export function migrateState(raw: CityState): CityState {
     s.difficulty = "medio";
   }
 
+  if (from < 7) {
+    // v6 → v7: seguro da cidade e contador de ciclos quebrados.
+    s.insurance = { plan: "none", since: 0, bonusMalus: 1, lastClaimCycle: null };
+    s.breaks = 0;
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

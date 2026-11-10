@@ -40,6 +40,7 @@ import { buildingStatus, laborStats } from "./status";
 import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Inventory, type Rank, type ResourceId } from "./types";
 import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
+import { BONUS_MIN, premium } from "./insurance";
 import { citizensView, moodSummary, syncCitizens } from "./citizens";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
@@ -382,7 +383,38 @@ const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
   f.imports = report.importCost;
   f.sales = report.salesRevenue;
   report.netMoney =
-    report.taxes + f.ordinanceRevenue - f.ordinanceCost - report.upkeep - f.interest - report.importCost + report.salesRevenue;
+    report.taxes +
+    f.ordinanceRevenue -
+    f.ordinanceCost -
+    report.upkeep -
+    f.interest -
+    f.insurance -
+    report.importCost +
+    report.salesRevenue;
+};
+
+/**
+ * 7d) Seguro: cobra o prêmio da estação (sem dinheiro, a apólice é cancelada) e, a cada ano
+ * sem sinistro, dá bônus no prêmio — maior para quem mantém sequências longas de foco.
+ */
+const insuranceSystem: CycleSystem = ({ s, report }) => {
+  if (s.insurance.plan === "none") return;
+  const p = premium(s);
+  if (s.money < p) {
+    s.insurance = { ...s.insurance, plan: "none" };
+    report.insuranceLapsed = true;
+    return;
+  }
+  s.money -= p;
+  report.finance.insurance = p;
+  if (s.cyclesCompleted % 4 === 0) {
+    const last = s.insurance.lastClaimCycle;
+    const claimedThisYear = last !== null && s.cyclesCompleted - last <= 4;
+    if (!claimedThisYear) {
+      const bonus = 0.05 + (s.streak >= 8 ? 0.02 : 0);
+      s.insurance = { ...s.insurance, bonusMalus: Math.max(BONUS_MIN, Math.round((s.insurance.bonusMalus - bonus) * 100) / 100) };
+    }
+  }
 };
 
 export const CYCLE_SYSTEMS: CycleSystem[] = [
@@ -395,6 +427,7 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   upkeepSystem,
   roadsSystem,
   interestSystem,
+  insuranceSystem,
   storageSystem,
   starvationSystem,
   citizensSystem,
@@ -415,6 +448,8 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
   }
   next.streak = effectiveStreak(next, now) + 1;
   next.streakFrozen = false;
+  // Ciclo concluído: zera a contagem de ciclos quebrados seguidos (Fase 5).
+  next.breaks = 0;
   next.cyclesCompleted++;
   next.cyclesToday++;
   next.lastCycleAt = now;
@@ -452,6 +487,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       upkeepEnergy: 0,
       upkeepOther: 0,
       interest: 0,
+      insurance: 0,
     },
     populationBefore: s.population,
     populationAfter: s.population,

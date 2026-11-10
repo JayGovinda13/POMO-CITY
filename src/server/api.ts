@@ -78,6 +78,16 @@ export function parseCommands(raw: unknown): Command[] | null {
       out.push({ type: "ordinance", id: r.id as OrdinanceId, active: r.active });
       continue;
     }
+    if (r.type === "insurance") {
+      if (r.plan !== "none" && r.plan !== "basico" && r.plan !== "completo") return null;
+      out.push({ type: "insurance", plan: r.plan });
+      continue;
+    }
+    if (r.type === "repair") {
+      if (!num(r.x) || !num(r.y)) return null;
+      out.push({ type: "repair", x: r.x, y: r.y });
+      continue;
+    }
     if (r.type === "bond") {
       if (r.action !== "issue" && r.action !== "repay") return null;
       out.push({ type: "bond", action: r.action });
