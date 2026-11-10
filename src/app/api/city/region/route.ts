@@ -7,7 +7,8 @@ export const POST = route(async (id, req) => {
   const body = await req.json().catch(() => ({}));
   const regionId = typeof body?.regionId === "string" ? body.regionId : "";
   return withPlayer(id, (rec) => {
-    if (rec.activeCycle) return fail(409, "Encerre o foco antes");
+    // A escolha é permitida mesmo durante o foco: cidades antigas recebem o seletor ao abrir,
+    // e o clima só passa a valer a partir do tempo calculado no fim do ciclo.
     const r = foundCity(rec.state, regionId, Date.now());
     if (!r.ok) return fail(400, r.error);
     rec.state = r.state;
