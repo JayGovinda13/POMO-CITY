@@ -146,6 +146,13 @@ export function CycleReportModal() {
                   {report.water.shortage && " — faltou água! Bombas, canos ou caixas d'água."}
                 </p>
               )}
+              {report.services && (
+                <p>
+                  🎓 QE {Math.round(report.services.eq)} · ❤️ vida {Math.round(report.services.lifeExpectancy)} anos · 🚨 crime{" "}
+                  {Math.round(report.services.crime)} · 🏭 poluição {Math.round(report.services.pollution)} · 💎 solo{" "}
+                  {Math.round(report.services.landValue)}
+                </p>
+              )}
               {report.power && (
                 <p className={report.power.brownout ? "text-red-300" : ""}>
                   ⚡ Consumo {report.power.demand} MW / capacidade {report.power.capacity} MW

@@ -5,6 +5,7 @@ import {
   BOND_VALUE,
   DEFAULT_TAX,
   DEPARTMENT_NAMES,
+  DEPARTMENTS,
   MAX_TAX,
   ORDINANCES,
   ORDINANCE_IDS,
@@ -17,7 +18,6 @@ import {
   yearOfCycle,
   type CityState,
   type CycleReport,
-  type Department,
   type OrdinanceId,
   type ZoneKind,
   INSURANCE_WAITING,
@@ -120,7 +120,7 @@ function TaxesTab({ city }: { city: CityState }) {
       </div>
       <div className="space-y-1">
         <h3 className="text-zinc-400">Verba dos departamentos</h3>
-        {(["transport", "energy"] as Department[]).map((d) => (
+        {DEPARTMENTS.map((d) => (
           <Slider key={d} label={DEPARTMENT_NAMES[d]} value={funding[d]} min={0} max={100} step={10} onChange={(v) => setFunding({ ...funding, [d]: v })} />
         ))}
         <p className="text-zinc-500">
@@ -249,6 +249,7 @@ const FIN_ROWS: { key: keyof CycleReport["finance"]; label: string; sign: 1 | -1
   { key: "sales", label: "Vendas ao mercado", sign: 1 },
   { key: "upkeepTransport", label: "Manutenção: transportes", sign: -1 },
   { key: "upkeepEnergy", label: "Manutenção: energia", sign: -1 },
+  { key: "upkeepServices", label: "Manutenção: serviços", sign: -1 },
   { key: "upkeepOther", label: "Manutenção: outros", sign: -1 },
   { key: "ordinanceCost", label: "Decretos (custo)", sign: -1 },
   { key: "imports", label: "Compras automáticas", sign: -1 },

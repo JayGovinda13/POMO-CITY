@@ -1,4 +1,4 @@
-import { DEFAULT_POLICIES } from "./config";
+import { DEFAULT_POLICIES, START_EQ, START_LIFE } from "./config";
 import { CURRENT_SCHEMA_VERSION, ZONE, type CityState } from "./types";
 
 /**
@@ -53,7 +53,7 @@ export function migrateState(raw: CityState): CityState {
   if (from < 6) {
     // v5 → v6: orçamento (impostos, verbas, títulos, decretos, dificuldade).
     s.taxes = { R: 9, C: 9, I: 9 };
-    s.funding = { transport: 100, energy: 100 };
+    s.funding = { transport: 100, energy: 100, police: 100, fire: 100, health: 100, education: 100 };
     s.bonds = [];
     s.nextBondId = 1;
     s.ordinances = {};
@@ -69,6 +69,13 @@ export function migrateState(raw: CityState): CityState {
   if (from < 8) {
     // v7 → v8: camada subterrânea de canos (a prefeitura já tem um poço para começar).
     s.pipes = new Array(s.width * s.height).fill(0);
+  }
+
+  if (from < 9) {
+    // v8 → v9: serviços (verbas novas, QE e expectativa de vida).
+    s.funding = Object.assign({ police: 100, fire: 100, health: 100, education: 100 }, s.funding);
+    s.eq = START_EQ;
+    s.lifeExpectancy = START_LIFE;
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

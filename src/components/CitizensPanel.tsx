@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { citizensView, moodSummary, type CitizenView, type Mood } from "@/sim";
+import { WEALTH_NAMES, citizensView, moodSummary, type CitizenView, type Mood } from "@/sim";
 import { useGame } from "@/store/game";
 import { MOOD_ICON, Portrait } from "./Portrait";
 
@@ -108,7 +108,10 @@ export function CitizenCard({ citizen: v }: { citizen: CitizenView }) {
         </div>
       </div>
       <p>💼 {v.job ? `${v.job.title} — ${v.job.place} (${v.job.x}, ${v.job.y})` : v.gender === "f" ? "Desempregada" : "Desempregado"}</p>
-      <p>🏠 {v.home ? `Mora no lote (${v.home.x}, ${v.home.y})` : "Sem moradia"}</p>
+      <p>
+        🏠 {v.home ? `Mora no lote (${v.home.x}, ${v.home.y})` : "Sem moradia"}
+        {v.wealth && <span className="text-zinc-400"> · {WEALTH_NAMES[v.wealth]}</span>}
+      </p>
       <div>
         <p className="text-zinc-400">Por que está assim:</p>
         <ul>

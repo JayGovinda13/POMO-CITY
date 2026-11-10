@@ -25,7 +25,19 @@ export type BuildingType =
   | "silo"
   | "water_pump"
   | "water_tower"
-  | "water_treatment";
+  | "water_treatment"
+  | "police"
+  | "fire_station"
+  | "prison"
+  | "hospital"
+  | "school"
+  | "college"
+  | "library"
+  | "museum"
+  | "plaza"
+  | "park"
+  | "zoo"
+  | "stadium";
 
 /** 0 = terra, 1 = água */
 export type Terrain = 0 | 1;
@@ -61,7 +73,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -107,7 +119,12 @@ export interface CityState {
   /** Alíquota de imposto por zona (%, 0..20). */
   taxes: Record<ZoneKind, number>;
   /** Verba por departamento (%, 0..100). */
-  funding: { transport: number; energy: number };
+  funding: { transport: number; energy: number; police: number; fire: number; health: number; education: number };
+  // ── Fase 7: qualidade de vida ──
+  /** Quociente educacional médio (0..150). */
+  eq: number;
+  /** Expectativa de vida (anos). */
+  lifeExpectancy: number;
   bonds: Bond[];
   nextBondId: number;
   /** Decretos ativos → ciclo em que foram ativados. */
@@ -139,7 +156,7 @@ export type Command =
   | { type: "wire"; x: number; y: number }
   | { type: "pipe"; x: number; y: number }
   | { type: "policy"; resource: ResourceId; mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }
-  | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: { transport: number; energy: number } }
+  | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: Partial<CityState["funding"]> }
   | { type: "ordinance"; id: keyof CityState["ordinances"]; active: boolean }
   | { type: "bond"; action: "issue" | "repay" }
   | { type: "insurance"; plan: "none" | "basico" | "completo" }
@@ -189,6 +206,8 @@ export interface CycleReport {
   /** Clima da estação vivida (null se a cidade ainda não escolheu a região). */
   weather: WeatherSummary | null;
   zones: { grown: number; declined: number };
+  /** Qualidade de vida (Fase 7): médias nos lotes ocupados e indicadores da cidade. */
+  services?: { crime: number; pollution: number; landValue: number; eq: number; lifeExpectancy: number };
   /** Seguro: a apólice foi cancelada por falta de dinheiro para o prêmio. */
   insuranceLapsed?: boolean;
   /** Humor dos moradores ao fim do ciclo, e quem chegou/saiu. */
@@ -229,6 +248,7 @@ export interface FinanceBreakdown {
   imports: number;
   upkeepTransport: number;
   upkeepEnergy: number;
+  upkeepServices: number;
   upkeepOther: number;
   interest: number;
   insurance: number;

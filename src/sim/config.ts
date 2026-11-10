@@ -58,3 +58,7 @@ export const GOODS_PER_RESIDENT = 0.2;
 export const GOODS_MIN_POPULATION = 30;
 /** Bens produzidos por emprego industrial ocupado. */
 export const GOODS_PER_INDUSTRY_JOB = 0.5;
+
+/** Fase 7: quociente educacional e expectativa de vida de uma cidade nova. */
+export const START_EQ = 40;
+export const START_LIFE = 55;

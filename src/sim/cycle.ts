@@ -43,6 +43,7 @@ import { developZones } from "./zones";
 import { BONUS_MIN, premium } from "./insurance";
 import { computeWater, updateTowers, type WaterResult } from "./water";
 import { citizensView, moodSummary, syncCitizens } from "./citizens";
+import { computeServices, landValueTaxFactor, updateQuality, type ServiceFields } from "./services";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
 export function rankForStreak(streak: number): Rank {
@@ -82,6 +83,7 @@ interface CycleContext {
   power?: PowerResult;
   status?: ReturnType<typeof buildingStatus>;
   water?: WaterResult;
+  services?: ServiceFields;
   /** Estoque no início do ciclo (para o balanço por recurso). */
   startStock: Record<ResourceId, number>;
 }
@@ -124,6 +126,7 @@ const zoneGrowthSystem: CycleSystem = (ctx) => {
     access: roadAccess(s),
     approval,
     watered: water.watered,
+    services: computeServices(s, buildingStatus(s, power.powered)),
     pay: (kind, dense) => {
       const mats = ZONES[kind].growth[dense ? 1 : 0];
       const quote = quoteMaterials(s, mats, effects);
@@ -181,6 +184,21 @@ const waterSystem: CycleSystem = (ctx) => {
   ctx.water = w;
   report.water = { produced: w.produced, stored: w.stored, demand: w.demand, supplied: w.supplied, shortage: w.shortage };
   updateTowers(s, w);
+};
+
+/** 3c) Serviços (Fase 7): crime, poluição, valor do solo e coberturas; QE e expectativa de vida. */
+const servicesSystem: CycleSystem = (ctx) => {
+  const { s, report, status } = ctx;
+  const f = computeServices(s, status);
+  ctx.services = f;
+  updateQuality(s, f);
+  report.services = {
+    crime: f.avg.crime,
+    pollution: f.avg.pollution,
+    landValue: f.avg.landValue,
+    eq: s.eq,
+    lifeExpectancy: s.lifeExpectancy,
+  };
 };
 
 /** 4) Extração e fábricas: a pureza do lote vem da qualidade do foco. */
@@ -253,7 +271,9 @@ const economySystem: CycleSystem = (ctx) => {
   // Impostos por zona (Fase 4): moradores (R), empregos do comércio (C) e da indústria (I).
   const f = report.finance;
   const m = 1 + taxBonus;
-  f.taxR = Math.floor(taxRevenue("R", pop * (report.starving ? 0.5 : 1), s.taxes.R) * m);
+  // Valor do solo define a riqueza dos moradores e o imposto residencial (Fase 7).
+  const lv = ctx.services && ctx.services.avg.landValue > 0 ? landValueTaxFactor(ctx.services.avg.landValue) : 1;
+  f.taxR = Math.floor(taxRevenue("R", pop * (report.starving ? 0.5 : 1), s.taxes.R) * m * lv);
   f.taxC = Math.floor(taxRevenue("C", labor.commercialFilled, s.taxes.C) * m);
   f.taxI = Math.floor(taxRevenue("I", labor.industrialFilled, s.taxes.I) * m);
   report.taxes = f.taxR + f.taxC + f.taxI;
@@ -274,17 +294,20 @@ const upkeepSystem: CycleSystem = ({ s, report }) => {
   let transport = 0;
   let energy = 0;
   let other = 0;
+  let services = 0;
   for (const b of s.buildings) {
     const cost = BUILDINGS[b.type].upkeep;
     const dept = departmentOf(b.type);
     if (dept === "transport") transport += cost;
     else if (dept === "energy") energy += cost;
+    else if (dept) services += (cost * (s.funding[dept] ?? 100)) / 100;
     else other += cost;
   }
   f.upkeepTransport = Math.ceil((transport * s.funding.transport) / 100);
   f.upkeepEnergy = Math.ceil((energy * s.funding.energy) / 100);
+  f.upkeepServices = Math.ceil(services);
   f.upkeepOther = other;
-  report.upkeep = f.upkeepTransport + f.upkeepEnergy + f.upkeepOther;
+  report.upkeep = f.upkeepTransport + f.upkeepEnergy + f.upkeepServices + f.upkeepOther;
   s.money -= report.upkeep;
 };
 
@@ -437,6 +460,7 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   moveInSystem,
   powerSystem,
   waterSystem,
+  servicesSystem,
   extractionSystem,
   refiningSystem,
   economySystem,
@@ -501,6 +525,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       imports: 0,
       upkeepTransport: 0,
       upkeepEnergy: 0,
+      upkeepServices: 0,
       upkeepOther: 0,
       interest: 0,
       insurance: 0,

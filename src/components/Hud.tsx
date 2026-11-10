@@ -23,6 +23,9 @@ import {
   laborStats,
   lockReason,
   roadAccess,
+  computeServices,
+  wealthOf,
+  WEALTH_NAMES,
   type BuildCategory,
   type BuildingType,
   type ZoneKind,
@@ -47,6 +50,8 @@ const CATEGORIES: { id: CategoryId; icon: string; title: string }[] = [
   { id: "zonas", icon: "🏘️", title: "Zonas" },
   { id: "energy", icon: "⚡", title: "Usinas" },
   { id: "water", icon: "💧", title: "Água" },
+  { id: "services", icon: "🚓", title: "Serviços (polícia, bombeiros, saúde, educação)" },
+  { id: "leisure", icon: "🌳", title: "Lazer (praças, parques, atrações)" },
   { id: "production", icon: "🌾", title: "Produção" },
   { id: "storage", icon: "📦", title: "Armazenagem" },
   { id: "special", icon: "🗽", title: "Especial" },
@@ -84,13 +89,15 @@ export function Hud() {
     const labor = laborStats(city, status);
     const people = citizensView(city);
     const water = computeWater(city, undefined, status);
+    const services = computeServices(city, status);
     return {
+      services,
       power,
       status,
       labor,
       people,
       water,
-      demand: computeDemand(city, labor, moodSummary(people).approval),
+      demand: computeDemand(city, labor, moodSummary(people).approval, services),
       access: roadAccess(city),
       weather: weatherAt(city),
     };
@@ -100,7 +107,7 @@ export function Hud() {
     return <div className="absolute inset-0 grid place-items-center text-sm">Carregando a cidade…</div>;
   }
 
-  const { power, status, labor, demand, access, weather, people, water } = derived;
+  const { power, status, labor, demand, access, weather, people, water, services } = derived;
   const region = city.regionId ? REGION_BY_ID[city.regionId] : null;
 
   return (
@@ -126,6 +133,11 @@ export function Hud() {
           💧 {water.supplied}/{Math.round(water.produced + water.stored)}
           {water.shortage && " — falta!"}
         </span>
+        <span
+          title={`Educação (QE ${Math.round(city.eq)}/150): escolas levam até 90, faculdades até 140.\nExpectativa de vida: ${Math.round(city.lifeExpectancy)} anos (hospitais).\nCrime médio ${Math.round(services.avg.crime)} · poluição ${Math.round(services.avg.pollution)} · valor do solo ${Math.round(services.avg.landValue)}`}
+        >
+          🎓 {Math.round(city.eq)} · ❤️ {Math.round(city.lifeExpectancy)}a
+        </span>
         <DemandIndicator demand={demand} />
         <span className="ml-auto flex items-center gap-1">
           <CitizensButton />
@@ -140,7 +152,7 @@ export function Hud() {
         <Toolbar locked={phase === "focus"} />
         {hover && (
           <div className="retro-panel pointer-events-auto w-56 p-2">
-            <TileInfo x={hover.x} y={hover.y} status={status} powered={power.powered} access={access} people={people} watered={water.watered} />
+            <TileInfo x={hover.x} y={hover.y} status={status} powered={power.powered} access={access} people={people} watered={water.watered} services={services} />
           </div>
         )}
       </div>
@@ -163,6 +175,7 @@ function TileInfo({
   access,
   people,
   watered,
+  services,
 }: {
   x: number;
   y: number;
@@ -171,6 +184,7 @@ function TileInfo({
   access: Int32Array;
   people: ReturnType<typeof citizensView>;
   watered: Uint8Array;
+  services: ReturnType<typeof computeServices>;
 }) {
   const city = useGame((s) => s.city)!;
   const i = y * city.width + x;
@@ -228,6 +242,14 @@ function TileInfo({
       {city.pipes[i] === 1 && <p className="text-zinc-400">Cano no subsolo</p>}
       {(b ? b.type !== "road" : city.zoneLevel[i] > 0) && (
         <p className={watered[i] ? "text-sky-300" : "text-zinc-500"}>{watered[i] ? "💧 Com água" : "Sem água encanada"}</p>
+      )}
+      {(b ? b.type !== "road" : city.zoneLevel[i] > 0) && (
+        <p className="text-zinc-300">
+          <span className={services.crime[i] > 45 ? "text-red-300" : ""}>🚨 {Math.round(services.crime[i])}</span> ·{" "}
+          <span className={services.pollution[i] > 40 ? "text-amber-300" : ""}>🏭 {Math.round(services.pollution[i])}</span> · 💎{" "}
+          {Math.round(services.landValue[i])}
+          {zone === 1 && city.zoneLevel[i] > 0 && <span className="text-zinc-400"> ({WEALTH_NAMES[wealthOf(services.landValue[i])]})</span>}
+        </p>
       )}
       {b?.type === "water_tower" && <p className="text-sky-300">Caixa d'água: {Math.round(b.water ?? 0)}/60</p>}
       <PeopleHere label="Moradores" list={people.filter((p) => p.home?.x === x && p.home?.y === y)} />
@@ -345,11 +367,15 @@ function OverlayPicker() {
     { id: "power", label: "⚡ Energia" },
     { id: "zones", label: "Zonas" },
     { id: "water", label: "💧 Água" },
+    { id: "crime", label: "🚨 Crime" },
+    { id: "pollution", label: "🏭 Poluição" },
+    { id: "landValue", label: "💎 Valor" },
+    { id: "coverage", label: "🚓 Cobertura" },
   ];
   return (
     <div>
       <h3 className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Visualizar</h3>
-      <div className="flex gap-1">
+      <div className="grid grid-cols-2 gap-1">
         {options.map((o) => (
           <button
             key={o.id}

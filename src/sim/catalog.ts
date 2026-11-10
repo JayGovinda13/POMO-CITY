@@ -1,6 +1,6 @@
 import type { BiomeId, BuildingType, Rank, ResourceId, ZoneKind } from "./types";
 
-export type BuildCategory = "infra" | "energy" | "water" | "production" | "storage" | "special";
+export type BuildCategory = "infra" | "energy" | "water" | "services" | "leisure" | "production" | "storage" | "special";
 
 /** Requisitos de desbloqueio (ver unlocks.ts). */
 export interface Requirement {
@@ -53,6 +53,22 @@ export interface BuildingDef {
   };
   /** Água (Fase 6): bomba, poço da prefeitura, caixa d'água ou estação de tratamento. */
   water?: { kind: "pump" | "well" | "tower" | "treatment"; capacity: number };
+  /** Serviço público (Fase 7): cobertura em raio ou atendimento por capacidade. */
+  service?: {
+    kind: "police" | "fire" | "prison" | "hospital" | "school" | "college" | "library" | "museum" | "leisure";
+    /** Raio de cobertura (tiles) — polícia, bombeiros e lazer. */
+    radius?: number;
+    /** Moradores atendidos (hospital, escola, faculdade). */
+    capacity?: number;
+    /** Valorização do solo ao redor (pontos no centro, caindo até a borda do raio). */
+    landValue?: number;
+    /** Poluição absorvida ao redor (parques). */
+    cleans?: number;
+    /** Bônus de demanda residencial e comercial enquanto existir (atrações). */
+    demand?: number;
+  };
+  /** Poluição emitida (Fase 7). */
+  pollution?: number;
   /** Capacidade extra de estoque por recurso (armazém, silo). */
   storage?: Partial<Record<ResourceId, number>>;
   /** Multiplicador de impostos da cidade (ex.: monumentos). */
@@ -118,6 +134,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 6,
   },
   lumberyard: {
+    pollution: 1,
     category: "production",
     powerUse: 2,
     name: "Madeireira",
@@ -133,6 +150,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 12,
   },
   mine: {
+    pollution: 5,
     category: "production",
     powerUse: 3,
     name: "Mina",
@@ -148,6 +166,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 10,
   },
   sawmill: {
+    pollution: 3,
     category: "production",
     powerUse: 3,
     name: "Serraria",
@@ -163,6 +182,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 18,
   },
   smelter: {
+    pollution: 10,
     category: "production",
     powerUse: 6,
     name: "Fundição",
@@ -196,6 +216,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 44,
   },
   thermal_plant: {
+    pollution: 14,
     name: "Termelétrica",
     description: "Queima 4 madeiras por ciclo: 30 MW com madeira D, até 42 MW com madeira S.",
     buildable: true,
@@ -267,6 +288,187 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     water: { kind: "treatment", capacity: 40 },
     color: 0x5a8a9a,
     height: 14,
+  },
+  // ── Fase 7: serviços e lazer ──
+  police: {
+    name: "Delegacia",
+    description: "Reduz o crime num raio de 8 tiles e valoriza o bairro.",
+    buildable: true,
+    category: "services",
+    cost: 500,
+    materials: [{ resource: "planks", qty: 4 }, { resource: "metal", qty: 2 }],
+    upkeep: 6,
+    workers: 4,
+    powerUse: 2,
+    needsRoad: true,
+    service: { kind: "police", radius: 8, landValue: 6 },
+    color: 0x3a5a9a,
+    height: 16,
+  },
+  fire_station: {
+    name: "Bombeiros",
+    description: "Protege contra incêndios num raio de 8 tiles e barateia o seguro.",
+    buildable: true,
+    category: "services",
+    cost: 500,
+    materials: [{ resource: "planks", qty: 4 }, { resource: "metal", qty: 2 }],
+    upkeep: 6,
+    workers: 4,
+    powerUse: 2,
+    needsRoad: true,
+    service: { kind: "fire", radius: 8, landValue: 4 },
+    color: 0xb03a2a,
+    height: 16,
+  },
+  prison: {
+    name: "Prisão",
+    description: "Com crime alto, deixa todas as delegacias 30% mais eficientes. Requer 120 habitantes.",
+    buildable: true,
+    category: "services",
+    requires: { population: 120 },
+    cost: 1500,
+    materials: [{ resource: "metal", qty: 10 }, { resource: "planks", qty: 6 }],
+    upkeep: 12,
+    workers: 6,
+    powerUse: 3,
+    needsRoad: true,
+    service: { kind: "prison", landValue: -15, radius: 4 },
+    color: 0x6a6a6a,
+    height: 14,
+  },
+  hospital: {
+    name: "Hospital",
+    description: "Atende 150 moradores: a expectativa de vida sobe aos poucos.",
+    buildable: true,
+    category: "services",
+    cost: 600,
+    materials: [{ resource: "planks", qty: 6 }, { resource: "metal", qty: 4 }],
+    upkeep: 8,
+    workers: 6,
+    powerUse: 3,
+    needsRoad: true,
+    service: { kind: "hospital", capacity: 150, radius: 5, landValue: 5 },
+    color: 0xe8e8e8,
+    height: 22,
+  },
+  school: {
+    name: "Escola",
+    description: "Atende 120 moradores e eleva a educação (QE) até 90.",
+    buildable: true,
+    category: "services",
+    cost: 250,
+    materials: [{ resource: "planks", qty: 6 }],
+    upkeep: 4,
+    workers: 3,
+    powerUse: 1,
+    needsRoad: true,
+    service: { kind: "school", capacity: 120, radius: 5, landValue: 6 },
+    color: 0xd89a3a,
+    height: 14,
+  },
+  college: {
+    name: "Faculdade",
+    description: "Atende 300 moradores e leva o QE até 140 (precisa de escolas). Requer 120 habitantes.",
+    buildable: true,
+    category: "services",
+    requires: { population: 120 },
+    cost: 1000,
+    materials: [{ resource: "planks", qty: 10 }, { resource: "metal", qty: 6 }],
+    upkeep: 10,
+    workers: 6,
+    powerUse: 3,
+    needsRoad: true,
+    service: { kind: "college", capacity: 300, radius: 6, landValue: 10 },
+    color: 0x8a4a3a,
+    height: 22,
+  },
+  library: {
+    name: "Biblioteca",
+    description: "Impede que o QE dos adultos caia e valoriza o bairro.",
+    buildable: true,
+    category: "services",
+    cost: 500,
+    materials: [{ resource: "planks", qty: 8 }],
+    upkeep: 3,
+    workers: 2,
+    powerUse: 1,
+    needsRoad: true,
+    service: { kind: "library", radius: 5, landValue: 8 },
+    color: 0xc8b890,
+    height: 14,
+  },
+  museum: {
+    name: "Museu",
+    description: "Como a biblioteca, e ainda atrai visitantes. Disponível em 1905.",
+    buildable: true,
+    category: "services",
+    requires: { year: 1905 },
+    cost: 1000,
+    materials: [{ resource: "planks", qty: 6 }, { resource: "metal", qty: 6 }],
+    upkeep: 4,
+    workers: 2,
+    powerUse: 2,
+    needsRoad: true,
+    service: { kind: "museum", radius: 6, landValue: 12, demand: 0.05 },
+    color: 0xe0d8c8,
+    height: 20,
+  },
+  plaza: {
+    name: "Praça",
+    description: "Pequena área verde: valoriza o entorno e limpa um pouco o ar.",
+    buildable: true,
+    category: "leisure",
+    cost: 20,
+    upkeep: 0,
+    workers: 0,
+    needsRoad: false,
+    service: { kind: "leisure", radius: 2, landValue: 8, cleans: 4 },
+    color: 0x7ac060,
+    height: 0,
+  },
+  park: {
+    name: "Parque",
+    description: "Área verde grande: valoriza o dobro da praça e limpa mais o ar.",
+    buildable: true,
+    category: "leisure",
+    cost: 150,
+    upkeep: 1,
+    workers: 0,
+    needsRoad: false,
+    service: { kind: "leisure", radius: 4, landValue: 16, cleans: 10 },
+    color: 0x4a9a40,
+    height: 0,
+  },
+  zoo: {
+    name: "Zoológico",
+    description: "Grande atração: valoriza a região e aumenta a procura por moradia e comércio.",
+    buildable: true,
+    category: "leisure",
+    requires: { population: 80 },
+    cost: 1000,
+    materials: [{ resource: "planks", qty: 10 }, { resource: "metal", qty: 4 }],
+    upkeep: 6,
+    workers: 4,
+    needsRoad: true,
+    service: { kind: "leisure", radius: 5, landValue: 14, cleans: 6, demand: 0.08 },
+    color: 0x9ab04a,
+    height: 10,
+  },
+  stadium: {
+    name: "Estádio",
+    description: "Atração da cidade (e base para grandes eventos). Requer 150 habitantes.",
+    buildable: true,
+    category: "leisure",
+    requires: { population: 150 },
+    cost: 1500,
+    materials: [{ resource: "metal", qty: 12 }, { resource: "planks", qty: 10 }],
+    upkeep: 10,
+    workers: 6,
+    powerUse: 4,
+    needsRoad: true,
+    service: { kind: "leisure", radius: 5, landValue: 6, demand: 0.1 },
+    color: 0xb0b0c0,
+    height: 18,
   },
   warehouse: {
     name: "Armazém",

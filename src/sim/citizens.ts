@@ -12,12 +12,13 @@ import { computeWater } from "./water";
 import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
 import { computePower } from "./power";
 import { buildingStatus } from "./status";
+import { computeServices, wealthOf, type WealthClass } from "./services";
 import { ZONE, type BuildingType, type CityState } from "./types";
 import { rng } from "./world";
 
 export type Gender = "f" | "m";
 export type Mood = "feliz" | "ok" | "triste";
-export type JobCategory = "agro" | "madeira" | "mineracao" | "industria" | "comercio" | "energia" | "nenhum";
+export type JobCategory = "agro" | "madeira" | "mineracao" | "industria" | "comercio" | "energia" | "servicos" | "nenhum";
 
 export interface Look {
   skin: number; // 0..3
@@ -39,6 +40,8 @@ export interface CitizenView extends CitizenProfile {
   job: { title: string; category: JobCategory; place: string; x: number; y: number } | null;
   mood: Mood;
   score: number;
+  /** Classe pelo valor do solo da casa (Fase 7). */
+  wealth: WealthClass | null;
   /** Motivos do humor, com sinal (+ bom, − ruim). */
   reasons: { text: string; delta: number }[];
 }
@@ -109,6 +112,16 @@ const BUILDING_JOBS: Partial<Record<BuildingType, { title: { m: string; f: strin
   smelter: { title: g("Fundidor", "Fundidora"), category: "industria" },
   thermal_plant: { title: g("Operador de usina", "Operadora de usina"), category: "energia" },
   hydro_plant: { title: g("Técnico da hidrelétrica", "Técnica da hidrelétrica"), category: "energia" },
+  police: { title: g("Policial", "Policial"), category: "servicos" },
+  prison: { title: g("Agente penitenciário", "Agente penitenciária"), category: "servicos" },
+  fire_station: { title: g("Bombeiro", "Bombeira"), category: "servicos" },
+  hospital: { title: g("Médico", "Enfermeira"), category: "servicos" },
+  school: { title: g("Professor", "Professora"), category: "servicos" },
+  college: { title: g("Professor universitário", "Professora universitária"), category: "servicos" },
+  library: { title: g("Bibliotecário", "Bibliotecária"), category: "servicos" },
+  museum: { title: g("Curador", "Curadora"), category: "servicos" },
+  zoo: { title: g("Tratador", "Tratadora"), category: "servicos" },
+  stadium: { title: g("Funcionário do estádio", "Funcionária do estádio"), category: "servicos" },
 };
 
 const COMMERCE_TITLES = [g("Vendedor", "Vendedora"), g("Caixa", "Caixa"), g("Cozinheiro", "Cozinheira"), g("Gerente de loja", "Gerente de loja"), g("Barbeiro", "Cabeleireira"), g("Garçom", "Garçonete")];
@@ -162,6 +175,7 @@ export function citizensView(s: CityState): CitizenView[] {
   const status = buildingStatus(s, power.powered);
   const slots = jobSlots(s, status);
   const water = computeWater(s, undefined, status);
+  const svc = computeServices(s, status);
 
   const homes: number[] = [];
   for (let i = 0; i < s.zoneType.length; i++) {
@@ -184,6 +198,18 @@ export function citizensView(s: CityState): CitizenView[] {
     else if (power.powered[homeIdx]) reasons.push({ text: "Casa com energia", delta: 1 });
     else reasons.push({ text: "Casa sem energia", delta: -2 });
     if (homeIdx !== undefined && water.watered[homeIdx]) reasons.push({ text: "Água encanada", delta: 1 });
+    // Qualidade de vida do bairro (Fase 7).
+    if (homeIdx !== undefined) {
+      if (svc.crime[homeIdx] > 45) reasons.push({ text: "Bairro perigoso", delta: -2 });
+      else if (svc.police[homeIdx] > 0.3) reasons.push({ text: "Bairro seguro", delta: 1 });
+      if (svc.pollution[homeIdx] > 40) reasons.push({ text: "Ar poluído", delta: -2 });
+      if (svc.leisure[homeIdx] > 0) reasons.push({ text: "Parque perto de casa", delta: 1 });
+      if (svc.school[homeIdx] > 0 && svc.schoolServed >= 0.8) reasons.push({ text: "Escola no bairro", delta: 1 });
+    }
+    if (s.population >= 40) {
+      if (svc.healthServed >= 0.8) reasons.push({ text: "Atendimento médico", delta: 1 });
+      else if (svc.healthServed < 0.3) reasons.push({ text: "Sem hospital por perto", delta: -1 });
+    }
     reasons.push(fed ? { text: "Comida na mesa", delta: 1 } : { text: "Falta comida (nem dá para comprar)", delta: -3 });
     if (recentDisaster) reasons.push({ text: "Desastre recente", delta: -2 });
     if (harsh) reasons.push({ text: harsh, delta: -1 });
@@ -202,6 +228,7 @@ export function citizensView(s: CityState): CitizenView[] {
       job: slot ? { title: slot.title(p.gender, n), category: slot.category, place: slot.place, x: slot.x, y: slot.y } : null,
       mood: moodOf(score),
       score,
+      wealth: homeIdx === undefined ? null : wealthOf(svc.landValue[homeIdx]),
       reasons,
     };
   });

@@ -2,6 +2,7 @@ import { ZONES } from "./catalog";
 import { BASE_GROWTH_SLOTS, RANK_GROWTH_BONUS } from "./config";
 import { laborStats, type LaborStats } from "./status";
 import { demandModifiers } from "./finance";
+import { CRIME_HIGH, POLLUTION_HIGH, computeServices, serviceDemand, type ServiceFields } from "./services";
 import { ZONE_KINDS, type CityState, type Rank, type ZoneKind } from "./types";
 
 export type Demand = Record<ZoneKind, number>;
@@ -15,16 +16,23 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
  * - C: comércio acompanha a população (clientes).
  * - I: indústria exporta; é forte em cidades pequenas.
  */
-export function computeDemand(s: CityState, labor: LaborStats = laborStats(s), approval = 0): Demand {
+export function computeDemand(
+  s: CityState,
+  labor: LaborStats = laborStats(s),
+  approval = 0,
+  services: ServiceFields = computeServices(s),
+): Demand {
   const workers = s.population;
   const commerceTarget = workers * 0.35;
   const industryTarget = workers * 0.45 + 6;
   // Impostos, decretos e dificuldade (Fase 4).
   const mod = demandModifiers(s);
+  // Qualidade de vida e atrações (Fase 7).
+  const q = serviceDemand(s, services);
   return {
     // Cidade feliz atrai moradores; cidade triste espanta (aprovação em [−1, 1]).
-    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25 + mod.R)),
-    C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget) + mod.C)),
+    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25 + mod.R + q.R)),
+    C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget) + mod.C + q.C)),
     I: round2(clamp((industryTarget - labor.industrialJobs) / Math.max(8, industryTarget) + mod.I)),
   };
 }
@@ -65,11 +73,17 @@ export function developZones(
     approval?: number;
     /** 1 = lote com água (Fase 6). Lote denso sem água não passa do nível 2. */
     watered?: Uint8Array;
+    /** Campos de serviço (Fase 7): crime/poluição altos travam o lote; valor do solo dá a ordem. */
+    services?: ServiceFields;
     /** Paga os materiais de um nível novo; false = não há material nem dinheiro (o lote não cresce). */
     pay?: (kind: ZoneKind, dense: boolean) => boolean;
   },
 ): GrowthResult {
-  const demand = computeDemand(s, undefined, opts.approval ?? 0);
+  const services = opts.services ?? computeServices(s);
+  const demand = computeDemand(s, undefined, opts.approval ?? 0, services);
+  /** Lote travado pela qualidade de vida: crime alto (R, C) ou poluição alta (R). */
+  const blocked = (kind: ZoneKind, i: number) =>
+    (kind !== "I" && services.crime[i] > CRIME_HIGH + (kind === "C" ? 10 : 0)) || (kind === "R" && services.pollution[i] > POLLUTION_HIGH);
   const slots = BASE_GROWTH_SLOTS + RANK_GROWTH_BONUS[opts.rank];
   let grown = 0;
   let declined = 0;
@@ -92,9 +106,12 @@ export function developZones(
       const candidates: number[] = [];
       for (let i = 0; i < n; i++) {
         if (s.zoneType[i] !== code || s.zoneLevel[i] >= Math.min(maxLevel(s, i), dryCap(i))) continue;
-        if (opts.powered[i] && opts.access[i] >= 0) candidates.push(i);
+        if (opts.powered[i] && opts.access[i] >= 0 && !blocked(kind, i)) candidates.push(i);
       }
-      for (const i of shuffle(candidates, opts.rand).slice(0, Math.ceil(slots * d))) {
+      // Os lotes mais valorizados crescem primeiro (desempate aleatório; indústria não liga).
+      const ordered = shuffle(candidates, opts.rand);
+      if (kind !== "I") ordered.sort((a, b) => Math.floor(services.landValue[b] / 10) - Math.floor(services.landValue[a] / 10));
+      for (const i of ordered.slice(0, Math.ceil(slots * d))) {
         if (opts.pay && !opts.pay(kind, s.zoneDensity[i] === 1)) continue;
         s.zoneLevel[i]++;
         grown++;

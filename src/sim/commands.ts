@@ -1,7 +1,7 @@
 import { BUILDINGS, PIPE_COST, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
-import { BOND_VALUE, MAX_TAX, ORDINANCES, creditRating } from "./finance";
+import { BOND_VALUE, DEPARTMENTS, MAX_TAX, ORDINANCES, creditRating, type Department } from "./finance";
 import { PLANS, repairCost } from "./insurance";
 import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
@@ -68,7 +68,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     for (const v of Object.values(cmd.taxes ?? {})) if (!isInt(v) || v < 0 || v > MAX_TAX) return `Impostos de 0 a ${MAX_TAX}%`;
     if (cmd.taxes && !["R", "C", "I"].every((k) => k in cmd.taxes!)) return "Impostos incompletos";
     for (const v of Object.values(cmd.funding ?? {})) if (!isInt(v) || v < 0 || v > 100) return "Verba de 0 a 100%";
-    if (cmd.funding && !("transport" in cmd.funding && "energy" in cmd.funding)) return "Verbas incompletas";
+    if (cmd.funding && Object.keys(cmd.funding).some((k) => !DEPARTMENTS.includes(k as Department))) return "Departamento desconhecido";
     return null;
   }
 
@@ -182,7 +182,7 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     delete b.damaged;
   } else if (cmd.type === "budget") {
     if (cmd.taxes) next.taxes = { R: cmd.taxes.R, C: cmd.taxes.C, I: cmd.taxes.I };
-    if (cmd.funding) next.funding = { transport: cmd.funding.transport, energy: cmd.funding.energy };
+    if (cmd.funding) next.funding = { ...next.funding, ...cmd.funding };
   } else if (cmd.type === "ordinance") {
     if (cmd.active) next.ordinances = { ...next.ordinances, [cmd.id]: next.cyclesCompleted };
     else {

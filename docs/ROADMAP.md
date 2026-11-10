@@ -44,7 +44,7 @@ Toda mecânica importada passa por cinco filtros:
 | 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ✅ Concluída |
 | 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | ✅ Concluída |
 | 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ✅ Concluída (dessalinização na Fase 9) |
-| 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ Próxima |
+| 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ✅ Concluída (marina na Fase 9, hotéis/turismo na Fase 12) |
 | 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ⏳ |
 | 9 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ⏳ |
 | 10 | Eras, invenções e recompensas | Árvore tecnológica por ano, vida útil de usinas, marcos de população | ⏳ |
@@ -456,7 +456,7 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
 - **Sem água, a densidade fica limitada:** zonas densas não passam do nível 2.
 - **Ligação com o Rank:** a água tratada pode ter "pureza" e alimentar a saúde na Fase 7.
 
-## Fase 7 — Serviços e qualidade de vida
+## Fase 7 — Serviços e qualidade de vida ✅
 
 *Manual: City Services, Education, Health, Crime, Pollution, Land Value.*
 
@@ -474,6 +474,25 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
   O **estádio** e o **turismo** (hotéis e restaurantes como comércio especializado) servem às metas da Fase 12.
 - O valor do solo passa a definir a riqueza dos moradores e os impostos.
 - Overlays: crime, poluição, valor do solo e cobertura.
+
+**Implementado (`src/sim/services.ts`):**
+
+- 12 construções: delegacia, bombeiros, prisão (120 hab.), hospital, escola, faculdade (120 hab.),
+  biblioteca, museu (1905), praça, parque, zoológico (80 hab.) e estádio (150 hab.).
+- Poluição: usinas, mineração, serraria e fundição, indústria e estradas; praças e parques limpam.
+- Crime: densidade, desemprego e tamanho da cidade; delegacias reduzem em raio de 8 tiles, prisão
+  dá +30% com crime alto. Crime > 60 trava R e C; poluição > 55 trava R.
+- Valor do solo: centro, água perto, serviços e lazer valorizam; poluição e crime desvalorizam.
+  Os lotes mais valorizados crescem primeiro. Classe de renda (baixa/média/alta) muda o imposto
+  residencial (×0,8 / ×1 / ×1,25).
+- QE: escola leva até 90, faculdade até 140 (só para quem passou pela escola); sem escola o QE
+  cai 10% da diferença por estação, 2% com biblioteca ou museu.
+- Expectativa de vida: hospitais, poluição e QE definem o alvo; anda no máximo 1 ano por estação.
+- Verbas novas: polícia, bombeiros, saúde e educação (efeito 50% com verba zero).
+- Bombeiros: até 70% de chance de salvar cada lote/prédio no incêndio; prêmio do seguro até 25% menor.
+- Moradores: "Bairro seguro/perigoso", "Ar poluído", "Parque perto de casa", "Escola no bairro",
+  "Atendimento médico"; empregos de policial, bombeiro, médico, professor etc.
+- Jornal: notícias de crime, poluição, educação e expectativa de vida. Schema v9.
 
 ## Fase 8 — Transporte avançado
 

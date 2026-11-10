@@ -20,7 +20,7 @@ export type ZoneTool = `zone-${ZoneKind | "none"}-${"light" | "dense"}`;
 /** "pan" = ✋ Mover: arrastar com clique normal move a câmera. */
 export type Tool = BuildingType | "demolish" | "wire" | "pipe" | "pan" | ZoneTool | null;
 /** "water" = visão subterrânea (canos e abastecimento). */
-export type Overlay = "none" | "power" | "zones" | "water";
+export type Overlay = "none" | "power" | "zones" | "water" | "crime" | "pollution" | "landValue" | "coverage";
 
 export function parseZoneTool(tool: Tool): { zone: ZoneKind | "none"; dense: boolean } | null {
   if (!tool || !tool.startsWith("zone-")) return null;

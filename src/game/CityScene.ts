@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeWater, type CityState } from "@/sim";
+import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeServices, computeWater, type CityState } from "@/sim";
 import { isAreaTool, useGame } from "@/store/game";
 import { bus } from "./bus";
 
@@ -439,6 +439,41 @@ export class CityScene extends Phaser.Scene {
         o.fillStyle(z ? ZONES[ZONE_KINDS[z - 1]].color : 0x000000, z ? 0.6 : 0.35);
         this.diamond(o, sx, sy, 0.95);
       }
+    } else this.drawHeatmap(city, o, overlay);
+  }
+
+  /** Mapas de calor da Fase 7: crime, poluição, valor do solo e cobertura de serviços. */
+  private drawHeatmap(city: CityState, o: Phaser.GameObjects.Graphics, overlay: string) {
+    if (overlay !== "crime" && overlay !== "pollution" && overlay !== "landValue" && overlay !== "coverage") return;
+    const f = computeServices(city, buildingStatus(city, computePower(city).powered));
+    const lerp = (a: number, b: number, t: number) => {
+      const ch = (sh: number) => Math.round(((a >> sh) & 255) + (((b >> sh) & 255) - ((a >> sh) & 255)) * t);
+      return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+    };
+    for (let i = 0; i < city.zoneType.length; i++) {
+      const { sx, sy } = iso(i % city.width, Math.floor(i / city.width));
+      let color = 0;
+      let alpha = 0;
+      if (overlay === "crime" || overlay === "pollution") {
+        const v = (overlay === "crime" ? f.crime[i] : f.pollution[i]) / 100;
+        if (v < 0.03) continue;
+        color = overlay === "crime" ? lerp(0xf0d040, 0xd02020, v) : lerp(0xb0a070, 0x5a3a1a, v);
+        alpha = 0.25 + v * 0.5;
+      } else if (overlay === "landValue") {
+        const v = f.landValue[i] / 100;
+        color = lerp(0xa03a2a, 0x40d070, v);
+        alpha = 0.45;
+      } else {
+        // Cobertura: polícia (azul) e bombeiros (vermelho) somados.
+        const p = f.police[i];
+        const fi = f.fire[i];
+        if (p < 0.05 && fi < 0.05) continue;
+        color = p >= fi ? 0x3a6ad8 : 0xd84a3a;
+        if (p > 0.05 && fi > 0.05) color = 0xa050c8;
+        alpha = 0.2 + Math.max(p, fi) * 0.45;
+      }
+      o.fillStyle(color, alpha);
+      this.diamond(o, sx, sy, 0.95);
     }
   }
 
@@ -548,7 +583,7 @@ export class CityScene extends Phaser.Scene {
         o.fillStyle(z ? ZONES[ZONE_KINDS[z - 1]].color : 0x000000, z ? 0.6 : 0.35);
         this.diamond(o, sx, sy, 0.95);
       }
-    }
+    } else this.drawHeatmap(city, o, overlay);
     this.drawHover();
   }
 

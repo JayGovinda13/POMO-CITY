@@ -3,6 +3,7 @@
 
 import { BUILDINGS } from "./catalog";
 import { cityValue } from "./finance";
+import { computeServices } from "./services";
 import type { CityState } from "./types";
 
 export type InsurancePlan = "none" | "basico" | "completo";
@@ -32,7 +33,9 @@ export const BONUS_MAX = 2;
 export function premium(s: CityState): number {
   const p = s.insurance;
   if (p.plan === "none") return 0;
-  return Math.max(1, Math.ceil(cityValue(s) * PLANS[p.plan].rate * p.bonusMalus));
+  // Bombeiros cobrindo os lotes barateiam o prêmio em até 25% (Fase 7).
+  const fire = s.buildings.some((b) => b.type === "fire_station") ? computeServices(s).avg.fire : 0;
+  return Math.max(1, Math.ceil(cityValue(s) * PLANS[p.plan].rate * p.bonusMalus * (1 - 0.25 * fire)));
 }
 
 /** Ciclos de carência que ainda faltam (0 = coberto). */

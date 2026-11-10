@@ -68,7 +68,11 @@ export function parseCommands(raw: unknown): Command[] | null {
       const t = r.taxes as Record<string, unknown> | undefined;
       const f = r.funding as Record<string, unknown> | undefined;
       const taxes = t && [t.R, t.C, t.I].every(num) ? { R: t.R as number, C: t.C as number, I: t.I as number } : undefined;
-      const funding = f && [f.transport, f.energy].every(num) ? { transport: f.transport as number, energy: f.energy as number } : undefined;
+      const depts = ["transport", "energy", "police", "fire", "health", "education"] as const;
+      const funding: Partial<Record<(typeof depts)[number], number>> | undefined =
+        f && Object.keys(f).length > 0 && Object.keys(f).every((k) => (depts as readonly string[]).includes(k) && num(f[k]))
+          ? Object.fromEntries(Object.entries(f)) as Partial<Record<(typeof depts)[number], number>>
+          : undefined;
       if ((t && !taxes) || (f && !funding) || (!taxes && !funding)) return null;
       out.push({ type: "budget", taxes, funding });
       continue;

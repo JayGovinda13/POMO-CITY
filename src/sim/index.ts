@@ -20,3 +20,4 @@ export * from "./finance";
 export * from "./newspaper";
 export * from "./insurance";
 export * from "./water";
+export * from "./services";

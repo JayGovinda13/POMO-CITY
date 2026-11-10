@@ -1,5 +1,5 @@
 import { BIOMES } from "./catalog";
-import { CYCLES_PER_YEAR, DEFAULT_POLICIES, MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_INVENTORY, STARTING_MONEY } from "./config";
+import { CYCLES_PER_YEAR, DEFAULT_POLICIES, MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_INVENTORY, STARTING_MONEY, START_EQ, START_LIFE } from "./config";
 import { bfsDistances } from "./grid";
 import { CURRENT_SCHEMA_VERSION, type BiomeId, type Building, type CityState, type Terrain } from "./types";
 
@@ -97,7 +97,9 @@ export function createCity(seed: number, now: number, biome?: BiomeId, opts: { w
     inventory: { ...STARTING_INVENTORY },
     policies: structuredClone(DEFAULT_POLICIES),
     taxes: { R: 9, C: 9, I: 9 },
-    funding: { transport: 100, energy: 100 },
+    funding: { transport: 100, energy: 100, police: 100, fire: 100, health: 100, education: 100 },
+    eq: START_EQ,
+    lifeExpectancy: START_LIFE,
     bonds: [],
     nextBondId: 1,
     ordinances: {},

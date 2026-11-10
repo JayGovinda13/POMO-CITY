@@ -12,6 +12,7 @@ import { addTo, getQty } from "./inventory";
 import { BONUS_MAX, isCovered, payoutFor, repairCost, waitingLeft } from "./insurance";
 import { RANKS, ZONE, type CityState, type Inventory, type ResourceId } from "./types";
 import { rng } from "./world";
+import { computeServices, fireProtection } from "./services";
 
 export type DisasterSeverity = "light" | "normal";
 export type DisasterKind = "incendio" | "enchente" | "nevasca" | "tempestade" | "praga";
@@ -40,6 +41,8 @@ export interface DisasterReport {
   intensity: number;
   /** Lotes que perderam nível. */
   lotsDamaged: number;
+  /** Lotes e construções salvos pelos bombeiros (Fase 7). */
+  savedByFirefighters: number;
   /** Construções danificadas (param até o reparo). */
   buildingsDamaged: { type: keyof typeof BUILDINGS; x: number; y: number; repair: number }[];
   resourcesLost: Inventory;
@@ -99,6 +102,9 @@ export function applyDisaster(
   const cfg = SEVERITY[severity];
   const intensity = disasterIntensity(s, severity);
   const scaled = (v: number) => Math.round(v * intensity);
+  // Bombeiros (Fase 7): no incêndio, lotes e prédios cobertos têm chance de escapar.
+  const fireField = kind === "incendio" && s.buildings.some((b) => b.type === "fire_station") ? computeServices(s).fire : null;
+  const saved = (i: number) => (fireField ? rand() < fireProtection(fireField[i]) : false);
 
   // Lotes desenvolvidos perdem níveis (enchente prefere lotes à beira d'água).
   const developed: number[] = [];
@@ -120,7 +126,12 @@ export function applyDisaster(
   if (kind === "enchente") developed.sort((a, b) => Number(nearWater(b)) - Number(nearWater(a)));
   let lotsDamaged = 0;
   let lotLevelsLost = 0;
+  let firefighters = 0;
   for (const i of developed.slice(0, scaled(cfg.lots))) {
+    if (saved(i)) {
+      firefighters++;
+      continue;
+    }
     const lost = Math.min(next.zoneLevel[i], cfg.levels);
     next.zoneLevel[i] -= lost;
     lotLevelsLost += lost;
@@ -135,6 +146,10 @@ export function applyDisaster(
   }
   const buildingsDamaged: DisasterReport["buildingsDamaged"] = [];
   for (const b of candidates.slice(0, scaled(cfg.buildings))) {
+    if (saved(b.y * next.width + b.x)) {
+      firefighters++;
+      continue;
+    }
     b.damaged = true;
     buildingsDamaged.push({ type: b.type, x: b.x, y: b.y, repair: repairCost(b.type) });
   }
@@ -187,6 +202,7 @@ export function applyDisaster(
       cause,
       intensity,
       lotsDamaged,
+      savedByFirefighters: firefighters,
       buildingsDamaged,
       resourcesLost,
       moneyLost,

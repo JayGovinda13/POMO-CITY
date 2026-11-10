@@ -554,6 +554,162 @@ building("water_treatment", 34, (c, oy) => {
   }
 })
 
+// ───────────────────────────── serviços (Fase 7) ─────────────────────────────
+
+/** Placa/emblema colorido na face direita. */
+function badge(c, b, col, t = 0.5, dy = 0) {
+  const x = Math.round(b.cx + (b.R[0] - b.cx) * t)
+  const y = Math.round(b.B[1] - (x - b.cx) / 2) - Math.round(b.H / 2) - 1 + dy
+  c.rect(x - 1, y - 1, 3, 3, col)
+}
+
+building("police", 38, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 13, H: 12, top: "J", left: "K", right: "u" })
+  windows(c, b, { floors: 2, fh: 5, col: "d", lit: "l", every: 3 })
+  parapet(c, b, "H")
+  door(c, b, 0.5, "Y")
+  // Giroflex no telhado e viatura.
+  c.rect(b.cx - 1, b.cy - b.H - 3, 3, 2, "N")
+  c.px(b.cx + 1, b.cy - b.H - 3, "c")
+  c.rect(b.R[0] - 6, b.R[1] + 2, 6, 3, "Y")
+  c.rect(b.R[0] - 5, b.R[1] + 1, 3, 1, "d")
+})
+building("fire_station", 38, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 13, H: 12, top: "x", left: "N", right: "R" })
+  // Portões da garagem (face direita) e torre de treino.
+  for (let k = 0; k < 2; k++) {
+    const x = b.cx + 2 + k * 5
+    const y = Math.round(b.B[1] - (x - b.cx) / 2)
+    c.rect(x, y - 7, 4, 7, "Y")
+    c.hline(x, y - 4, 4, "J")
+  }
+  door(c, b, 0.4, "D")
+  const t = block(c, { oy, hw: 4, H: 22, top: "W", left: "N", right: "R", dx: -7, dy: -1 })
+  c.rect(t.cx - 1, t.cy - t.H + 3, 2, 2, "d")
+})
+building("prison", 36, (c, oy) => {
+  c.poly(ground(oy, 0), "i")
+  // Muro em volta.
+  c.poly([2, oy + 8, 16, oy + 1, 30, oy + 8, 16, oy + 15], "I")
+  c.poly([4, oy + 8, 16, oy + 2, 28, oy + 8, 16, oy + 14], "i")
+  const b = block(c, { oy, hw: 9, H: 12, top: "J", left: "z", right: "Z" })
+  // Grades.
+  for (let x = b.L[0] + 2; x < b.cx; x += 2) c.vline(x, Math.round(b.L[1] + (x - b.L[0]) / 2) - 9, 5, "k")
+  for (let x = b.cx + 2; x < b.R[0]; x += 2) c.vline(x, Math.round(b.B[1] - (x - b.cx) / 2) - 9, 5, "k")
+  c.vline(4, oy + 2, 6, "z")
+  c.rect(3, oy + 1, 3, 2, "l")
+})
+building("hospital", 46, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 14, H: 20, top: "J", left: "H", right: "J" })
+  windows(c, b, { floors: 3, fh: 6, col: "q", lit: "c", every: 4 })
+  parapet(c, b, "Y")
+  door(c, b, 0.5, "Q")
+  // Cruz vermelha no telhado.
+  const ty = b.cy - b.H
+  c.rect(b.cx - 1, ty - 3, 3, 7, "N")
+  c.rect(b.cx - 3, ty - 1, 7, 3, "N")
+})
+building("school", 34, (c, oy) => {
+  c.poly(ground(oy, 0), "g")
+  const b = block(c, { oy, hw: 13, H: 9, left: "L", right: "o" })
+  windows(c, b, { floors: 1, fh: 8, col: "d", lit: "q", step: 3, every: 2, h: 3 })
+  door(c, b, 0.5)
+  hipRoof(c, b, 6, "r", "R")
+  // Mastro com bandeira.
+  c.vline(28, oy - 6, 14, "J")
+  c.rect(29, oy - 6, 3, 2, "E")
+})
+building("college", 48, (c, oy) => {
+  c.poly(ground(oy, 0), "G")
+  const b = block(c, { oy, hw: 14, H: 16, top: "x", left: "o", right: "O" })
+  windows(c, b, { floors: 2, fh: 7, col: "d", lit: "l", every: 3, h: 3 })
+  parapet(c, b, "W")
+  // Torre do relógio.
+  const t = block(c, { oy, hw: 4, H: 30, top: "x", left: "o", right: "O", dy: -1 })
+  c.circ(t.cx + 2, t.cy - t.H + 6, 1, "Y")
+  hipRoof(c, t, 6, "u", "d")
+})
+building("library", 34, (c, oy) => {
+  c.poly(ground(oy, 2), "p")
+  const b = block(c, { oy, hw: 13, H: 10, top: "W", left: "w", right: "W" })
+  // Colunas na fachada esquerda.
+  for (let x = b.L[0] + 2; x < b.cx - 1; x += 3) {
+    const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
+    c.rect(x, y - 9, 1, 8, "Y")
+  }
+  windows(c, b, { floors: 1, fh: 8, col: "D", lit: "L", every: 2 })
+  hipRoof(c, b, 4, "K", "u")
+})
+building("museum", 42, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 14, H: 12, top: "Y", left: "Y", right: "H" })
+  for (let x = b.L[0] + 2; x < b.cx - 1; x += 3) {
+    const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
+    c.rect(x, y - 11, 1, 10, "J")
+  }
+  badge(c, b, "L")
+  // Frontão triangular.
+  c.poly([b.L[0] - 1, b.L[1] - b.H, b.cx, b.cy - b.H - 10, b.B[0], b.B[1] - b.H], "H")
+  c.poly([b.B[0], b.B[1] - b.H, b.cx, b.cy - b.H - 10, b.R[0] + 1, b.R[1] - b.H], "J")
+})
+
+// ───────────────────────────── lazer (Fase 7) ─────────────────────────────
+
+building("plaza", 30, (c, oy) => {
+  c.poly(ground(oy, 0), "h")
+  c.poly(ground(oy, 6), "e")
+  // Chafariz no centro e bancos.
+  c.ellipse(16, oy + 8, 4, 2, "I")
+  c.ellipse(16, oy + 7, 3, 1, "c")
+  c.vline(16, oy + 3, 4, "c")
+  c.rect(6, oy + 8, 3, 1, "D")
+  c.rect(23, oy + 8, 3, 1, "D")
+  c.stamp("_tree_round", 2, oy - 8)
+})
+building("park", 34, (c, oy) => {
+  c.poly(ground(oy, 0), "h")
+  // Caminho de terra cruzando o parque e lago.
+  c.line(4, oy + 8, 28, oy + 8, "e", 2)
+  c.ellipse(21, oy + 11, 4, 2, "b")
+  c.ellipse(21, oy + 10, 3, 1, "c")
+  c.stamp("_tree_round", 5, oy - 10)
+  c.stamp("_tree_pine", 15, oy - 14)
+  c.stamp("_tree_round", 9, oy - 4)
+})
+building("zoo", 36, (c, oy) => {
+  c.poly(ground(oy, 0), "E")
+  // Cercado, lago, tenda e uma girafa.
+  c.line(2, oy + 8, 16, oy + 1, "D")
+  c.line(16, oy + 1, 30, oy + 8, "D")
+  c.ellipse(10, oy + 10, 4, 2, "b")
+  c.stamp("_tree_round", 18, oy - 6)
+  c.rect(23, oy - 6, 2, 12, "C")
+  c.rect(22, oy - 8, 4, 2, "C")
+  c.px(24, oy - 3, "D")
+  c.px(23, oy + 1, "D")
+  c.rect(20, oy + 3, 7, 3, "C")
+  c.poly([4, oy + 6, 8, oy - 2, 12, oy + 6], "N")
+  c.vline(8, oy - 4, 2, "J")
+})
+building("stadium", 40, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  // Arquibancada oval com gramado no centro.
+  c.ellipse(16, oy + 6, 15, 8, "J")
+  c.ellipse(16, oy + 8, 15, 7, "I")
+  c.ellipse(16, oy + 5, 12, 5, "i")
+  c.ellipse(16, oy + 5, 9, 3, "g")
+  c.line(10, oy + 5, 22, oy + 5, "Y")
+  c.ellipse(16, oy + 5, 1, 1, "Y")
+  // Torres de iluminação.
+  for (const x of [3, 28]) {
+    c.vline(x, oy - 10, 14, "z")
+    c.rect(x - 1, oy - 12, 3, 2, "l")
+  }
+})
+
 // Poste de transmissão.
 sprite("power_pole", { w: 8, h: 16, outline: "k" }, (c) => {
   c.vline(3, 2, 14, "D")
@@ -576,7 +732,7 @@ pal({
 
 const SKINS = [["1", "2"], ["3", "4"], ["5", "6"], ["7", "8"]]
 const HAIR = ["9", "D", "C", "J"]
-const SHIRTS = { agro: "E", madeira: "P", mineracao: "M", industria: "L", comercio: "Q", energia: "y", nenhum: "I" }
+const SHIRTS = { agro: "E", madeira: "P", mineracao: "M", industria: "L", comercio: "Q", energia: "y", servicos: "K", nenhum: "I" }
 
 // Elipse do rosto (para recortar cabelos volumosos).
 const inFace = (x, y) => ((x - 8) / 4.5) ** 2 + ((y - 7.5) / 4.5) ** 2 <= 1
@@ -637,4 +793,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "power_pole", "pt_*"], { pad: 1 })

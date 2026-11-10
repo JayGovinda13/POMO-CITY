@@ -45,6 +45,13 @@ function quoteFor(c: CitizenView, r: () => number): string {
     "Festival da cidade": ["O festival foi o melhor dos últimos anos!", "A cidade ganhou vida com o festival."],
     "Reprova a jogatina": ["Esses jogos de azar não fazem bem à cidade.", "Não gosto nada desses cassinos."],
     "Prêmio de produtividade": ["O bônus de produtividade veio em boa hora.", "Trabalhar focado compensa: veio o prêmio!"],
+    "Bairro perigoso": ["Não saio mais à noite. Precisamos de policiamento!", "Assaltaram a padaria de novo. Cadê a delegacia?"],
+    "Bairro seguro": ["Com a delegacia aqui perto, as crianças brincam na rua.", "Durmo tranquilo: o bairro está seguro."],
+    "Ar poluído": ["Esse ar está me fazendo tossir. Menos fumaça, por favor!", "A fumaça das fábricas chega até a minha janela."],
+    "Parque perto de casa": ["Corro no parque toda manhã. Que maravilha!", "O parque é o lugar preferido da família."],
+    "Escola no bairro": ["Meus filhos estudam pertinho de casa.", "A escola nova é motivo de orgulho no bairro."],
+    "Atendimento médico": ["Fui bem atendido no hospital. Recomendo!", "Ter hospital por perto dá segurança."],
+    "Sem hospital por perto": ["Pra ir ao médico preciso sair da cidade!", "A cidade cresceu e o hospital não veio."],
     Otimista: ["Tenho fé que esta cidade vai longe!", "Cada estação a cidade fica melhor."],
     "Rabugento(a)": ["Hunf. Na minha época tudo era mais simples.", "Reclamo, mas não saio daqui."],
   };
@@ -163,6 +170,22 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
       body: "Sem dinheiro em caixa para o prêmio, a cidade ficou sem seguro. Recontratar exige nova carência.",
       tone: "bad",
     });
+  }
+
+  // Qualidade de vida (Fase 7).
+  const sv = report.services;
+  if (sv && state.population > 0) {
+    if (sv.crime > 45) {
+      stories.push({ title: "Onda de crimes preocupa moradores", body: `Índice de crime em ${Math.round(sv.crime)}. Delegacias reduzem o crime ao redor; uma prisão reforça a polícia.`, tone: "bad" });
+    } else if (sv.pollution > 40) {
+      stories.push({ title: "Fumaça encobre bairros", body: `Poluição média de ${Math.round(sv.pollution)}. Parques e praças limpam o ar; indústria longe das casas também ajuda.`, tone: "bad" });
+    } else if (state.cyclesCompleted % 4 === 2) {
+      stories.push({
+        title: `Educação em ${Math.round(sv.eq)} pontos; vida média de ${Math.round(sv.lifeExpectancy)} anos`,
+        body: "Escolas levam o QE até 90 e faculdades até 140. Hospitais aumentam a expectativa de vida aos poucos.",
+        tone: sv.eq >= 90 ? "good" : "neutral",
+      });
+    }
   }
 
   const active = ORDINANCE_IDS.filter((id) => isActive(state, id));
