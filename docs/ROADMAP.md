@@ -25,8 +25,11 @@ Toda mecânica importada passa por cinco filtros:
    ou **outra parte do mundo**. Isso define o clima: temperatura média, época de chuvas e de
    seca, e as estações. O mapa é sempre fictício (Fase 2).
 4. **Ausência nunca é punida; ciclo quebrado, sim.** Nada decai em tempo real: ficar dias sem
-   jogar não custa nada. Já **abandonar um ciclo que começou** pode causar um desastre na
-   cidade (Fase 5). O seguro e os serviços públicos amortecem esses desastres.
+   jogar não custa nada. O que conta é **como a sessão termina**:
+   - sair pelo **menu** (só com o foco encerrado) guarda a sequência e não causa nada;
+   - **abandonar o foco** ou **fechar o jogo durante o foco** causa um desastre;
+   - **fechar o jogo sem o menu depois de concluir um foco** causa um desastre leve.
+   O seguro (Fase 5) e os serviços públicos amortecem esses desastres.
 5. **O servidor é a autoridade.** Toda regra nova vive em `src/sim` (TS puro e
    determinístico) e é revalidada pelo servidor. Aleatoriedade usa PRNG com seed.
 
@@ -36,10 +39,10 @@ Toda mecânica importada passa por cinco filtros:
 |------|------|-------------|--------|
 | 0 | Preparação técnica | Fundação para as demais | ✅ Concluída |
 | 1 | Zoneamento e energia | Zonas R/C/I, crescimento orgânico, demanda, usinas, linhas, apagões | ✅ Concluída |
-| 2 | Clima e estações | Escolha da região (só o clima), hemisfério, estações, chuvas e secas, bioma | ⏳ Próxima |
-| 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ⏳ |
+| 2 | Clima e estações | Escolha da região (só o clima), hemisfério, estações, chuvas e secas, bioma; menu e sessão | ✅ Concluída |
+| 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ⏳ Próxima |
 | 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ⏳ |
-| 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | ⏳ |
+| 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | 🟡 Desastres entregues; falta o seguro |
 | 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ |
 | 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ |
 | 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ⏳ |
@@ -137,7 +140,7 @@ cidade **cresce sozinha** quando há demanda, estrada e energia.
 
 ---
 
-## Fase 2 — Clima e estações
+## Fase 2 — Clima e estações ✅
 
 *Manual: Climate, Water (variação sazonal), Power (solar/eólica dependem do tempo).*
 
@@ -202,6 +205,20 @@ Objetivo: a cidade vive o **clima** da região escolhida pelo jogador (temperatu
 Jogadores em hemisférios opostos têm safras em épocas opostas. Isso cria **comércio sazonal**
 natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 13.
 
+### Entregue
+
+| Entrega | Onde |
+|---------|------|
+| **Tabela de 56 regiões** em 6 continentes, com normais por trimestre (°C, chuva, sol, vento), busca por nome ou cidade próxima e região mais próxima por coordenada | `src/sim/climate.ts` |
+| **Fundação:** "Minha região" (localização do navegador, usada só no aparelho, ou cidade digitada) e "Outra parte do mundo" (lista por continente com prévia do clima). O servidor recebe só o id da região. | `src/components/RegionPicker.tsx`, `/api/city/region` |
+| **Cidade nova:** bioma e quantidade de água vêm do clima; o calendário começa na estação real. **Cidade antiga:** mantém mapa, bioma e calendário. | `src/sim/founding.ts` |
+| **Estações** pelo hemisfério; perto do Equador valem "estação chuvosa", "estação seca" e "transição" | `seasonName` |
+| **Tempo de cada estação** sorteado com seed em torno da normal (seca severa, chuvas acima da média, onda de calor, frente fria). A previsão do próximo ciclo na HUD é exata. | `weatherAt` |
+| **Efeitos:** colheita (temperatura e chuva), eólica (vento), hidrelétrica (chuva) e consumo de casas e comércio (aquecimento ou refrigeração) | `climateEffects`, `power.ts`, `cycle.ts` |
+| **Biomas novos:** deserto e tundra | `catalog.ts` |
+| **Menu e sessão** (pedido junto com esta fase): tela inicial com Continuar e Novo jogo; menu no jogo com Sair (guardando a sequência) e Novo jogo, os dois só com o foco encerrado | `TitleScreen`, `GameMenu`, `/api/session/*`, `/api/game/new` |
+| **Desastres por saída indevida** (antecipados da Fase 5) | ver Fase 5 |
+
 **Critérios de aceite:**
 - fundar a cidade escolhendo a própria região ou outra;
 - estações nomeadas conforme o hemisfério e o tipo de clima;
@@ -242,7 +259,7 @@ pode ser vendido ou estocado.
 - **Preço base** por recurso, que varia com a estação (comida mais cara no inverno e na seca).
 - **Importar custa mais que exportar** (frete e intermediário), por exemplo +25% na compra e
   −20% na venda. Por isso produzir localmente é a forma de baratear a cidade.
-- **O mercado externo só negocia até o Rank B.** Recursos A e S precisam ser produzidos ou
+- **O mercado externo só negocia até o Rank B** (confirmado). Recursos A e S precisam ser produzidos ou
   comprados de outros jogadores (Fase 13), o que preserva o valor do foco de alta qualidade.
 
 ### Valor e rendimento por Rank
@@ -254,7 +271,7 @@ pode ser vendido ou estocado.
 
 - **"Rende o equivalente":** 1 unidade de comida A alimenta como 1,3 unidade de comida D,
   e 1 tábua A vale 1,3 tábua D numa obra. Em suma, foco de qualidade rende mais por unidade.
-- \*O valor do Rank S não foi definido. A sugestão é 140%, seguindo a progressão de +10%.
+- \*Rank S = 140%, confirmado (progressão de +10%).
 
 ### Excedente: vender ou estocar
 
@@ -268,9 +285,9 @@ pode ser vendido ou estocado.
 
 ### Ajustes no que já existe
 
-- O **desperdício industrial** por Rank (D 40% … S 0%) e a **eficiência da termelétrica** por
-  Rank precisam ser harmonizados com o rendimento acima, para o Rank não contar duas vezes.
-  Sugestão: manter o desperdício só no refino e usar o rendimento no consumo e nas obras.
+- **Confirmado:** o Rank não conta duas vezes. O desperdício industrial por Rank fica só no
+  refino, e o rendimento acima vale no consumo e nas obras. A eficiência da termelétrica por
+  Rank passa a seguir o mesmo rendimento.
 
 **Critérios de aceite:**
 - cidade jogável só com dinheiro (importação automática);
@@ -307,11 +324,28 @@ pode ser vendido ou estocado.
 Objetivo: dar peso ao compromisso com o ciclo. **Abandonar um ciclo que começou pode causar um
 desastre**, e o jogador pode se proteger com um **seguro** contratado com antecedência.
 
-### Desastres por ciclo quebrado
+### Já entregue (antecipado na Fase 2)
 
-- **Só o abandono dispara desastre.** Ficar sem jogar nunca dispara nada (princípio 4).
-- **A chance cresce com quebras seguidas.** Por exemplo, 1ª quebra 30%, 2ª seguida 50%,
-  3ª 70%; o contador zera após um ciclo concluído. O sorteio usa seed e é feito no servidor.
+- **Saída pelo menu** (só com o foco encerrado): sincroniza as obras e **guarda a sequência**, que
+  não decai até o próximo ciclo.
+- **Fechar o jogo durante o foco:** o navegador avisa o servidor ao fechar a página. Na volta,
+  o ciclo é **quebrado** (a sequência cai) e acontece um **desastre**.
+- **Fechar sem o menu depois de concluir um foco:** **desastre leve** na volta.
+- **Só abrir e fechar**, sem concluir foco, não causa nada.
+- **Recarregar a página** não conta: há 2 minutos de tolerância (`LEAVE_GRACE_SECONDS`).
+- **Abandonar o foco pelo botão** também causa um desastre.
+- **Tipo de desastre** conforme a estação (incêndio na seca, enchente na chuva, nevasca no frio,
+  tempestade ou praga). O desastre leve atinge 2 lotes, 10% de um estoque e até $100; o normal
+  atinge 6 lotes, 30% de um estoque e até $500.
+- **Limitação conhecida:** se o navegador for encerrado à força (sem o aviso de fechamento), a
+  saída não é detectada e nada acontece. É uma falha a favor do jogador.
+
+### Desastres por ciclo quebrado — próximos passos
+
+- **Só o abandono e o fechamento indevido disparam desastre.** Ficar sem jogar nunca dispara
+  nada (princípio 4).
+- **A gravidade cresce com quebras seguidas** (hoje toda quebra causa um desastre de mesma
+  intensidade); o contador zera após um ciclo concluído. O sorteio usa seed e é feito no servidor.
 - **O tipo de desastre depende da estação e do clima** (Fase 2):
   - incêndio na seca;
   - enchente na estação chuvosa;
@@ -330,8 +364,8 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
 - **Opcional.** A cidade pode contratar ou não.
 - **Prêmio por estação** (ciclo), proporcional ao valor da cidade (infraestrutura e estoque)
   e ao risco: histórico de quebras e cobertura de bombeiros.
-- **Carência:** a cobertura só começa depois de **N ciclos concluídos** desde a contratação
-  (sugestão: 4 ciclos, ou seja, 1 ano). Isso impede contratar logo depois de prever uma
+- **Carência:** a cobertura só começa depois de **4 ciclos concluídos** (1 ano) desde a
+  contratação (confirmado). Isso impede contratar logo depois de prever uma
   quebra. Cancelar e recontratar reinicia a carência.
 - **Planos:**
   - **básico:** cobre 50% dos danos, com franquia;
@@ -495,7 +529,7 @@ eventos e metas pode ser criada antes, com metas que usam só o que já existe.
 
 Ao iniciar uma fase, inclua no pedido:
 
-1. A fase (por exemplo, "Fase 2 — Clima e estações").
+1. A fase (por exemplo, "Fase 3 — Economia de recursos").
 2. Ajustes de escopo ou pareceres sobre as fases anteriores.
 3. As prioridades: o que é obrigatório e o que pode ficar para depois.
 

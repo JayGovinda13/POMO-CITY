@@ -5,7 +5,7 @@ export const RANKS = ["D", "C", "B", "A", "S"] as const;
 export type Rank = (typeof RANKS)[number];
 
 export type ResourceId = "food" | "wood" | "ore" | "planks" | "metal";
-export type BiomeId = "plains" | "forest" | "mountains";
+export type BiomeId = "plains" | "forest" | "mountains" | "desert" | "tundra";
 
 export type BuildingType =
   | "road"
@@ -42,7 +42,7 @@ export interface Building {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -51,6 +51,13 @@ export interface CityState {
   version: number;
   seed: number;
   biome: BiomeId;
+  /** Região climática escolhida na fundação (id da tabela em climate.ts); null = ainda não escolhida. */
+  regionId: string | null;
+  /**
+   * Trimestre real em que a cidade foi fundada (0..3). O calendário da cidade começa
+   * nessa estação: índice do calendário = ciclos concluídos + calendarOffset.
+   */
+  calendarOffset: number;
   width: number;
   height: number;
   terrain: Terrain[];
@@ -72,6 +79,10 @@ export interface CityState {
   inventory: Inventory;
   /** Ciclos de foco consecutivos (com decaimento, nunca zera de uma vez). */
   streak: number;
+  /** true depois de sair pelo menu: a sequência fica guardada (sem decair) até o próximo ciclo. */
+  streakFrozen: boolean;
+  /** Quantos desastres a cidade já sofreu (varia o sorteio do próximo). */
+  disasterCount: number;
   cyclesCompleted: number;
   /** Timestamp (ms) da última conclusão de ciclo. */
   lastCycleAt: number | null;
@@ -112,6 +123,29 @@ export interface CycleReport {
   starving: boolean;
   netMoney: number;
   power: { capacity: number; demand: number; brownout: boolean };
+  /** Clima da estação vivida (null se a cidade ainda não escolheu a região). */
+  weather: WeatherSummary | null;
   zones: { grown: number; declined: number };
   jobs: { total: number; filled: number; unemployed: number };
+}
+
+export interface WeatherSummary {
+  season: string;
+  label: string;
+  temp: number;
+  rain: number;
+  wind: number;
+  effects: ClimateEffects;
+}
+
+/** Multiplicadores do clima sobre a simulação (1 = neutro). */
+export interface ClimateEffects {
+  /** Produção das fazendas. */
+  farm: number;
+  /** Geração eólica. */
+  wind: number;
+  /** Geração hidrelétrica. */
+  hydro: number;
+  /** Consumo de energia de lotes R/C (aquecimento ou refrigeração). */
+  demand: number;
 }

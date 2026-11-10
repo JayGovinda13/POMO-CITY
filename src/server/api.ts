@@ -18,6 +18,7 @@ export function snapshot(rec: PlayerRecord, extra: Record<string, unknown> = {})
   return NextResponse.json({
     state: rec.state,
     activeCycle: rec.activeCycle,
+    presence: rec.presence?.status ?? "exited",
     serverNow: Date.now(),
     config: {
       focusSeconds: focusMs() / 1000,

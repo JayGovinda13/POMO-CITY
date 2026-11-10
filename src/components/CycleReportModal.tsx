@@ -74,6 +74,12 @@ export function CycleReportModal() {
                   {report.jobs.unemployed > 0 && <span className="text-amber-300"> · {report.jobs.unemployed} sem emprego</span>}
                 </p>
               )}
+              {report.weather && (
+                <p>
+                  🌦 {report.weather.season}: {report.weather.label} · {report.weather.temp}°C · {report.weather.rain} mm ·
+                  lavoura {Math.round(report.weather.effects.farm * 100)}%
+                </p>
+              )}
               {report.power && (
                 <p className={report.power.brownout ? "text-red-300" : ""}>
                   ⚡ Consumo {report.power.demand} MW / capacidade {report.power.capacity} MW

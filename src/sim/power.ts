@@ -1,7 +1,8 @@
 import { BUILDINGS, FUEL_EFFICIENCY, ZONES } from "./catalog";
 import { bfsDistances, components } from "./grid";
 import { averageRank, getQty } from "./inventory";
-import { RANKS, ZONE_KINDS, type Building, type CityState, type Rank } from "./types";
+import { effectsOf, weatherAt } from "./climate";
+import { RANKS, ZONE, ZONE_KINDS, type Building, type CityState, type ClimateEffects, type Rank } from "./types";
 import { buildingStatus } from "./status";
 
 export interface PowerResult {
@@ -21,7 +22,13 @@ export interface PowerResult {
 }
 
 /** Consumo do tile em MW (construção operando ou lote desenvolvido). */
-export function tileDemand(s: CityState, i: number, buildingAtTile: Map<number, Building>, connected: (b: Building) => boolean) {
+export function tileDemand(
+  s: CityState,
+  i: number,
+  buildingAtTile: Map<number, Building>,
+  connected: (b: Building) => boolean,
+  effects: ClimateEffects = effectsOf(null),
+) {
   const b = buildingAtTile.get(i);
   if (b) {
     const use = BUILDINGS[b.type].powerUse ?? 0;
@@ -29,7 +36,9 @@ export function tileDemand(s: CityState, i: number, buildingAtTile: Map<number, 
   }
   const z = s.zoneType[i];
   if (z === 0 || s.zoneLevel[i] === 0) return 0;
-  return ZONES[ZONE_KINDS[z - 1]].powerPerLevel * s.zoneLevel[i];
+  const base = ZONES[ZONE_KINDS[z - 1]].powerPerLevel * s.zoneLevel[i];
+  // Aquecimento/refrigeração pesam em casas e comércio; a indústria consome o mesmo o ano todo.
+  return z === ZONE.I ? base : Math.round(base * effects.demand * 100) / 100;
 }
 
 /** Rank médio do combustível que seria queimado agora (maiores ranks primeiro), sem consumi-lo. */
@@ -50,7 +59,11 @@ export function bestFuelRank(s: CityState, resource: Parameters<typeof getQty>[1
  * Capacidade de cada usina. Por padrão estima a termelétrica com o combustível em estoque;
  * o ciclo passa `fuelRanks` com o Rank do combustível realmente queimado.
  */
-export function plantCapacities(s: CityState, fuelRanks?: Map<number, Rank | null>): Map<number, number> {
+export function plantCapacities(
+  s: CityState,
+  fuelRanks?: Map<number, Rank | null>,
+  effects: ClimateEffects = effectsOf(weatherAt(s)),
+): Map<number, number> {
   const status = buildingStatus(s);
   const out = new Map<number, number>();
   for (const b of s.buildings) {
@@ -62,6 +75,7 @@ export function plantCapacities(s: CityState, fuelRanks?: Map<number, Rank | nul
       const rank = fuelRanks ? (fuelRanks.get(b.id) ?? null) : bestFuelRank(s, gen.fuel.resource, gen.fuel.qty);
       cap = rank ? cap * FUEL_EFFICIENCY[rank] : 0;
     }
+    if (gen.climate) cap *= effects[gen.climate];
     out.set(b.id, Math.round(cap * 10) / 10);
   }
   return out;
@@ -72,7 +86,12 @@ export function plantCapacities(s: CityState, fuelRanks?: Map<number, Rank | nul
  * Em cada componente, os consumidores são atendidos em ordem de distância às usinas;
  * quando a capacidade acaba, os mais distantes ficam sem luz (apagão).
  */
-export function computePower(s: CityState, capacities = plantCapacities(s)): PowerResult {
+export function computePower(
+  s: CityState,
+  capacities?: Map<number, number>,
+  effects: ClimateEffects = effectsOf(weatherAt(s)),
+): PowerResult {
+  capacities ??= plantCapacities(s, undefined, effects);
   const n = s.width * s.height;
   const buildingAtTile = new Map<number, Building>();
   for (const b of s.buildings) buildingAtTile.set(b.y * s.width + b.x, b);
@@ -102,14 +121,14 @@ export function computePower(s: CityState, capacities = plantCapacities(s)): Pow
   const powered = new Uint8Array(n);
   let demand = 0;
   let supplied = 0;
-  for (let i = 0; i < n; i++) if (conductive[i]) demand += tileDemand(s, i, buildingAtTile, connected);
+  for (let i = 0; i < n; i++) if (conductive[i]) demand += tileDemand(s, i, buildingAtTile, connected, effects);
 
   const { order } = bfsDistances(s, sources, (i) => conductive[i] === 1);
   const remaining = new Map(supplyByComp);
   for (const i of order) {
     const c = comp[i];
     const left = remaining.get(c) ?? 0;
-    const need = tileDemand(s, i, buildingAtTile, connected);
+    const need = tileDemand(s, i, buildingAtTile, connected, effects);
     if (need === 0) {
       if (left > 0) powered[i] = 1;
       continue;

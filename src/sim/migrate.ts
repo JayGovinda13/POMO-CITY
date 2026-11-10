@@ -29,6 +29,14 @@ export function migrateState(raw: CityState): CityState {
     for (const b of s.buildings) if (b.type === "road") s.wires[b.y * s.width + b.x] = 1;
   }
 
+  if (from < 3) {
+    // v2 → v3: região climática (escolhida no próximo acesso), calendário e sequência guardada.
+    s.regionId = null;
+    s.calendarOffset = 0;
+    s.streakFrozen = false;
+    s.disasterCount = 0;
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

@@ -10,9 +10,23 @@ export interface ActiveCycle {
   endsAt: number;
 }
 
+/**
+ * Presença do jogador. "exited" = saiu pelo menu (ou nunca entrou); "playing" = em jogo.
+ * `leftAt` é marcado quando o navegador avisa que a página foi fechada sem sair pelo menu.
+ */
+export interface Presence {
+  status: "playing" | "exited";
+  leftAt: number | null;
+  /** Ciclos concluídos desde que o jogador entrou (define o desastre leve ao fechar). */
+  cyclesThisSession: number;
+}
+
+export const DEFAULT_PRESENCE: Presence = { status: "exited", leftAt: null, cyclesThisSession: 0 };
+
 export interface PlayerRecord {
   state: CityState;
   activeCycle: ActiveCycle | null;
+  presence: Presence;
 }
 
 export interface CycleLogEntry {
@@ -47,17 +61,25 @@ class SupabaseRepo implements PlayerRepo {
   async load(id: string): Promise<Loaded | null> {
     const { data, error } = await adminClient()
       .from("cities")
-      .select("state, active_cycle, revision")
+      .select("state, active_cycle, presence, revision")
       .eq("player_id", id)
       .maybeSingle();
     if (error) throw new Error(`cities.load: ${error.message}`);
     if (!data) return null;
-    return { record: { state: data.state, activeCycle: data.active_cycle }, revision: Number(data.revision) };
+    return {
+      record: { state: data.state, activeCycle: data.active_cycle, presence: data.presence ?? { ...DEFAULT_PRESENCE } },
+      revision: Number(data.revision),
+    };
   }
 
   async save(id: string, record: PlayerRecord, revision: number): Promise<boolean> {
     const db = adminClient().from("cities");
-    const row = { state: record.state, active_cycle: record.activeCycle, revision: revision + 1 };
+    const row = {
+      state: record.state,
+      active_cycle: record.activeCycle,
+      presence: record.presence,
+      revision: revision + 1,
+    };
     if (revision === 0) {
       const { error } = await db.insert({ player_id: id, ...row });
       if (error?.code === "23505") return false; // outra requisição criou a cidade antes
@@ -103,7 +125,10 @@ class FileRepo implements PlayerRepo {
   async load(id: string): Promise<Loaded | null> {
     try {
       const raw = JSON.parse(await fs.readFile(this.file(id), "utf8"));
-      return { record: { state: raw.state, activeCycle: raw.activeCycle }, revision: raw.revision ?? 1 };
+      return {
+        record: { state: raw.state, activeCycle: raw.activeCycle, presence: raw.presence ?? { ...DEFAULT_PRESENCE } },
+        revision: raw.revision ?? 1,
+      };
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
       throw e;
@@ -156,6 +181,7 @@ export async function withPlayer<T>(
       const rec: PlayerRecord = loaded?.record ?? {
         state: createCity(parseInt(playerId.replace(/-/g, "").slice(0, 8), 16), Date.now()),
         activeCycle: null,
+        presence: { ...DEFAULT_PRESENCE },
       };
       const before = loaded ? JSON.stringify(rec) : "";
       // Cidades salvas em formatos antigos são atualizadas na leitura (e gravadas se mudarem).

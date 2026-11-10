@@ -27,6 +27,8 @@ export interface BuildingDef {
   /** Geração de energia. */
   generates?: {
     capacity: number;
+    /** A geração varia com o tempo da estação (Fase 2). */
+    climate?: "wind" | "hydro";
     /** Combustível por ciclo; a eficiência depende do Rank (FUEL_EFFICIENCY). */
     fuel?: { resource: ResourceId; qty: number };
   };
@@ -197,20 +199,20 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   },
   wind_turbine: {
     name: "Eólica",
-    description: "Energia limpa e barata, mas pouca: 6 MW.",
+    description: "Energia limpa e barata, mas pouca: 6 MW, variando com o vento da estação.",
     buildable: true,
     category: "energy",
     cost: 150,
     upkeep: 1,
     workers: 0,
     needsRoad: false,
-    generates: { capacity: 6 },
+    generates: { capacity: 6, climate: "wind" },
     color: 0xdfe8f0,
     height: 34,
   },
   hydro_plant: {
     name: "Hidrelétrica",
-    description: "30 MW sem combustível. Precisa encostar na água. Disponível em 1902.",
+    description: "30 MW sem combustível, variando com a chuva da estação. Precisa encostar na água. Disponível em 1902.",
     buildable: true,
     category: "energy",
     requires: { year: 1902 },
@@ -219,7 +221,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     workers: 2,
     needsRoad: false,
     needsWaterAdjacent: true,
-    generates: { capacity: 30 },
+    generates: { capacity: 30, climate: "hydro" },
     color: 0x4a7aa0,
     height: 16,
   },
@@ -270,6 +272,16 @@ export const BIOMES: Record<BiomeId, { name: string; yield: Record<ResourceId, n
     name: "Floresta",
     yield: { food: 1.0, wood: 1.5, ore: 0.5, planks: 1, metal: 1 },
     grass: 0x3f6e34,
+  },
+  desert: {
+    name: "Deserto",
+    yield: { food: 0.6, wood: 0.5, ore: 1.3, planks: 1, metal: 1 },
+    grass: 0xc2a46a,
+  },
+  tundra: {
+    name: "Tundra",
+    yield: { food: 0.5, wood: 1.1, ore: 1.1, planks: 1, metal: 1 },
+    grass: 0x8a9a8a,
   },
   mountains: {
     name: "Montanhas",

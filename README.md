@@ -33,6 +33,9 @@ Para rodar o Supabase local com Docker: `npx supabase start` (o `supabase/config
 
 ## Como jogar
 
+0. Na tela inicial, **Continuar** ou **Novo jogo**. Ao fundar, escolha **sua região** (mesmo clima e
+   estações que você vive) ou **outra parte do mundo**. Só o clima é usado; o mapa é fictício.
+
 1. Na **pausa**, planeje a cidade:
    - **Estradas** ligadas à prefeitura.
    - **Zonas** Residencial, Comercial e Industrial: arraste para zonear uma área. Zonas densas liberam com 40 habitantes.
@@ -43,6 +46,10 @@ Para rodar o Supabase local com Docker: `npx supabase start` (o `supabase/config
    - os lotes com estrada (a até 3 tiles), energia e demanda crescem sozinhos;
    - a extração usa o Rank do foco;
    - impostos e manutenção são cobrados.
+
+Para sair, use **Menu → Sair** com o foco encerrado: a sequência fica guardada. Fechar o jogo
+durante o foco (ou abandonar o foco) causa um **desastre**; fechar sem o menu depois de concluir
+um foco causa um **desastre leve**.
 
 O **foco acelera a cidade**: um Rank mais alto desenvolve mais lotes por ciclo.
 O indicador **R/C/I** mostra que tipo de zona a cidade pede.

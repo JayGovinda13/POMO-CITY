@@ -9,10 +9,11 @@ import {
 } from "./config";
 import { cloneState } from "./commands";
 import { addTo, averageRank, minRank, take, totalAtLeast } from "./inventory";
+import { effectsOf, weatherAt, type Weather } from "./climate";
 import { computePower, plantCapacities, type PowerResult } from "./power";
 import { buildingStatus, laborStats } from "./status";
-import { RANKS, type Building, type CityState, type CycleReport, type Rank } from "./types";
-import { quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
+import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Rank } from "./types";
+import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
@@ -22,6 +23,8 @@ export function rankForStreak(streak: number): Rank {
 
 /** Sequência efetiva no momento `now`, já aplicando o decaimento por inatividade. */
 export function effectiveStreak(s: CityState, now: number): number {
+  // Saiu pelo menu: a sequência está guardada e não decai.
+  if (s.streakFrozen) return s.streak;
   if (s.lastCycleAt !== null && now - s.lastCycleAt > SESSION_GAP_MS) {
     return Math.max(0, s.streak - STREAK_PENALTY);
   }
@@ -45,6 +48,9 @@ interface CycleContext {
   report: CycleReport;
   rank: Rank;
   rand: () => number;
+  /** Tempo da estação que este ciclo viveu (null = sem região: clima neutro). */
+  weather: Weather | null;
+  effects: ClimateEffects;
   power?: PowerResult;
   status?: ReturnType<typeof buildingStatus>;
 }
@@ -53,7 +59,7 @@ type CycleSystem = (ctx: CycleContext) => void;
 
 /** 1) Lotes crescem/declinam com base em energia, acesso viário e demanda (estimativa pré-ciclo). */
 const zoneGrowthSystem: CycleSystem = (ctx) => {
-  const power = computePower(ctx.s);
+  const power = computePower(ctx.s, undefined, ctx.effects);
   const r = developZones(ctx.s, { rank: ctx.rank, rand: ctx.rand, powered: power.powered, access: roadAccess(ctx.s) });
   ctx.report.zones = { grown: r.grown, declined: r.declined };
 };
@@ -84,19 +90,21 @@ const powerSystem: CycleSystem = (ctx) => {
     fuelRanks.set(b.id, taken ? averageRank(taken) : null);
     if (taken) addTaken(report.consumed, fuel.resource, taken);
   }
-  ctx.power = computePower(s, plantCapacities(s, fuelRanks));
+  ctx.power = computePower(s, plantCapacities(s, fuelRanks, ctx.effects), ctx.effects);
   ctx.status = buildingStatus(s, ctx.power.powered);
   report.power = { capacity: ctx.power.capacity, demand: ctx.power.demand, brownout: ctx.power.brownout };
 };
 
 /** 4) Extração: a pureza do lote vem da qualidade do foco. */
-const extractionSystem: CycleSystem = ({ s, report, rank, status }) => {
+const extractionSystem: CycleSystem = ({ s, report, rank, status, effects }) => {
   const biome = BIOMES[s.biome];
   for (const b of byId(s.buildings)) {
     const def = BUILDINGS[b.type];
     const eff = status!.get(b.id)!.efficiency;
     if (!def.produces || eff <= 0) continue;
-    const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff);
+    // A colheita depende do tempo da estação (Fase 2).
+    const climate = def.produces.resource === "food" ? effects.farm : 1;
+    const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff * climate);
     addTo(s.inventory, def.produces.resource, rank, qty);
     addTo(report.produced, def.produces.resource, rank, qty);
   }
@@ -184,6 +192,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
     next.cyclesToday = 0;
   }
   next.streak = effectiveStreak(next, now) + 1;
+  next.streakFrozen = false;
   next.cyclesCompleted++;
   next.cyclesToday++;
   next.lastCycleAt = now;
@@ -195,8 +204,8 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
     rank,
     streak: next.streak,
     // A estação vivida é a do ciclo que acabou de ser concluído.
-    year: yearOfCycle(s.cyclesCompleted),
-    quarter: quarterOfCycle(s.cyclesCompleted),
+    year: yearOfCycle(calendarIdx(s)),
+    quarter: quarterOfCycle(calendarIdx(s)),
     rewarded,
     produced: {},
     consumed: {},
@@ -208,6 +217,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
     starving: false,
     netMoney: 0,
     power: { capacity: 0, demand: 0, brownout: false },
+    weather: null,
     zones: { grown: 0, declined: 0 },
     jobs: { total: 0, filled: 0, unemployed: 0 },
   };
@@ -216,7 +226,13 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
 
   // Seed por cidade + ciclo: o mesmo ciclo sempre gera o mesmo resultado (cliente = servidor).
   const rand = rng((next.seed ^ Math.imul(next.cyclesCompleted, 0x9e3779b1)) >>> 0);
-  const ctx: CycleContext = { s: next, report, rank, rand };
+  // O tempo é o da estação vivida, calculado sobre o estado ANTES do ciclo avançar.
+  const weather = weatherAt(s);
+  if (weather) {
+    const { season, label, temp, rain, wind, effects } = weather;
+    report.weather = { season, label, temp, rain, wind, effects };
+  }
+  const ctx: CycleContext = { s: next, report, rank, rand, weather, effects: effectsOf(weather) };
   for (const system of CYCLE_SYSTEMS) system(ctx);
   return { state: next, report };
 }

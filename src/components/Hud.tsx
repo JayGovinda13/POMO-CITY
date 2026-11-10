@@ -11,7 +11,9 @@ import {
   ZONES,
   buildingAt,
   buildingStatus,
-  periodLabel,
+  cityPeriodLabel,
+  REGION_BY_ID,
+  weatherAt,
   computeDemand,
   computePower,
   effectiveStreak,
@@ -32,6 +34,7 @@ import { RankBadge, hex } from "./ranks";
 import { Timer } from "./Timer";
 import { CycleReportModal } from "./CycleReportModal";
 import { AccountButton } from "./AccountButton";
+import { GameMenu } from "./GameMenu";
 
 const GROUPS: { title: string; category: BuildCategory }[] = [
   { title: "Energia", category: "energy" },
@@ -61,14 +64,22 @@ export function Hud() {
     const power = computePower(city);
     const status = buildingStatus(city, power.powered);
     const labor = laborStats(city, status);
-    return { power, status, labor, demand: computeDemand(city, labor), access: roadAccess(city) };
+    return {
+      power,
+      status,
+      labor,
+      demand: computeDemand(city, labor),
+      access: roadAccess(city),
+      weather: weatherAt(city),
+    };
   }, [city]);
 
   if (!city || !derived) {
     return <div className="absolute inset-0 grid place-items-center text-sm">Carregando a cidade…</div>;
   }
 
-  const { power, status, labor, demand, access } = derived;
+  const { power, status, labor, demand, access, weather } = derived;
+  const region = city.regionId ? REGION_BY_ID[city.regionId] : null;
   const nextRank = rankForStreak(effectiveStreak(city, Date.now()) + 1);
   const locked = phase === "focus";
 
@@ -77,8 +88,14 @@ export function Hud() {
       {/* Barra superior */}
       <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-1">
         <strong className="tracking-widest text-amber-300">POMO-CITY</strong>
-        <span title="1 ciclo de foco = 1 estação (3 meses)">📅 {periodLabel(city.cyclesCompleted)}</span>
-        <span>{BIOMES[city.biome].name}</span>
+        <span title="1 ciclo de foco = 1 estação (3 meses)">
+          📅 {weather ? `${weather.season} · ` : ""}
+          {cityPeriodLabel(city)}
+        </span>
+        <span>
+          {region ? `${region.name} · ` : ""}
+          {BIOMES[city.biome].name}
+        </span>
         <span>💰 ${city.money}</span>
         <span title="População / moradia">
           👥 {city.population}/{labor.housing}
@@ -95,6 +112,7 @@ export function Hud() {
         <span>Ciclos hoje: {city.cyclesToday}</span>
         {pending > 0 && <span className="text-amber-300">{pending} obra(s) aguardando sincronia</span>}
         <AccountButton />
+        <GameMenu />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col justify-between gap-2 md:flex-row">
@@ -142,8 +160,10 @@ export function Hud() {
           )}
         </section>
 
-        {/* Armazém + inspeção */}
-        <Panel title="Armazém" className="w-full md:w-60 md:self-start">
+        {/* Clima + armazém + inspeção */}
+        <div className="flex w-full flex-col gap-2 md:w-60 md:self-start">
+        {weather && <WeatherPanel weather={weather} focus={phase === "focus"} />}
+        <Panel title="Armazém" className="w-full">
           <table className="w-full border-collapse text-center">
             <thead>
               <tr>
@@ -181,6 +201,7 @@ export function Hud() {
             />
           )}
         </Panel>
+        </div>
       </div>
 
       <Timer />
@@ -412,5 +433,37 @@ function DemandIndicator({ demand }: { demand: Record<ZoneKind, number> }) {
         );
       })}
     </span>
+  );
+}
+
+const pct = (v: number) => `${Math.round(v * 100)}%`;
+
+/** Previsão da estação que o próximo ciclo vai viver (o tempo é sorteado com seed: a previsão é exata). */
+function WeatherPanel({ weather, focus }: { weather: NonNullable<ReturnType<typeof weatherAt>>; focus: boolean }) {
+  const e = weather.effects;
+  const tone = (v: number) => (v >= 1.05 ? "text-emerald-300" : v <= 0.8 ? "text-red-300" : "");
+  return (
+    <Panel title={focus ? "Clima deste ciclo" : "Previsão: próximo ciclo"} className="w-full">
+      <p>
+        <strong>{weather.season}</strong> · {weather.label}
+      </p>
+      <p className="text-zinc-300">
+        🌡 {weather.temp}°C · 🌧 {weather.rain} mm · 💨 {weather.wind} m/s
+      </p>
+      <ul className="mt-1 grid grid-cols-2 gap-x-2">
+        <li>
+          Lavoura: <span className={tone(e.farm)}>{pct(e.farm)}</span>
+        </li>
+        <li>
+          Eólica: <span className={tone(e.wind)}>{pct(e.wind)}</span>
+        </li>
+        <li>
+          Hidrelétrica: <span className={tone(e.hydro)}>{pct(e.hydro)}</span>
+        </li>
+        <li title="Aquecimento ou refrigeração em casas e comércio">
+          Consumo: <span className={e.demand > 1.05 ? "text-amber-300" : ""}>{pct(e.demand)}</span>
+        </li>
+      </ul>
+    </Panel>
   );
 }

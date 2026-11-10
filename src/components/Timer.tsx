@@ -88,7 +88,7 @@ export function Timer() {
           className="retro-button"
           disabled={busy}
           onClick={() => {
-            if (confirm("Abandonar o ciclo? Sua sequência vai cair.")) abandonFocus();
+            if (confirm("Abandonar o ciclo? Sua sequência vai cair e a cidade sofrerá um desastre.")) abandonFocus();
           }}
         >
           Abandonar

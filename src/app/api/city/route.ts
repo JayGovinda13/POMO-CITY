@@ -1,4 +1,11 @@
 import { route, snapshot } from "@/server/api";
 import { withPlayer } from "@/server/repo";
+import { settlePresence } from "@/server/presence";
 
-export const GET = route((id) => withPlayer(id, (rec) => snapshot(rec)));
+/** Estado da cidade. Se a última sessão terminou sem o menu, o desastre é aplicado aqui. */
+export const GET = route((id) =>
+  withPlayer(id, (rec, tx) => {
+    const disaster = settlePresence(id, rec, Date.now(), tx);
+    return snapshot(rec, { disaster });
+  }),
+);

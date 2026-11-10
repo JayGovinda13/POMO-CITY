@@ -1,11 +1,14 @@
 import { resolveCycle } from "@/sim";
 import { fail, route, snapshot } from "@/server/api";
 import { repo, withPlayer } from "@/server/repo";
+import { settlePresence } from "@/server/presence";
 import { CLOCK_TOLERANCE_MS } from "@/server/session";
 
 /** Conclusão do ciclo: só é aceita se o tempo medido PELO SERVIDOR realmente passou. */
 export const POST = route((id) =>
   withPlayer(id, (rec, tx) => {
+    const disaster = settlePresence(id, rec, Date.now(), tx);
+    if (disaster) return snapshot(rec, { disaster });
     const cycle = rec.activeCycle;
     if (!cycle) return fail(400, "Nenhum ciclo em andamento");
     const now = Date.now();
@@ -15,6 +18,7 @@ export const POST = route((id) =>
     const { state, report } = resolveCycle(rec.state, now);
     rec.state = state;
     rec.activeCycle = null;
+    if (rec.presence.status === "playing") rec.presence.cyclesThisSession++;
     tx.afterCommit(() =>
       repo().logCycle(id, {
         startedAt: cycle.startedAt,

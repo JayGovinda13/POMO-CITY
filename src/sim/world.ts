@@ -33,11 +33,19 @@ export const yearOfCycle = (cycle: number) => START_YEAR + Math.floor(cycle / CY
 export const quarterOfCycle = (cycle: number) => ((cycle % CYCLES_PER_YEAR) + CYCLES_PER_YEAR) % CYCLES_PER_YEAR;
 export const periodLabel = (cycle: number) => `${QUARTER_MONTHS[quarterOfCycle(cycle)]} ${yearOfCycle(cycle)}`;
 
+type CalendarState = Pick<CityState, "cyclesCompleted"> & Partial<Pick<CityState, "calendarOffset">>;
+/** Índice do calendário: ciclos concluídos + trimestre em que a cidade foi fundada. */
+export const calendarIdx = (s: CalendarState) => s.cyclesCompleted + (s.calendarOffset ?? 0);
 /** Ano atual da cidade (o trimestre que o próximo ciclo de foco vai viver). */
-export const cityYear = (s: Pick<CityState, "cyclesCompleted">) => yearOfCycle(s.cyclesCompleted);
-export const cityQuarter = (s: Pick<CityState, "cyclesCompleted">) => quarterOfCycle(s.cyclesCompleted);
+export const cityYear = (s: CalendarState) => yearOfCycle(calendarIdx(s));
+export const cityQuarter = (s: CalendarState) => quarterOfCycle(calendarIdx(s));
+export const cityPeriodLabel = (s: CalendarState) => periodLabel(calendarIdx(s));
 
-export function createCity(seed: number, now: number, biome?: BiomeId): CityState {
+/**
+ * Cria uma cidade nova. `wetness` (0..1) vem do clima da região: regiões chuvosas
+ * geram mais lagos; áridas, menos. O mapa é sempre fictício.
+ */
+export function createCity(seed: number, now: number, biome?: BiomeId, opts: { wetness?: number } = {}): CityState {
   const rand = rng(seed);
   const biomes = Object.keys(BIOMES) as BiomeId[];
   const chosen = biome ?? biomes[Math.floor(rand() * biomes.length)];
@@ -48,7 +56,8 @@ export function createCity(seed: number, now: number, biome?: BiomeId): CityStat
   // Alguns lagos circulares, longe do centro.
   const cx = Math.floor(width / 2);
   const cy = Math.floor(height / 2);
-  const lakes = 2 + Math.floor(rand() * 3);
+  const wet = opts.wetness;
+  const lakes = wet === undefined ? 2 + Math.floor(rand() * 3) : Math.round(wet * 4) + Math.floor(rand() * 2);
   for (let l = 0; l < lakes; l++) {
     const lx = Math.floor(rand() * width);
     const ly = Math.floor(rand() * height);
@@ -68,6 +77,8 @@ export function createCity(seed: number, now: number, biome?: BiomeId): CityStat
     version: 1,
     seed,
     biome: chosen,
+    regionId: null,
+    calendarOffset: 0,
     width,
     height,
     terrain,
@@ -81,6 +92,8 @@ export function createCity(seed: number, now: number, biome?: BiomeId): CityStat
     population: 0,
     inventory: { "food:C": 40 },
     streak: 0,
+    streakFrozen: false,
+    disasterCount: 0,
     cyclesCompleted: 0,
     lastCycleAt: null,
     dayKey: utcDayKey(now),

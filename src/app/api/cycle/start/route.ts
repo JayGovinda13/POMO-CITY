@@ -1,6 +1,7 @@
 import { applyCommands } from "@/sim";
 import { fail, parseCommands, route, snapshot } from "@/server/api";
 import { withPlayer } from "@/server/repo";
+import { settlePresence } from "@/server/presence";
 import { focusMs } from "@/server/session";
 
 /**
@@ -12,7 +13,10 @@ export const POST = route(async (id, req) => {
   const commands = parseCommands(body?.commands);
   if (!commands) return fail(400, "Fila de comandos inválida");
 
-  return withPlayer(id, (rec) => {
+  return withPlayer(id, (rec, tx) => {
+    const disaster = settlePresence(id, rec, Date.now(), tx);
+    if (disaster) return snapshot(rec, { disaster });
+    if (rec.presence.status !== "playing") rec.presence = { status: "playing", leftAt: null, cyclesThisSession: 0 };
     if (rec.activeCycle) return fail(409, "Já existe um ciclo em andamento", { activeCycle: rec.activeCycle });
     const { state, rejected } = applyCommands(rec.state, commands);
     const now = Date.now();

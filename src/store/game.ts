@@ -11,6 +11,7 @@ import {
   type CityState,
   type Command,
   type CycleReport,
+  type DisasterReport,
   type ZoneKind,
 } from "@/sim";
 
@@ -28,6 +29,8 @@ export function parseZoneTool(tool: Tool): { zone: ZoneKind | "none"; dense: boo
 /** Ferramentas que funcionam arrastando um retângulo (as demais "pintam" tile a tile). */
 export const isAreaTool = (tool: Tool) => parseZoneTool(tool) !== null;
 export type Phase = "loading" | "idle" | "focus" | "break";
+/** Tela inicial (Continuar / Novo jogo) ou o jogo em si. */
+export type Screen = "menu" | "game";
 
 interface ServerConfig {
   focusSeconds: number;
@@ -39,6 +42,8 @@ interface ServerConfig {
 interface ServerSnapshot {
   state: CityState;
   activeCycle: { startedAt: number; endsAt: number } | null;
+  presence?: "playing" | "exited";
+  disaster?: DisasterReport | null;
   serverNow: number;
   config: ServerConfig;
   report?: CycleReport;
@@ -62,10 +67,23 @@ interface GameStore {
   tool: Tool;
   overlay: Overlay;
   report: CycleReport | null;
+  disaster: DisasterReport | null;
+  screen: Screen;
+  /** Presença registrada no servidor ("playing" = sessão aberta). */
+  presence: "playing" | "exited";
   toast: string | null;
   busy: boolean;
 
   load(): Promise<void>;
+  /** "Continuar": entra na cidade. */
+  enter(): Promise<void>;
+  /** "Sair" pelo menu (só sem foco): sincroniza as obras e guarda a sequência. */
+  exit(): Promise<void>;
+  /** "Novo jogo": cidade nova, mesma sequência de foco. */
+  newGame(): Promise<void>;
+  /** Fundação: escolhe a região climática da cidade. */
+  chooseRegion(regionId: string): Promise<boolean>;
+  dismissDisaster(): void;
   /** Troca de conta: descarta a fila local e recarrega a cidade do novo usuário. */
   reset(): Promise<void>;
   setTool(tool: Tool): void;
@@ -85,7 +103,7 @@ interface GameStore {
 async function call(path: string, body?: unknown, retried = false): Promise<ServerSnapshot & { status: number }> {
   await ensureSession();
   const res = await fetch(path, {
-    method: body === undefined && path === "/api/city" ? "GET" : "POST",
+    method: path === "/api/city" ? "GET" : "POST",
     headers: body ? { "content-type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
@@ -110,6 +128,8 @@ export const useGame = create<GameStore>()(
         const clockSkew = snap.serverNow - Date.now();
         const phase: Phase = snap.activeCycle ? "focus" : get().phase === "focus" ? "idle" : get().phase;
         snap.state = migrateState(snap.state);
+        if (snap.disaster) set({ disaster: snap.disaster });
+        if (snap.presence) set({ presence: snap.presence });
         set({
           serverState: snap.state,
           config: snap.config,
@@ -131,6 +151,9 @@ export const useGame = create<GameStore>()(
         tool: "road",
         overlay: "none",
         report: null,
+        disaster: null,
+        screen: "menu",
+        presence: "exited",
         toast: null,
         busy: false,
 
@@ -138,11 +161,65 @@ export const useGame = create<GameStore>()(
           try {
             const snap = await call("/api/city");
             accept(snap);
+            // Recarregou a página no meio de uma sessão: volta direto para a cidade.
+            if (snap.presence === "playing" && !snap.disaster) set({ screen: "game" });
             const { phase, endsAt } = get();
             if (phase === "break" && endsAt && Date.now() > endsAt) set({ phase: "idle", endsAt: null });
           } catch (e) {
             get().showToast((e as Error).message || "Sem conexão — jogando offline");
           }
+        },
+
+        async enter() {
+          const snap = await call("/api/session/enter");
+          if (snap.error) return get().showToast(snap.error);
+          accept(snap);
+          set({ screen: "game" });
+        },
+
+        async exit() {
+          if (get().phase === "focus") return get().showToast("Só é possível sair com o foco encerrado.");
+          set({ busy: true });
+          try {
+            const snap = await call("/api/session/exit", { commands: get().pending });
+            if (snap.error) return get().showToast(snap.error);
+            accept(snap, []);
+            set({ screen: "menu", phase: "idle", endsAt: null, report: null });
+          } finally {
+            set({ busy: false });
+          }
+        },
+
+        async newGame() {
+          if (get().phase === "focus") return get().showToast("Encerre o foco antes de começar outro jogo.");
+          set({ busy: true });
+          try {
+            const snap = await call("/api/game/new");
+            if (snap.error) return get().showToast(snap.error);
+            accept(snap, []);
+            set({ screen: "game", phase: "idle", endsAt: null, report: null });
+          } finally {
+            set({ busy: false });
+          }
+        },
+
+        async chooseRegion(regionId) {
+          set({ busy: true });
+          try {
+            const snap = await call("/api/city/region", { regionId });
+            if (snap.error) {
+              get().showToast(snap.error);
+              return false;
+            }
+            accept(snap, []);
+            return true;
+          } finally {
+            set({ busy: false });
+          }
+        },
+
+        dismissDisaster() {
+          set({ disaster: null });
         },
 
         async reset() {
