@@ -96,6 +96,26 @@ O humor depende de emprego, luz em casa, comida, desastres recentes, clima extre
 de foco do prefeito. Veja todos em **👥** na barra superior, ou passe o mouse sobre um lote para ver
 quem mora ou trabalha ali.
 
+## Trilha sonora 16 bits
+
+Quatro músicas originais, sintetizadas na hora com Web Audio, sem nenhum arquivo de áudio.
+O som imita o chip dos consoles dos anos 90: ondas de pulso, piano elétrico em FM, percussão
+de ruído filtrado e eco.
+
+| Gênero | Faixa | Andamento |
+| --- | --- | --- |
+| Jazz | "Café da Prefeitura" (swing) | 132 bpm |
+| Bossa Nova | "Garoa de Setembro" | 136 bpm |
+| Tango | "Bandoneón do Porto" | 116 bpm |
+| Salsa | "Noite no Mercado" (clave 2-3) | 188 bpm |
+
+- O botão 🎵 (barra superior e tela inicial) escolhe uma faixa ou o **Rádio**, que alterna os
+  gêneros a cada duas voltas.
+- Também ajusta o volume e pode silenciar a música durante o foco.
+- A música começa no primeiro clique, por causa da política de autoplay do navegador.
+- Código em `src/audio/`: `synth.ts` (instrumentos), `tracks.ts` (composições) e `player.ts`
+  (agendador).
+
 ## Sprites (pxl)
 
 Os sprites são código: `art/city.px.js` usa o [pxl](https://github.com/crsolver/claude-pxl) para gerar

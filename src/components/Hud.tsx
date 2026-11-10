@@ -41,6 +41,7 @@ import { MarketButton } from "./MarketPanel";
 import { BudgetButton } from "./BudgetPanel";
 import { CitizensButton } from "./CitizensPanel";
 import { DonateButton } from "./DonateButton";
+import { MusicButton } from "./Music";
 import { MOOD_ICON, Portrait } from "./Portrait";
 
 type CategoryId = "vias" | "zonas" | BuildCategory | "view";
@@ -143,6 +144,7 @@ export function Hud() {
           <CitizensButton />
           <MarketButton />
           <BudgetButton />
+          <MusicButton />
           <DonateButton />
           <GameMenu />
         </span>

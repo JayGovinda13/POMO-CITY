@@ -5,6 +5,7 @@ import { useGame } from "@/store/game";
 import { DisasterModal } from "./DisasterModal";
 import { AdSlot } from "./AdSlot";
 import { DonateButton } from "./DonateButton";
+import { MusicButton } from "./Music";
 
 /** Tela inicial: Continuar a cidade salva ou começar um novo jogo. */
 export function TitleScreen() {
@@ -72,6 +73,7 @@ export function TitleScreen() {
             durante o foco quebra o ciclo e causa um desastre; fechar sem o menu depois de concluir um foco causa um
             desastre leve.
           </p>
+          <MusicButton variant="full" />
           <DonateButton variant="full" />
           {toast && <p className="text-amber-300">{toast}</p>}
           {/* Anúncio na tela inicial, abaixo dos botões. */}
