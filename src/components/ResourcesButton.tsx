@@ -26,7 +26,7 @@ import {
   type ResourceId,
 } from "@/sim";
 import { useGame } from "@/store/game";
-import { Packages } from "./icons";
+import { Packages, ResourceIcon } from "./icons";
 
 export interface ResourceOutlook {
   res: ResourceId;
@@ -141,7 +141,7 @@ export function ResourcesButton() {
         <Packages />
         {outlook.map((o) => (
           <span key={o.res} className={tone(o)} title={`${RESOURCES[o.res].name}: ${o.stock}/${o.capacity}`}>
-            {RESOURCES[o.res].icon}
+            <ResourceIcon res={o.res} />
             {o.stock}
           </span>
         ))}
@@ -166,7 +166,7 @@ export function ResourcesButton() {
                 {outlook.map((o) => (
                   <tr key={o.res} className={tone(o)} title={RESOURCES[o.res].use}>
                     <td className="text-left">
-                      {RESOURCES[o.res].icon} {RESOURCES[o.res].name}
+                      <ResourceIcon res={o.res} /> {RESOURCES[o.res].name}
                     </td>
                     <td>
                       {o.stock}
@@ -186,8 +186,12 @@ export function ResourcesButton() {
             Qualidade em estoque:{" "}
             {outlook
               .filter((o) => o.stock > 0)
-              .map((o) => `${RESOURCES[o.res].icon} ${RANKS.filter((r) => getQty(city.inventory, o.res, r) > 0).map((r) => `${r}×${getQty(city.inventory, o.res, r)}`).join(" ")}`)
-              .join(" · ") || "vazio"}
+              .map((o) => (
+                <span key={o.res} className="mr-2 inline-block">
+                  <ResourceIcon res={o.res} /> {RANKS.filter((r) => getQty(city.inventory, o.res, r) > 0).map((r) => `${r}×${getQty(city.inventory, o.res, r)}`).join(" ")}
+                </span>
+              ))}
+            {outlook.every((o) => o.stock === 0) && "vazio"}
           </p>
           {crisis.length > 0 ? (
             <div className="space-y-1 border-2 border-amber-700/60 bg-amber-950/30 p-2">
@@ -197,7 +201,7 @@ export function ResourcesButton() {
               </p>
               {crisis.map((o) => (
                 <p key={o.res}>
-                  {RESOURCES[o.res].icon} <strong>{RESOURCES[o.res].name}</strong>:{" "}
+                  <ResourceIcon res={o.res} /> <strong>{RESOURCES[o.res].name}</strong>:{" "}
                   {o.lasts < 1 ? "o estoque não cobre esta estação" : `o estoque dura ~${Math.floor(o.lasts)} estação(ões)`}; faltam {fmt(-o.net)} por estação
                   (${o.deficitCost}).{" "}
                   {o.res === "food"

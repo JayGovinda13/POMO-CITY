@@ -85,7 +85,12 @@ export function TitleScreen() {
           <p className="text-center text-[10px] text-zinc-500">
             <a className="underline" href="/privacidade">
               Privacidade e cookies
-            </a>
+            </a>{" "}
+            · Ícones:{" "}
+            <a className="underline" href="https://game-icons.net" target="_blank" rel="noopener noreferrer">
+              game-icons.net
+            </a>{" "}
+            (CC BY 3.0)
           </p>
         </div>
       </section>

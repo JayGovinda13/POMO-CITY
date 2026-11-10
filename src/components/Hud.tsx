@@ -54,7 +54,7 @@ import { DonateButton } from "./DonateButton";
 import { ResourcesButton } from "./ResourcesButton";
 import { MusicButton } from "./Music";
 import { MOOD_ICON, Portrait } from "./Portrait";
-import { Car, HomeSale, Industry, ShieldAlert, Calendar, City, Coins, DragHandGesture, Droplet, Eye, Farm, Flash, GraduationCap, Group, Heart, MapIcon, MapsGoStraight, Packages, SeaWaves, Shield, Tower, Train, Trash, Tree, WeatherIcon, Xmark } from "./icons";
+import { ResourceIcon, Car, HomeSale, Industry, ShieldAlert, Calendar, City, Coins, DragHandGesture, Droplet, Eye, Farm, Flash, GraduationCap, Group, Heart, MapIcon, MapsGoStraight, Packages, SeaWaves, Shield, Tower, Train, Trash, Tree, WeatherIcon, Xmark } from "./icons";
 
 type CategoryId = "vias" | "zonas" | "terreno" | BuildCategory | "view";
 
@@ -423,7 +423,7 @@ function ToolButton({
           <span className="flex flex-wrap gap-x-1.5 text-[10px] leading-tight">
             {chips.map((m) => (
               <span key={m.resource} className={m.short ? "text-red-300" : "text-emerald-300"}>
-                {RESOURCES[m.resource].icon}
+                <ResourceIcon res={m.resource} colored={false} />
                 {m.qty}
               </span>
             ))}

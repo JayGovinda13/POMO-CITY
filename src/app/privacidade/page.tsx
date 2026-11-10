@@ -44,6 +44,18 @@ export default function PrivacyPage() {
         Doações por Pix são feitas no app do seu banco e por cartão na plataforma de pagamento escolhida; o POMO-CITY não recebe
         nem armazena dados de pagamento. Doações não dão vantagem no jogo.
       </p>
+      <h2 className="font-bold">Créditos</h2>
+      <p>
+        Ícones de{" "}
+        <a className="underline" href="https://game-icons.net" target="_blank" rel="noopener noreferrer">
+          game-icons.net
+        </a>{" "}
+        (Lorc, Delapouite e colaboradores), sob a licença{" "}
+        <a className="underline" href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">
+          CC BY 3.0
+        </a>
+        . Músicas e sprites originais do POMO-CITY.
+      </p>
       <h2 className="font-bold">Seus direitos (LGPD)</h2>
       <p>
         Você pode pedir acesso, correção ou exclusão dos seus dados pelo contato informado na página do projeto. Ao apagar a
