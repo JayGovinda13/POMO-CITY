@@ -1,5 +1,5 @@
 import { BIOMES } from "./catalog";
-import { CYCLES_PER_YEAR, MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_MONEY } from "./config";
+import { CYCLES_PER_YEAR, DEFAULT_POLICIES, MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_INVENTORY, STARTING_MONEY } from "./config";
 import { bfsDistances } from "./grid";
 import { CURRENT_SCHEMA_VERSION, type BiomeId, type Building, type CityState, type Terrain } from "./types";
 
@@ -93,7 +93,8 @@ export function createCity(seed: number, now: number, biome?: BiomeId, opts: { w
     citizens: [],
     nextCitizenId: 1,
     lastDisasterCycle: null,
-    inventory: { "food:C": 40 },
+    inventory: { ...STARTING_INVENTORY },
+    policies: structuredClone(DEFAULT_POLICIES),
     streak: 0,
     streakFrozen: false,
     disasterCount: 0,

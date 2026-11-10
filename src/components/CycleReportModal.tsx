@@ -28,7 +28,7 @@ export function CycleReportModal() {
 
   return (
     <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-black/50 p-4">
-      <section className="retro-panel w-full max-w-sm">
+      <section className="retro-panel max-h-[92dvh] w-full max-w-lg overflow-y-auto">
         <header className="retro-title">Relatório do ciclo{report.year ? ` — ${QUARTER_MONTHS[report.quarter ?? 0]} ${report.year}` : ""}</header>
         <div className="space-y-2 p-3">
           <p className="flex items-center gap-2 text-sm">
@@ -44,16 +44,54 @@ export function CycleReportModal() {
                 <h3 className="text-zinc-400">Produzido</h3>
                 <InvList inv={report.produced} empty="Nada — verifique estradas e trabalhadores." />
               </div>
-              <div>
-                <h3 className="text-zinc-400">Consumido</h3>
-                <InvList inv={report.consumed} empty="—" />
-              </div>
-              <div>
-                <h3 className="text-zinc-400">Desperdício industrial</h3>
-                <InvList inv={report.wasted} empty="Zero desperdício." />
-              </div>
+              {report.ledger && Object.keys(report.ledger).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <h3 className="text-zinc-400">Balanço por recurso</h3>
+                  <table className="w-full text-right">
+                    <thead className="text-zinc-400">
+                      <tr>
+                        <th className="text-left font-normal">Recurso</th>
+                        <th className="font-normal" title="Produzido">+Prod.</th>
+                        <th className="font-normal" title="Consumido (moradores, obras, fábricas)">−Cons.</th>
+                        <th className="font-normal" title="Comprado no mercado externo">Comprou</th>
+                        <th className="font-normal" title="Vendido (política ou excesso)">Vendeu</th>
+                        <th className="font-normal" title="Estragado">Perdeu</th>
+                        <th className="font-normal">Estoque</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(report.ledger).map(([res, l]) => (
+                        <tr key={res}>
+                          <td className="text-left">{RESOURCES[res as ResourceId].name}</td>
+                          <td className="text-emerald-300">{l.produced || ""}</td>
+                          <td>{l.consumed || ""}</td>
+                          <td className="text-amber-300">{l.bought || ""}</td>
+                          <td className="text-sky-300">{l.sold || ""}</td>
+                          <td className="text-red-300">{l.lost || ""}</td>
+                          <td className={l.stock >= l.capacity ? "text-amber-300" : ""}>
+                            {l.stock}/{l.capacity}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-zinc-400">Consumido</h3>
+                  <InvList inv={report.consumed} empty="—" />
+                </div>
+              )}
+              {Object.keys(report.wasted ?? {}).length > 0 && (
+                <div>
+                  <h3 className="text-zinc-400">Desperdício industrial</h3>
+                  <InvList inv={report.wasted} empty="Zero desperdício." />
+                </div>
+              )}
               <p>
-                Impostos +${report.taxes} · Manutenção −${report.upkeep} ·{" "}
+                Impostos +${report.taxes} · Manutenção −${report.upkeep}
+                {report.importCost > 0 && <span className="text-amber-300"> · Compras −${report.importCost}</span>}
+                {report.salesRevenue > 0 && <span className="text-sky-300"> · Vendas +${report.salesRevenue}</span>} ·{" "}
                 <strong className={report.netMoney >= 0 ? "text-emerald-300" : "text-red-300"}>
                   Saldo {report.netMoney >= 0 ? "+" : ""}${report.netMoney}
                 </strong>

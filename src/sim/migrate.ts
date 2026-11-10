@@ -1,3 +1,4 @@
+import { DEFAULT_POLICIES } from "./config";
 import { CURRENT_SCHEMA_VERSION, ZONE, type CityState } from "./types";
 
 /**
@@ -42,6 +43,11 @@ export function migrateState(raw: CityState): CityState {
     s.citizens = Array.from({ length: Math.max(0, s.population) }, (_, i) => i + 1);
     s.nextCitizenId = s.citizens.length + 1;
     s.lastDisasterCycle = null;
+  }
+
+  if (from < 5) {
+    // v4 → v5: políticas de excedente (economia de recursos).
+    s.policies = structuredClone(DEFAULT_POLICIES);
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

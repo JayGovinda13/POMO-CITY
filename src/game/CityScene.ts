@@ -19,6 +19,30 @@ function shade(color: number, f: number) {
 
 type Tile = { x: number; y: number };
 
+/** Tiles de uma linha na grade (Bresenham), de `a` até `b`, inclusive. */
+function gridLine(a: Tile, b: Tile): Tile[] {
+  const out: Tile[] = [];
+  let { x, y } = a;
+  const dx = Math.abs(b.x - x);
+  const dy = -Math.abs(b.y - y);
+  const sx = x < b.x ? 1 : -1;
+  const sy = y < b.y ? 1 : -1;
+  let err = dx + dy;
+  for (;;) {
+    out.push({ x, y });
+    if (x === b.x && y === b.y) return out;
+    const e2 = 2 * err;
+    if (e2 >= dy) {
+      err += dy;
+      x += sx;
+    }
+    if (e2 <= dx) {
+      err += dx;
+      y += sy;
+    }
+  }
+}
+
 /** Hash determinístico por tile (variações de terreno e decoração). */
 function tileHash(seed: number, x: number, y: number) {
   let h = (seed ^ Math.imul(x + 1, 0x27d4eb2d) ^ Math.imul(y + 1, 0x165667b1)) >>> 0;
@@ -43,6 +67,7 @@ export class CityScene extends Phaser.Scene {
   private hover: Tile | null = null;
   private painting = false;
   private painted = new Set<string>();
+  private lastPainted: Tile | null = null;
   private areaFrom: Tile | null = null;
   private panFrom: { x: number; y: number; sx: number; sy: number } | null = null;
   private unsubscribe?: () => void;
@@ -94,6 +119,7 @@ export class CityScene extends Phaser.Scene {
       }
       this.painting = true;
       this.painted.clear();
+      this.lastPainted = null;
       this.paintAt(p);
     });
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
@@ -162,13 +188,20 @@ export class CityScene extends Phaser.Scene {
   private paintAt(p: Phaser.Input.Pointer) {
     const t = this.tileAt(p);
     if (!t) return;
-    const k = `${t.x},${t.y}`;
-    if (this.painted.has(k)) return;
     // Estrada, linha e demolição podem ser "pintadas" arrastando; o resto é um clique.
     const tool = useGame.getState().tool;
-    if (this.painted.size > 0 && tool !== "road" && tool !== "wire" && tool !== "demolish") return;
-    this.painted.add(k);
-    bus.emit("tile:click", t);
+    const paintable = tool === "road" || tool === "wire" || tool === "demolish";
+    if (this.painted.size > 0 && !paintable) return;
+    // Mouse rápido pula tiles entre dois eventos: preenche o caminho (Bresenham na grade),
+    // para uma estrada arrastada nunca ficar com buracos.
+    const from = this.lastPainted && paintable ? this.lastPainted : t;
+    for (const step of gridLine(from, t)) {
+      const k = `${step.x},${step.y}`;
+      if (this.painted.has(k)) continue;
+      this.painted.add(k);
+      bus.emit("tile:click", step);
+    }
+    this.lastPainted = t;
   }
 
   private diamond(g: Phaser.GameObjects.Graphics, sx: number, sy: number, s = 1, lift = 0) {

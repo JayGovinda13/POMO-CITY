@@ -40,8 +40,8 @@ Toda mecânica importada passa por cinco filtros:
 | 0 | Preparação técnica | Fundação para as demais | ✅ Concluída |
 | 1 | Zoneamento e energia | Zonas R/C/I, crescimento orgânico, demanda, usinas, linhas, apagões | ✅ Concluída |
 | 2 | Clima e estações | Escolha da região (só o clima), hemisfério, estações, chuvas e secas, bioma; menu e sessão | ✅ Concluída |
-| 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ⏳ Próxima |
-| 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ⏳ |
+| 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ✅ Concluída |
+| 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ⏳ Próxima |
 | 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | 🟡 Desastres entregues; falta o seguro |
 | 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ |
 | 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ |
@@ -233,7 +233,7 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
 - cidades antigas pedem a região uma vez;
 - nenhuma coordenada é armazenada.
 
-## Fase 3 — Economia de recursos
+## Fase 3 — Economia de recursos ✅
 
 Objetivo: **os cidadãos vivem dos recursos e as construções dependem deles**. Tudo pode ser
 feito só com dinheiro (importando), mas produzir localmente sai mais barato. O excedente
@@ -295,6 +295,20 @@ pode ser vendido ou estocado.
 - **Confirmado:** o Rank não conta duas vezes. O desperdício industrial por Rank fica só no
   refino, e o rendimento acima vale no consumo e nas obras. A eficiência da termelétrica por
   Rank passa a seguir o mesmo rendimento.
+
+### Entregue
+
+| Entrega | Onde |
+|---------|------|
+| **Rendimento e valor por Rank** (D 1,0 … S 1,4) no consumo, nas obras, na venda e no combustível da termelétrica (30 MW × rendimento). O desperdício fica só no refino. | `economy.ts`, `RANK_YIELD` |
+| **Mercado externo:** preço base por recurso (comida varia com a colheita da estação), compra +25%, venda −20%, só até o Rank B. | `basePrice`, `importPrice`, `exportPrice` |
+| **Obras consomem materiais** (estrada: 1 madeira; usinas: tábuas e metal…) e **cada nível novo de um lote** consome tábuas (e metal nas zonas C/I densas). O que falta é comprado na hora; sem dinheiro, o lote não cresce. | `catalog.ts`, `quoteMaterials`, `payMaterials` |
+| **Os moradores vivem dos recursos:** comida (0,5), lenha no frio (0,25 abaixo de 10 °C) e **bens** (0,2 a partir de 30 moradores). A cidade compra o que faltar; só há fome quando nem o dinheiro alcança. | `economySystem` |
+| **Bens:** recurso novo, fabricado pelas zonas industriais (0,5 por emprego ocupado). | `extractionSystem` |
+| **Estoque com limite:** 100 por recurso na prefeitura, **Armazém** (+150 para não-alimentos) e **Silo** (+200 de comida e menos perda). Comida estraga a cada estação (mais no calor úmido). O excesso é vendido. | `storageCapacity`, `storageSystem` |
+| **Políticas de excedente por recurso** (estocar, vender o excedente, vender %, manter reserva), definidas na pausa; A e S nunca vão para o mercado externo. | `MarketPanel.tsx`, comando `policy` |
+| **Relatório com balanço por recurso** (produziu, consumiu, comprou, vendeu, perdeu, estoque) e as linhas de compras e vendas no saldo. | `CycleReportModal.tsx` |
+| Correção: arrastar estrada/linha rápido não pula mais tiles. | `CityScene.ts` (`gridLine`) |
 
 **Critérios de aceite:**
 - cidade jogável só com dinheiro (importação automática);
@@ -536,7 +550,7 @@ eventos e metas pode ser criada antes, com metas que usam só o que já existe.
 
 Ao iniciar uma fase, inclua no pedido:
 
-1. A fase (por exemplo, "Fase 3 — Economia de recursos").
+1. A fase (por exemplo, "Fase 4 — Orçamento e finanças").
 2. Ajustes de escopo ou pareceres sobre as fases anteriores.
 3. As prioridades: o que é obrigatório e o que pode ficar para depois.
 

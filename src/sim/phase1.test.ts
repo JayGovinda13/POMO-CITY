@@ -198,16 +198,16 @@ describe("Fase 1 — energia", () => {
     expect(computePower(s).brownout).toBe(false);
   });
 
-  it("termelétrica: eficiência depende do Rank da madeira", () => {
+  it("termelétrica: geração segue o rendimento do Rank da madeira (30 MW × rendimento)", () => {
     const s = apply(city(), [road(13, 12), { type: "build", building: "thermal_plant", x: 13, y: 13 }]);
     s.population = 3;
     const plant = s.buildings.find((b) => b.type === "thermal_plant")!;
     s.inventory = {};
     expect(plantCapacities(s).get(plant.id)).toBe(0); // sem combustível
     s.inventory = { "wood:D": 4 };
-    expect(plantCapacities(s).get(plant.id)).toBe(24);
+    expect(plantCapacities(s).get(plant.id)).toBe(30);
     s.inventory = { "wood:S": 4 };
-    expect(plantCapacities(s).get(plant.id)).toBe(40);
+    expect(plantCapacities(s).get(plant.id)).toBe(42);
   });
 
   it("ciclo queima o combustível e reporta a energia", () => {
@@ -219,7 +219,7 @@ describe("Fase 1 — energia", () => {
     s.inventory = { "wood:A": 10, "food:C": 50 };
     const { report } = resolveCycle(s, T0);
     expect(report.consumed["wood:A"]).toBe(4);
-    expect(report.power.capacity).toBe(12 + 36);
+    expect(report.power.capacity).toBe(12 + 39); // madeira A: 30 × 1,3
   });
 });
 

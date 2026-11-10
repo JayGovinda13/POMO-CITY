@@ -4,7 +4,7 @@
 export const RANKS = ["D", "C", "B", "A", "S"] as const;
 export type Rank = (typeof RANKS)[number];
 
-export type ResourceId = "food" | "wood" | "ore" | "planks" | "metal";
+export type ResourceId = "food" | "wood" | "ore" | "planks" | "metal" | "goods";
 export type BiomeId = "plains" | "forest" | "mountains" | "desert" | "tundra";
 
 export type BuildingType =
@@ -20,7 +20,9 @@ export type BuildingType =
   | "monument"
   | "thermal_plant"
   | "wind_turbine"
-  | "hydro_plant";
+  | "hydro_plant"
+  | "warehouse"
+  | "silo";
 
 /** 0 = terra, 1 = água */
 export type Terrain = 0 | 1;
@@ -42,7 +44,7 @@ export interface Building {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -82,6 +84,8 @@ export interface CityState {
   /** Ciclo do último desastre (humor dos moradores). */
   lastDisasterCycle: number | null;
   inventory: Inventory;
+  /** Política de excedente por recurso (Fase 3). */
+  policies: Record<ResourceId, { mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }>;
   /** Ciclos de foco consecutivos (com decaimento, nunca zera de uma vez). */
   streak: number;
   /** true depois de sair pelo menu: a sequência fica guardada (sem decair) até o próximo ciclo. */
@@ -100,6 +104,7 @@ export type Command =
   | { type: "build"; building: BuildingType; x: number; y: number }
   | { type: "demolish"; x: number; y: number }
   | { type: "wire"; x: number; y: number }
+  | { type: "policy"; resource: ResourceId; mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }
   | {
       type: "zone";
       /** "none" remove o zoneamento de lotes vazios. */
@@ -121,6 +126,16 @@ export interface CycleReport {
   produced: Inventory;
   consumed: Inventory;
   wasted: Inventory;
+  /** Importado automaticamente (unidades) e o custo. */
+  bought: Inventory;
+  importCost: number;
+  /** Vendido ao mercado externo (política ou excesso de estoque) e a receita. */
+  sold: Inventory;
+  salesRevenue: number;
+  /** Perdido (comida estragada). */
+  lost: Inventory;
+  /** Balanço por recurso (unidades, todas as qualidades). */
+  ledger: Partial<Record<ResourceId, { produced: number; consumed: number; bought: number; sold: number; lost: number; stock: number; capacity: number }>>;
   taxes: number;
   upkeep: number;
   populationBefore: number;

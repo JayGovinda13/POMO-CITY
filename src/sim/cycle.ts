@@ -1,18 +1,33 @@
-import { BIOMES, BUILDINGS, WASTE_BY_RANK } from "./catalog";
+import { BIOMES, BUILDINGS, WASTE_BY_RANK, ZONES } from "./catalog";
 import {
   DAILY_REWARD_CAP,
   FOOD_PER_RESIDENT,
+  GOODS_MIN_POPULATION,
+  GOODS_PER_INDUSTRY_JOB,
+  GOODS_PER_RESIDENT,
+  HEATING_WOOD_PER_RESIDENT,
   SESSION_GAP_MS,
   STREAK_PENALTY,
   TAX_PER_JOB,
   TAX_PER_RESIDENT,
 } from "./config";
 import { cloneState } from "./commands";
-import { addTo, averageRank, minRank, take, totalAtLeast } from "./inventory";
+import { addTo, averageRank, getQty, minRank, take } from "./inventory";
 import { effectsOf, weatherAt, type Weather } from "./climate";
+import {
+  RESOURCE_IDS,
+  consumeEquivalent,
+  importQuote,
+  payMaterials,
+  quoteMaterials,
+  sellUnits,
+  stockOf,
+  storageCapacity,
+  unitsToSell,
+} from "./economy";
 import { computePower, plantCapacities, type PowerResult } from "./power";
 import { buildingStatus, laborStats } from "./status";
-import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Rank } from "./types";
+import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Inventory, type Rank, type ResourceId } from "./types";
 import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
 import { citizensView, moodSummary, syncCitizens } from "./citizens";
@@ -35,7 +50,7 @@ export function effectiveStreak(s: CityState, now: number): number {
 /** Capacidade de moradia. */
 export const housingCapacity = (s: CityState) => laborStats(s).housing;
 
-const addTaken = (inv: CycleReport["consumed"], res: Parameters<typeof addTo>[1], taken: Partial<Record<Rank, number>>) => {
+const addTaken = (inv: Inventory, res: ResourceId, taken: Partial<Record<Rank, number>>) => {
   for (const r of RANKS) addTo(inv, res, r, taken[r] ?? 0);
 };
 
@@ -54,31 +69,66 @@ interface CycleContext {
   effects: ClimateEffects;
   power?: PowerResult;
   status?: ReturnType<typeof buildingStatus>;
+  /** Estoque no início do ciclo (para o balanço por recurso). */
+  startStock: Record<ResourceId, number>;
 }
 
 type CycleSystem = (ctx: CycleContext) => void;
 
-/** 1) Lotes crescem/declinam com base em energia, acesso viário e demanda (estimativa pré-ciclo). */
+/**
+ * Consumo com importação automática: usa o estoque (ranks baixos primeiro) e compra o que faltar.
+ * Devolve o que ficou faltando (só quando nem o dinheiro cobre).
+ */
+function consumeOrImport(ctx: CycleContext, res: ResourceId, need: number): number {
+  const { s, report, effects } = ctx;
+  if (need <= 0) return 0;
+  const { taken, shortfall } = consumeEquivalent(s.inventory, res, need, { prefer: "low" });
+  addTaken(report.consumed, res, taken);
+  if (shortfall <= 0) return 0;
+  const q = importQuote(res, shortfall, "D", effects);
+  if (!q.rank) return shortfall;
+  // Compra o que o dinheiro alcança.
+  const unitPrice = q.units ? q.cost / q.units : 0;
+  const units = unitPrice > 0 ? Math.min(q.units, Math.floor(Math.max(0, s.money) / unitPrice)) : q.units;
+  const cost = Math.ceil(units * unitPrice);
+  s.money -= cost;
+  report.importCost += cost;
+  addTo(report.bought, res, q.rank, units);
+  addTo(report.consumed, res, q.rank, units);
+  return Math.max(0, shortfall - units);
+}
+
+/** 1) Lotes crescem/declinam (energia, acesso viário, demanda). Cada nível novo consome materiais. */
 const zoneGrowthSystem: CycleSystem = (ctx) => {
-  const power = computePower(ctx.s, undefined, ctx.effects);
-  const approval = moodSummary(citizensView(ctx.s)).approval;
-  const r = developZones(ctx.s, { rank: ctx.rank, rand: ctx.rand, powered: power.powered, access: roadAccess(ctx.s), approval });
-  ctx.report.zones = { grown: r.grown, declined: r.declined };
+  const { s, report, effects } = ctx;
+  const power = computePower(s, undefined, effects);
+  const approval = moodSummary(citizensView(s)).approval;
+  const r = developZones(s, {
+    rank: ctx.rank,
+    rand: ctx.rand,
+    powered: power.powered,
+    access: roadAccess(s),
+    approval,
+    pay: (kind, dense) => {
+      const mats = ZONES[kind].growth[dense ? 1 : 0];
+      const quote = quoteMaterials(s, mats, effects);
+      if (quote.impossible || s.money < quote.importCost) return false;
+      report.importCost += payMaterials(s, mats, effects, { consumed: report.consumed, bought: report.bought });
+      return true;
+    },
+  });
+  report.zones = { grown: r.grown, declined: r.declined };
 };
 
-/** 2) Mudança: com comida no armazém (ou cidade vazia), moradores chegam antes do turno de trabalho. */
+/** 2) Mudança: novos moradores chegam antes do turno de trabalho (a comida pode ser importada). */
 const moveInSystem: CycleSystem = ({ s }) => {
   const cap = laborStats(s).housing;
-  const hasFood = totalAtLeast(s.inventory, "food") >= Math.ceil(s.population * FOOD_PER_RESIDENT) + 1;
-  if (s.population === 0 || hasFood) {
-    s.population = Math.min(cap, s.population + Math.max(8, Math.ceil(cap * 0.5)));
-  }
-  s.population = Math.min(s.population, cap);
+  s.population = Math.min(cap, s.population + Math.max(8, Math.ceil(cap * 0.5)));
 };
 
-/** 3) Usinas queimam combustível (o Rank define a eficiência) e a rede é distribuída. */
+/** 3) Usinas queimam combustível (comprado se faltar); a geração segue o rendimento do Rank. */
 const powerSystem: CycleSystem = (ctx) => {
-  const { s, report } = ctx;
+  const { s, report, effects } = ctx;
   const status = buildingStatus(s);
   const fuelRanks = new Map<number, Rank | null>();
   for (const b of byId(s.buildings)) {
@@ -89,15 +139,27 @@ const powerSystem: CycleSystem = (ctx) => {
       continue;
     }
     const taken = take(s.inventory, fuel.resource, fuel.qty, { prefer: "high" });
-    fuelRanks.set(b.id, taken ? averageRank(taken) : null);
-    if (taken) addTaken(report.consumed, fuel.resource, taken);
+    if (taken) {
+      fuelRanks.set(b.id, averageRank(taken));
+      addTaken(report.consumed, fuel.resource, taken);
+      continue;
+    }
+    // Sem combustível no estoque: compra no mercado (qualidade D).
+    const q = importQuote(fuel.resource, fuel.qty, "D", effects);
+    if (q.rank && s.money >= q.cost) {
+      s.money -= q.cost;
+      report.importCost += q.cost;
+      addTo(report.bought, fuel.resource, q.rank, q.units);
+      addTo(report.consumed, fuel.resource, q.rank, q.units);
+      fuelRanks.set(b.id, q.rank);
+    } else fuelRanks.set(b.id, null);
   }
-  ctx.power = computePower(s, plantCapacities(s, fuelRanks, ctx.effects), ctx.effects);
+  ctx.power = computePower(s, plantCapacities(s, fuelRanks, effects), effects);
   ctx.status = buildingStatus(s, ctx.power.powered);
   report.power = { capacity: ctx.power.capacity, demand: ctx.power.demand, brownout: ctx.power.brownout };
 };
 
-/** 4) Extração: a pureza do lote vem da qualidade do foco. */
+/** 4) Extração e fábricas: a pureza do lote vem da qualidade do foco. */
 const extractionSystem: CycleSystem = ({ s, report, rank, status, effects }) => {
   const biome = BIOMES[s.biome];
   for (const b of byId(s.buildings)) {
@@ -110,6 +172,12 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects }) => 
     addTo(s.inventory, def.produces.resource, rank, qty);
     addTo(report.produced, def.produces.resource, rank, qty);
   }
+  // Zonas industriais fabricam bens de consumo (empregos industriais ocupados).
+  const labor = laborStats(s, status);
+  const industryFilled = Math.max(0, labor.zoneFilled - labor.commercialJobs);
+  const goods = Math.floor(industryFilled * GOODS_PER_INDUSTRY_JOB);
+  addTo(s.inventory, "goods", rank, goods);
+  addTo(report.produced, "goods", rank, goods);
 };
 
 /** 5) Refino: rank de saída = min(rank médio do insumo, Tech Tier); insumo ruim gera perda. */
@@ -132,16 +200,17 @@ const refiningSystem: CycleSystem = ({ s, report, status }) => {
   }
 };
 
-/** 6) População come (ranks baixos primeiro); moradores e empregos de C/I pagam impostos. */
-const economySystem: CycleSystem = ({ s, report, status }) => {
-  const foodNeeded = Math.ceil(s.population * FOOD_PER_RESIDENT);
-  const available = totalAtLeast(s.inventory, "food");
-  const fed = foodNeeded === 0 || available >= foodNeeded;
-  if (foodNeeded > 0) {
-    const eaten = take(s.inventory, "food", Math.min(foodNeeded, available), { prefer: "low" });
-    if (eaten) addTaken(report.consumed, "food", eaten);
-  }
-  report.starving = !fed;
+/**
+ * 6) Os moradores vivem dos recursos: comida, lenha no frio e bens de consumo. O que faltar a
+ * cidade compra; só passa fome quem nem o dinheiro alcança. Moradores e empregos pagam impostos.
+ */
+const economySystem: CycleSystem = (ctx) => {
+  const { s, report, status, weather } = ctx;
+  const pop = s.population;
+  const hungry = consumeOrImport(ctx, "food", pop * FOOD_PER_RESIDENT);
+  report.starving = hungry > 0;
+  if (weather && weather.temp < 10) consumeOrImport(ctx, "wood", pop * HEATING_WOOD_PER_RESIDENT);
+  if (pop >= GOODS_MIN_POPULATION) consumeOrImport(ctx, "goods", pop * GOODS_PER_RESIDENT);
 
   const labor = laborStats(s, status);
   report.jobs = {
@@ -153,24 +222,69 @@ const economySystem: CycleSystem = ({ s, report, status }) => {
     const bonus = BUILDINGS[b.type].taxBonus ?? 0;
     return acc + (status!.get(b.id)!.connected ? bonus : 0);
   }, 0);
-  const base = s.population * TAX_PER_RESIDENT * (fed ? 1 : 0.5) + labor.zoneFilled * TAX_PER_JOB;
+  const base = pop * TAX_PER_RESIDENT * (report.starving ? 0.5 : 1) + labor.zoneFilled * TAX_PER_JOB;
   report.taxes = Math.floor(base * (1 + taxBonus));
+  s.money += report.taxes;
 };
 
 /** 7) Manutenção: estradas e construções custam a cada ciclo concluído. */
 const upkeepSystem: CycleSystem = ({ s, report }) => {
   report.upkeep = s.buildings.reduce((acc, b) => acc + BUILDINGS[b.type].upkeep, 0);
-  report.netMoney = report.taxes - report.upkeep;
-  s.money += report.netMoney;
+  s.money -= report.upkeep;
 };
 
-/** 8) Fome: parte dos moradores vai embora. */
+/**
+ * 8) Estoque: comida estraga (menos com silo; mais no calor úmido), a política de cada recurso
+ * vende o excedente (só até o Rank B) e o que passar da capacidade é vendido.
+ */
+const storageSystem: CycleSystem = ({ s, report, effects, weather }) => {
+  // Comida estragada.
+  const hasSilo = s.buildings.some((b) => b.type === "silo");
+  const humidHeat = weather && weather.temp > 22 && weather.rain > 300;
+  const spoil = (humidHeat ? 0.15 : 0.08) * (hasSilo ? 0.4 : 1);
+  for (const r of RANKS) {
+    const have = getQty(s.inventory, "food", r);
+    const lost = Math.floor(have * spoil);
+    if (lost <= 0) continue;
+    take(s.inventory, "food", lost, { minRank: r, prefer: "low" });
+    addTo(report.lost, "food", r, lost);
+  }
+
+  const capacity = storageCapacity(s);
+  for (const res of RESOURCE_IDS) {
+    // Política: demanda estimada = o que a cidade consumiu neste ciclo.
+    const demand = RANKS.reduce((acc, r) => acc + getQty(report.consumed, res, r), 0);
+    const sellable = RANKS.slice(0, 3).reduce((acc, r) => acc + getQty(s.inventory, res, r), 0);
+    const units = unitsToSell(s.policies[res], sellable, demand);
+    if (units > 0) {
+      const sale = sellUnits(s.inventory, res, units, effects);
+      addTaken(report.sold, res, sale.sold);
+      report.salesRevenue += sale.revenue;
+    }
+    // Excesso de estoque: vendido (inclusive A/S, pelo preço de B, se só sobrar premium).
+    const excess = stockOf(s.inventory, res) - capacity[res];
+    if (excess > 0) {
+      let sale = sellUnits(s.inventory, res, excess, effects);
+      let soldUnits = RANKS.reduce((acc, r) => acc + (sale.sold[r] ?? 0), 0);
+      addTaken(report.sold, res, sale.sold);
+      report.salesRevenue += sale.revenue;
+      if (soldUnits < excess) {
+        sale = sellUnits(s.inventory, res, excess - soldUnits, effects, { allowPremium: true });
+        addTaken(report.sold, res, sale.sold);
+        report.salesRevenue += sale.revenue;
+      }
+    }
+  }
+  s.money += report.salesRevenue;
+};
+
+/** 9) Fome: parte dos moradores vai embora. */
 const starvationSystem: CycleSystem = ({ s, report }) => {
   if (report.starving) s.population = Math.floor(s.population * 0.9);
   report.populationAfter = s.population;
 };
 
-/** 9) Moradores: chegam novos (ids novos) ou vão embora os mais tristes; humor final no relatório. */
+/** 10) Moradores: chegam novos (ids novos) ou vão embora os mais tristes; humor final no relatório. */
 const citizensSystem: CycleSystem = ({ s, report }) => {
   const before = new Set(s.citizens);
   syncCitizens(s);
@@ -185,6 +299,25 @@ const citizensSystem: CycleSystem = ({ s, report }) => {
   };
 };
 
+/** 11) Balanço por recurso e saldo final do ciclo. */
+const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
+  const sum = (inv: Inventory, res: ResourceId) => RANKS.reduce((acc, r) => acc + getQty(inv, res, r), 0);
+  const capacity = storageCapacity(s);
+  for (const res of RESOURCE_IDS) {
+    const row = {
+      produced: sum(report.produced, res),
+      consumed: sum(report.consumed, res),
+      bought: sum(report.bought, res),
+      sold: sum(report.sold, res),
+      lost: sum(report.lost, res),
+      stock: stockOf(s.inventory, res),
+      capacity: capacity[res],
+    };
+    if (row.produced || row.consumed || row.bought || row.sold || row.lost || row.stock || startStock[res]) report.ledger[res] = row;
+  }
+  report.netMoney = report.taxes - report.upkeep - report.importCost + report.salesRevenue;
+};
+
 export const CYCLE_SYSTEMS: CycleSystem[] = [
   zoneGrowthSystem,
   moveInSystem,
@@ -193,8 +326,10 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   refiningSystem,
   economySystem,
   upkeepSystem,
+  storageSystem,
   starvationSystem,
   citizensSystem,
+  ledgerSystem,
 ];
 
 /**
@@ -228,6 +363,12 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
     produced: {},
     consumed: {},
     wasted: {},
+    bought: {},
+    importCost: 0,
+    sold: {},
+    salesRevenue: 0,
+    lost: {},
+    ledger: {},
     taxes: 0,
     upkeep: 0,
     populationBefore: s.population,
@@ -242,15 +383,16 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
   // Acima do limite diário: o ciclo conta, mas a cidade não roda (nem cobra manutenção).
   if (!rewarded) return { state: next, report };
 
-  // Seed por cidade + ciclo: o mesmo ciclo sempre gera o mesmo resultado (cliente = servidor).
-  const rand = rng((next.seed ^ Math.imul(next.cyclesCompleted, 0x9e3779b1)) >>> 0);
   // O tempo é o da estação vivida, calculado sobre o estado ANTES do ciclo avançar.
   const weather = weatherAt(s);
   if (weather) {
     const { season, label, temp, rain, wind, effects } = weather;
     report.weather = { season, label, temp, rain, wind, effects };
   }
-  const ctx: CycleContext = { s: next, report, rank, rand, weather, effects: effectsOf(weather) };
+  const startStock = Object.fromEntries(RESOURCE_IDS.map((r) => [r, stockOf(s.inventory, r)])) as Record<ResourceId, number>;
+  // Seed por cidade + ciclo: o mesmo ciclo sempre gera o mesmo resultado (cliente = servidor).
+  const rand = rng((next.seed ^ Math.imul(next.cyclesCompleted, 0x9e3779b1)) >>> 0);
+  const ctx: CycleContext = { s: next, report, rank, rand, weather, effects: effectsOf(weather), startStock };
   for (const system of CYCLE_SYSTEMS) system(ctx);
   return { state: next, report };
 }

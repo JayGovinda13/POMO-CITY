@@ -33,3 +33,28 @@ export const UNPOWERED_EFFICIENCY = 0.5;
 export const TAX_PER_JOB = 1;
 /** Máximo de tiles num único comando de zoneamento. */
 export const MAX_ZONE_AREA = 256;
+
+// ── Fase 3: economia ───────────────────────────────────────────────────────
+import type { Rank, ResourceId } from "./types";
+
+/** Valor e rendimento por Rank: 1 unidade A rende como 1,3 unidade D. */
+export const RANK_YIELD: Record<Rank, number> = { D: 1, C: 1.1, B: 1.2, A: 1.3, S: 1.4 };
+
+export const DEFAULT_POLICIES: Record<ResourceId, { mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }> = {
+  food: { mode: "reserve", value: 2 },
+  wood: { mode: "stock", value: 0 },
+  ore: { mode: "stock", value: 0 },
+  planks: { mode: "stock", value: 0 },
+  metal: { mode: "stock", value: 0 },
+  goods: { mode: "sell_surplus", value: 0 },
+};
+
+/** Estoque inicial: o suficiente para as primeiras obras sem importar. */
+export const STARTING_INVENTORY = { "food:C": 40, "wood:C": 20, "planks:C": 10 } as const;
+/** Lenha por morador por estação quando a temperatura cai abaixo de 10 °C. */
+export const HEATING_WOOD_PER_RESIDENT = 0.25;
+/** Bens de consumo por morador por estação, a partir de GOODS_MIN_POPULATION. */
+export const GOODS_PER_RESIDENT = 0.2;
+export const GOODS_MIN_POPULATION = 30;
+/** Bens produzidos por emprego industrial ocupado. */
+export const GOODS_PER_INDUSTRY_JOB = 0.5;

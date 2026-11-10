@@ -63,6 +63,14 @@ O roadmap completo de funcionalidades está em [`docs/ROADMAP.md`](docs/ROADMAP.
 Abandonar um ciclo, ou ficar mais de 90 min sem concluir um, **reduz** a sequência em 2 (não zera).
 Acima de 16 ciclos no dia, os ciclos contam mas não geram recompensa.
 
+## Economia
+
+Os moradores comem, usam lenha no frio e consomem bens; as obras e o crescimento dos prédios
+consomem madeira, tábuas e metal. O que faltar a cidade **compra automaticamente** (dá para jogar
+só com dinheiro), mas produzir sai mais barato. Recursos de Rank alto rendem mais (A = 1,3×,
+S = 1,4×). Em **🏪 Mercado**, defina o que fazer com o excedente de cada recurso; armazéns e silos
+ampliam o estoque.
+
 ## Cidadãos
 
 Cada morador é um indivíduo com nome, retrato, casa, emprego e humor (😊 feliz, 😐 ok, ☹️ triste).

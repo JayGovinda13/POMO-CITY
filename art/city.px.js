@@ -489,6 +489,33 @@ building("hydro_plant", 32, (c, oy) => {
   c.rect(b.cx + 4, b.cy - b.H - 4, 5, 3, "w")
 })
 
+// ───────────────────────────── armazenagem ─────────────────────────────
+
+building("warehouse", 32, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 14, H: 10, left: "P", right: "D" })
+  // Tábuas verticais na fachada (seguem a inclinação) e portão largo.
+  for (let x = b.L[0] + 2; x < b.cx; x += 3) {
+    const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
+    c.vline(x, y - b.H + 1, b.H - 1, "D")
+  }
+  c.rect(b.cx + 3, b.cy - 6, 7, 6, "Z")
+  c.rect(b.cx + 4, b.cy - 5, 5, 1, "I")
+  hipRoof(c, b, 5, "r", "R")
+})
+building("silo", 44, (c, oy) => {
+  c.poly(ground(oy, 4), "S")
+  // Dois silos cilíndricos (corpo + faixa + cúpula).
+  for (const [x, h] of [[8, 22], [17, 18]]) {
+    const yb = oy + 11
+    c.rect(x, yb - h, 8, h, "J")
+    c.rect(x + 5, yb - h, 3, h, "I")
+    c.rect(x, yb - h + 5, 8, 1, "I")
+    c.ellipse(x + 3.5, yb - h, 4, 2, "H")
+    c.ellipse(x + 3.5, yb, 4, 1, "I")
+  }
+})
+
 // Poste de transmissão.
 sprite("power_pole", { w: 8, h: 16, outline: "k" }, (c) => {
   c.vline(3, 2, 14, "D")
@@ -572,4 +599,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "power_pole", "pt_*"], { pad: 1 })

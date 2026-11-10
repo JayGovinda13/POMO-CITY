@@ -6,6 +6,9 @@ import {
   LONG_BREAK_EVERY,
   LONG_BREAK_SECONDS,
   ZONES,
+  RESOURCE_IDS,
+  type PolicyMode,
+  type ResourceId,
   type BuildingType,
   type Command,
   type ZoneKind,
@@ -57,6 +60,12 @@ export function parseCommands(raw: unknown): Command[] | null {
         x1: r.x1 as number,
         y1: r.y1 as number,
       });
+      continue;
+    }
+    if (r.type === "policy") {
+      if (typeof r.resource !== "string" || !RESOURCE_IDS.includes(r.resource as ResourceId)) return null;
+      if (typeof r.mode !== "string" || typeof r.value !== "number" || !Number.isFinite(r.value)) return null;
+      out.push({ type: "policy", resource: r.resource as ResourceId, mode: r.mode as PolicyMode, value: r.value });
       continue;
     }
     if (!num(r.x) || !num(r.y)) return null;

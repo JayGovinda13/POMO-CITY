@@ -57,7 +57,8 @@ describe("commands", () => {
     s.inventory["metal:S"] = 10;
     const r = applyCommands(s, [{ type: "build", building: "monument", x: 1, y: 1 }]);
     expect(r.rejected).toHaveLength(0);
-    expect(getQty(r.state.inventory, "metal", "S")).toBe(0);
+    // 10 unidades-equivalentes de metal S (rendimento 1,4) = 8 unidades; sobram 2.
+    expect(getQty(r.state.inventory, "metal", "S")).toBe(2);
     expect(getQty(r.state.inventory, "metal", "A")).toBe(50);
   });
 });
@@ -141,7 +142,8 @@ describe("economia do ciclo", () => {
     expect(report.wasted["planks:B"] ?? 0).toBe(0);
     expect(report.upkeep).toBe(8 * 1 + 3 + 5 + 2);
     expect(report.taxes).toBe(16 * 3);
-    expect(state.money).toBe(s.money + report.taxes - report.upkeep);
+    expect(state.money).toBe(s.money + report.netMoney);
+    expect(report.netMoney).toBe(report.taxes - report.upkeep - report.importCost + report.salesRevenue);
   });
 
   it("insumo de baixa pureza gera desperdício", () => {

@@ -1,6 +1,6 @@
 import type { BiomeId, BuildingType, Rank, ResourceId, ZoneKind } from "./types";
 
-export type BuildCategory = "infra" | "energy" | "production" | "special";
+export type BuildCategory = "infra" | "energy" | "production" | "storage" | "special";
 
 /** Requisitos de desbloqueio (ver unlocks.ts). */
 export interface Requirement {
@@ -11,8 +11,8 @@ export interface Requirement {
 
 export interface MaterialCost {
   resource: ResourceId;
-  /** Rank mínimo aceito para o material. */
-  minRank: Rank;
+  /** Rank mínimo aceito para o material (padrão D). */
+  minRank?: Rank;
   qty: number;
 }
 
@@ -29,7 +29,7 @@ export interface BuildingDef {
     capacity: number;
     /** A geração varia com o tempo da estação (Fase 2). */
     climate?: "wind" | "hydro";
-    /** Combustível por ciclo; a eficiência depende do Rank (FUEL_EFFICIENCY). */
+    /** Combustível por ciclo; a geração segue o rendimento do Rank (RANK_YIELD). */
     fuel?: { resource: ResourceId; qty: number };
   };
   /** Precisa estar encostado em água (ex.: hidrelétrica). */
@@ -51,6 +51,8 @@ export interface BuildingDef {
     /** Tech Tier: rank máximo que este processador consegue entregar. */
     tierCap: Rank;
   };
+  /** Capacidade extra de estoque por recurso (armazém, silo). */
+  storage?: Partial<Record<ResourceId, number>>;
   /** Multiplicador de impostos da cidade (ex.: monumentos). */
   taxBonus?: number;
   color: number;
@@ -64,6 +66,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     description: "Asfalto. Conecta construções à prefeitura.",
     buildable: true,
     cost: 10,
+    materials: [{ resource: "wood", qty: 1 }],
     upkeep: 1,
     workers: 0,
     needsRoad: false,
@@ -103,6 +106,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     description: "Produz comida. Rendimento alto em planícies.",
     buildable: true,
     cost: 80,
+    materials: [{ resource: "wood", qty: 4 }],
     upkeep: 2,
     workers: 3,
     needsRoad: true,
@@ -117,6 +121,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     description: "Extrai madeira. Rendimento alto em florestas.",
     buildable: true,
     cost: 100,
+    materials: [{ resource: "wood", qty: 2 }],
     upkeep: 3,
     workers: 3,
     needsRoad: true,
@@ -131,6 +136,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     description: "Extrai minério. Rendimento alto em montanhas.",
     buildable: true,
     cost: 150,
+    materials: [{ resource: "wood", qty: 4 }, { resource: "planks", qty: 2 }],
     upkeep: 4,
     workers: 4,
     needsRoad: true,
@@ -145,6 +151,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     description: "Madeira → tábuas. Tech Tier limita o rank a B.",
     buildable: true,
     cost: 200,
+    materials: [{ resource: "wood", qty: 6 }],
     upkeep: 5,
     workers: 4,
     needsRoad: true,
@@ -159,6 +166,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     description: "Minério → metal. Tech Tier alto: entrega até rank S.",
     buildable: true,
     cost: 300,
+    materials: [{ resource: "planks", qty: 6 }, { resource: "metal", qty: 2 }],
     upkeep: 6,
     workers: 5,
     needsRoad: true,
@@ -186,14 +194,15 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   },
   thermal_plant: {
     name: "Termelétrica",
-    description: "Queima 4 madeiras por ciclo. Madeira de Rank alto rende mais energia.",
+    description: "Queima 4 madeiras por ciclo: 30 MW com madeira D, até 42 MW com madeira S.",
     buildable: true,
     category: "energy",
     cost: 600,
+    materials: [{ resource: "planks", qty: 8 }, { resource: "metal", qty: 6 }],
     upkeep: 8,
     workers: 3,
     needsRoad: true,
-    generates: { capacity: 40, fuel: { resource: "wood", qty: 4 } },
+    generates: { capacity: 30, fuel: { resource: "wood", qty: 4 } },
     color: 0x5a4a4a,
     height: 26,
   },
@@ -203,12 +212,41 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     buildable: true,
     category: "energy",
     cost: 150,
+    materials: [{ resource: "metal", qty: 4 }, { resource: "planks", qty: 2 }],
     upkeep: 1,
     workers: 0,
     needsRoad: false,
     generates: { capacity: 6, climate: "wind" },
     color: 0xdfe8f0,
     height: 34,
+  },
+  warehouse: {
+    name: "Armazém",
+    description: "+150 de estoque para madeira, minério, tábuas, metal e bens.",
+    buildable: true,
+    category: "storage",
+    cost: 120,
+    materials: [{ resource: "wood", qty: 6 }, { resource: "planks", qty: 2 }],
+    upkeep: 1,
+    workers: 1,
+    needsRoad: true,
+    storage: { wood: 150, ore: 150, planks: 150, metal: 150, goods: 150 },
+    color: 0x9a7a5a,
+    height: 14,
+  },
+  silo: {
+    name: "Silo",
+    description: "+200 de estoque de comida e menos comida estragada.",
+    buildable: true,
+    category: "storage",
+    cost: 100,
+    materials: [{ resource: "wood", qty: 4 }, { resource: "planks", qty: 2 }],
+    upkeep: 1,
+    workers: 0,
+    needsRoad: true,
+    storage: { food: 200 },
+    color: 0xc9c2b0,
+    height: 22,
   },
   hydro_plant: {
     name: "Hidrelétrica",
@@ -217,6 +255,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     category: "energy",
     requires: { year: 1902 },
     cost: 900,
+    materials: [{ resource: "metal", qty: 10 }, { resource: "planks", qty: 10 }],
     upkeep: 4,
     workers: 2,
     needsRoad: false,
@@ -227,8 +266,6 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   },
 };
 
-/** Eficiência da termelétrica conforme a pureza do combustível. */
-export const FUEL_EFFICIENCY: Record<Rank, number> = { D: 0.6, C: 0.7, B: 0.8, A: 0.9, S: 1 };
 
 export interface ZoneDef {
   name: string;
@@ -243,12 +280,14 @@ export interface ZoneDef {
   powerPerLevel: number;
   color: number;
   denseRequires: Requirement;
+  /** Materiais consumidos a cada nível novo de um lote: [leve, densa]. */
+  growth: [MaterialCost[], MaterialCost[]];
 }
 
 export const ZONES: Record<ZoneKind, ZoneDef> = {
-  R: { name: "Residencial", short: "R", cost: [5, 10], maxLevel: [2, 4], perLevel: 4, powerPerLevel: 0.5, color: 0x5fbf5a, denseRequires: { population: 40 } },
-  C: { name: "Comercial", short: "C", cost: [5, 10], maxLevel: [2, 4], perLevel: 3, powerPerLevel: 0.75, color: 0x4a8fd8, denseRequires: { population: 40 } },
-  I: { name: "Industrial", short: "I", cost: [5, 10], maxLevel: [2, 4], perLevel: 4, powerPerLevel: 1, color: 0xd8b84a, denseRequires: { population: 40 } },
+  R: { name: "Residencial", short: "R", cost: [5, 10], maxLevel: [2, 4], perLevel: 4, powerPerLevel: 0.5, color: 0x5fbf5a, denseRequires: { population: 40 }, growth: [[{ resource: "planks", qty: 1 }], [{ resource: "planks", qty: 2 }]] },
+  C: { name: "Comercial", short: "C", cost: [5, 10], maxLevel: [2, 4], perLevel: 3, powerPerLevel: 0.75, color: 0x4a8fd8, denseRequires: { population: 40 }, growth: [[{ resource: "planks", qty: 1 }], [{ resource: "planks", qty: 1 }, { resource: "metal", qty: 1 }]] },
+  I: { name: "Industrial", short: "I", cost: [5, 10], maxLevel: [2, 4], perLevel: 4, powerPerLevel: 1, color: 0xd8b84a, denseRequires: { population: 40 }, growth: [[{ resource: "planks", qty: 1 }], [{ resource: "planks", qty: 1 }, { resource: "metal", qty: 1 }]] },
 };
 
 export const WIRE_COST = 2;
@@ -259,33 +298,34 @@ export const RESOURCES: Record<ResourceId, { name: string; color: number }> = {
   ore: { name: "Minério", color: 0x7d7f8a },
   planks: { name: "Tábuas", color: 0xb07a3c },
   metal: { name: "Metal", color: 0xa34a3a },
+  goods: { name: "Bens", color: 0x6a7ad0 },
 };
 
 /** Produção assimétrica: cada bioma favorece matérias-primas diferentes. */
 export const BIOMES: Record<BiomeId, { name: string; yield: Record<ResourceId, number>; grass: number }> = {
   plains: {
     name: "Planície",
-    yield: { food: 1.5, wood: 0.75, ore: 0.5, planks: 1, metal: 1 },
+    yield: { food: 1.5, wood: 0.75, ore: 0.5, planks: 1, metal: 1, goods: 1 },
     grass: 0x5d8a3a,
   },
   forest: {
     name: "Floresta",
-    yield: { food: 1.0, wood: 1.5, ore: 0.5, planks: 1, metal: 1 },
+    yield: { food: 1.0, wood: 1.5, ore: 0.5, planks: 1, metal: 1, goods: 1 },
     grass: 0x3f6e34,
   },
   desert: {
     name: "Deserto",
-    yield: { food: 0.6, wood: 0.5, ore: 1.3, planks: 1, metal: 1 },
+    yield: { food: 0.6, wood: 0.5, ore: 1.3, planks: 1, metal: 1, goods: 1 },
     grass: 0xc2a46a,
   },
   tundra: {
     name: "Tundra",
-    yield: { food: 0.5, wood: 1.1, ore: 1.1, planks: 1, metal: 1 },
+    yield: { food: 0.5, wood: 1.1, ore: 1.1, planks: 1, metal: 1, goods: 1 },
     grass: 0x8a9a8a,
   },
   mountains: {
     name: "Montanhas",
-    yield: { food: 0.5, wood: 1.0, ore: 1.5, planks: 1, metal: 1 },
+    yield: { food: 0.5, wood: 1.0, ore: 1.5, planks: 1, metal: 1, goods: 1 },
     grass: 0x6e6a4a,
   },
 };

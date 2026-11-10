@@ -7,8 +7,7 @@
 
 import { BUILDINGS } from "./catalog";
 import { REGION_BY_ID, weatherAt, type Continent } from "./climate";
-import { FOOD_PER_RESIDENT } from "./config";
-import { totalAtLeast } from "./inventory";
+import { foodSecure } from "./economy";
 import { computePower } from "./power";
 import { buildingStatus } from "./status";
 import { ZONE, type BuildingType, type CityState } from "./types";
@@ -166,7 +165,7 @@ export function citizensView(s: CityState): CitizenView[] {
     if (s.zoneType[i] === ZONE.R) for (let k = 0; k < s.zoneLevel[i] * 4; k++) homes.push(i);
   }
 
-  const fed = totalAtLeast(s.inventory, "food") >= Math.ceil(s.citizens.length * FOOD_PER_RESIDENT);
+  const fed = foodSecure(s);
   const recentDisaster = s.lastDisasterCycle !== null && s.cyclesCompleted - s.lastDisasterCycle <= 2;
   const weather = weatherAt(s);
   const harsh = weather && weather.effects.demand >= 1.3 ? (weather.temp < 12 ? "Frio intenso" : "Calor forte") : null;
@@ -181,7 +180,7 @@ export function citizensView(s: CityState): CitizenView[] {
     if (homeIdx === undefined) reasons.push({ text: "Sem moradia", delta: -3 });
     else if (power.powered[homeIdx]) reasons.push({ text: "Casa com energia", delta: 1 });
     else reasons.push({ text: "Casa sem energia", delta: -2 });
-    reasons.push(fed ? { text: "Comida na mesa", delta: 1 } : { text: "Falta comida", delta: -3 });
+    reasons.push(fed ? { text: "Comida na mesa", delta: 1 } : { text: "Falta comida (nem dá para comprar)", delta: -3 });
     if (recentDisaster) reasons.push({ text: "Desastre recente", delta: -2 });
     if (harsh) reasons.push({ text: harsh, delta: -1 });
     if (s.streak >= 3) reasons.push({ text: "Prefeitura focada", delta: 1 });

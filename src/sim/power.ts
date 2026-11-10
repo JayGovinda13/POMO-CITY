@@ -1,4 +1,5 @@
-import { BUILDINGS, FUEL_EFFICIENCY, ZONES } from "./catalog";
+import { BUILDINGS, ZONES } from "./catalog";
+import { RANK_YIELD } from "./config";
 import { bfsDistances, components } from "./grid";
 import { averageRank, getQty } from "./inventory";
 import { effectsOf, weatherAt } from "./climate";
@@ -73,7 +74,7 @@ export function plantCapacities(
     let cap = gen.capacity * st.efficiency;
     if (gen.fuel) {
       const rank = fuelRanks ? (fuelRanks.get(b.id) ?? null) : bestFuelRank(s, gen.fuel.resource, gen.fuel.qty);
-      cap = rank ? cap * FUEL_EFFICIENCY[rank] : 0;
+      cap = rank ? cap * RANK_YIELD[rank] : 0;
     }
     if (gen.climate) cap *= effects[gen.climate];
     out.set(b.id, Math.round(cap * 10) / 10);

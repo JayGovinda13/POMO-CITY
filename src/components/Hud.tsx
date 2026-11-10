@@ -15,6 +15,9 @@ import {
   REGION_BY_ID,
   weatherAt,
   computeDemand,
+  stockOf,
+  storageCapacity,
+  RESOURCE_NAMES,
   citizensView,
   moodSummary,
   computePower,
@@ -37,12 +40,14 @@ import { Timer } from "./Timer";
 import { CycleReportModal } from "./CycleReportModal";
 import { AccountButton } from "./AccountButton";
 import { GameMenu } from "./GameMenu";
+import { MarketButton } from "./MarketPanel";
 import { CitizensButton } from "./CitizensPanel";
 import { MOOD_ICON, Portrait } from "./Portrait";
 
 const GROUPS: { title: string; category: BuildCategory }[] = [
   { title: "Energia", category: "energy" },
   { title: "Produção", category: "production" },
+  { title: "Armazenagem", category: "storage" },
   { title: "Especial", category: "special" },
 ];
 
@@ -87,6 +92,7 @@ export function Hud() {
 
   const { power, status, labor, demand, access, weather, people } = derived;
   const region = city.regionId ? REGION_BY_ID[city.regionId] : null;
+  const capacity = storageCapacity(city);
   const nextRank = rankForStreak(effectiveStreak(city, Date.now()) + 1);
   const locked = phase === "focus";
 
@@ -119,6 +125,7 @@ export function Hud() {
         <span>Ciclos hoje: {city.cyclesToday}</span>
         {pending > 0 && <span className="text-amber-300">{pending} obra(s) aguardando sincronia</span>}
         <CitizensButton />
+        <MarketButton />
         <AccountButton />
         <GameMenu />
       </div>
@@ -181,6 +188,9 @@ export function Hud() {
                     <RankBadge rank={r} />
                   </th>
                 ))}
+                <th className="font-normal text-zinc-400" title="Estoque total / capacidade">
+                  Cap.
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -195,6 +205,9 @@ export function Hud() {
                       </td>
                     );
                   })}
+                  <td className={stockOf(city.inventory, res) >= capacity[res] ? "text-amber-300" : "text-zinc-400"}>
+                    {capacity[res]}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -359,10 +372,15 @@ function ToolButton({
   const selected = useGame((s) => s.tool === tool);
   const setTool = useGame((s) => s.setTool);
   const def = tool && tool in BUILDINGS ? BUILDINGS[tool as BuildingType] : null;
+  const mats = def?.materials?.length
+    ? "\nMateriais: " +
+      def.materials.map((m) => `${m.qty} ${RESOURCE_NAMES[m.resource]}${m.minRank && m.minRank !== "D" ? ` ${m.minRank}+` : ""}`).join(", ") +
+      " (o que faltar é comprado)"
+    : "";
   const title = lock
     ? lock
     : def
-      ? `${def.description}\nCusto $${def.cost} · manutenção $${def.upkeep}/ciclo`
+      ? `${def.description}\nCusto $${def.cost} · manutenção $${def.upkeep}/ciclo${mats}`
       : label;
   return (
     <button

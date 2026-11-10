@@ -54,7 +54,15 @@ export interface GrowthResult {
  */
 export function developZones(
   s: CityState,
-  opts: { rank: Rank; rand: () => number; powered: Uint8Array; access: Int32Array; approval?: number },
+  opts: {
+    rank: Rank;
+    rand: () => number;
+    powered: Uint8Array;
+    access: Int32Array;
+    approval?: number;
+    /** Paga os materiais de um nível novo; false = não há material nem dinheiro (o lote não cresce). */
+    pay?: (kind: ZoneKind, dense: boolean) => boolean;
+  },
 ): GrowthResult {
   const demand = computeDemand(s, undefined, opts.approval ?? 0);
   const slots = BASE_GROWTH_SLOTS + RANK_GROWTH_BONUS[opts.rank];
@@ -79,6 +87,7 @@ export function developZones(
         if (opts.powered[i] && opts.access[i] >= 0) candidates.push(i);
       }
       for (const i of shuffle(candidates, opts.rand).slice(0, Math.ceil(slots * d))) {
+        if (opts.pay && !opts.pay(kind, s.zoneDensity[i] === 1)) continue;
         s.zoneLevel[i]++;
         grown++;
       }

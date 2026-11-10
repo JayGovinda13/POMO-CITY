@@ -1,6 +1,6 @@
 import { BUILDINGS, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
-import { take, totalAtLeast } from "./inventory";
+import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
 import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
 import { lockReason } from "./unlocks";
@@ -57,6 +57,11 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     return null;
   }
 
+  if (cmd.type === "policy") {
+    if (!RESOURCE_IDS.includes(cmd.resource)) return "Recurso inválido";
+    return validatePolicy({ mode: cmd.mode, value: cmd.value });
+  }
+
   if (!isInt(cmd.x) || !isInt(cmd.y) || !inBounds(s, cmd.x, cmd.y)) return "Fora do mapa";
   const i = idx(s, cmd.x, cmd.y);
   const here = buildingAt(s, cmd.x, cmd.y);
@@ -87,11 +92,13 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
       });
       if (!touchesWater) return "Precisa encostar na água";
     }
-    if (s.money < def.cost) return "Dinheiro insuficiente";
-    for (const m of def.materials ?? []) {
-      if (totalAtLeast(s.inventory, m.resource, m.minRank) < m.qty) {
-        return `Requer ${m.qty}× ${m.resource} rank ${m.minRank}+`;
-      }
+    // Materiais: do estoque; o que faltar é comprado no mercado externo (até o Rank B).
+    const quote = quoteMaterials(s, def.materials);
+    if (quote.impossible) return quote.impossible;
+    if (s.money < def.cost + quote.importCost) {
+      return quote.importCost
+        ? `Dinheiro insuficiente ($${def.cost} + $${quote.importCost} de materiais importados)`
+        : "Dinheiro insuficiente";
     }
     return null;
   }
@@ -110,7 +117,9 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
   if (error) return { ok: false, error };
   const next = cloneState(s);
 
-  if (cmd.type === "zone") {
+  if (cmd.type === "policy") {
+    next.policies = { ...next.policies, [cmd.resource]: { mode: cmd.mode, value: cmd.value } };
+  } else if (cmd.type === "zone") {
     const area = zoneArea(next, cmd) as ZoneArea;
     const code: ZoneCode = cmd.zone === "none" ? ZONE.NONE : ZONE[cmd.zone];
     for (const i of area.tiles) {
@@ -126,10 +135,8 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     const def = BUILDINGS[cmd.building];
     const i = idx(next, cmd.x, cmd.y);
     next.money -= def.cost;
-    for (const m of def.materials ?? []) {
-      // Gasta o mínimo de qualidade necessário, preservando o excedente premium.
-      take(next.inventory, m.resource, m.qty, { minRank: m.minRank, prefer: "low" });
-    }
+    // Gasta o mínimo de qualidade necessário (preserva o premium) e importa o que faltar.
+    payMaterials(next, def.materials);
     // Obras públicas desfazem o zoneamento do tile (como no modelo clássico).
     next.zoneType[i] = ZONE.NONE;
     next.zoneDensity[i] = 0;
