@@ -1,7 +1,7 @@
 // Tocador das trilhas: agenda os compassos com antecedência no relógio do Web Audio (preciso,
-// sem depender do setTimeout) e troca de faixa com fade. Modos: "Rádio" (qualquer faixa),
-// um gênero (as 8 faixas dele em sequência) ou uma faixa específica (repete). No rádio e no
-// gênero, a faixa muda a cada duas voltas da música.
+// sem depender do setTimeout) e troca de faixa com fade. Modos: "Rádio" (todas as faixas em
+// ordem aleatória, sem repetir até tocar todas), um gênero (as 8 faixas dele em sequência) ou
+// uma faixa específica (repete). No rádio cada faixa toca uma volta; no gênero, duas.
 
 import { Synth } from "./synth";
 import { GENRE_IDS, TRACKS, TRACK_IDS, tracksOf, type GenreId, type TrackId } from "./tracks";
@@ -28,6 +28,17 @@ export const DEFAULT_MUSIC: MusicSettings = { choice: "radio", volume: 0.5, mute
 
 const LOOKAHEAD = 0.35;
 const LOOPS_PER_TRACK = 2;
+const LOOPS_RADIO = 1;
+
+/** Embaralha (Fisher–Yates). */
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 class MusicPlayer {
   private synth: Synth | null = null;
@@ -41,6 +52,8 @@ class MusicPlayer {
   private ducked = false;
   private listeners = new Set<(id: TrackId | null) => void>();
   choice: MusicChoice = "off";
+  /** Fila embaralhada do rádio: toca todas antes de repetir. */
+  private radioQueue: TrackId[] = [];
 
   /** Faixa tocando agora (null = silêncio). */
   get current() {
@@ -113,14 +126,19 @@ class MusicPlayer {
       return at >= 0 ? list[(at + 1) % list.length] : list[Math.floor(Math.random() * list.length)];
     }
     if (c !== "radio" && c !== "off") return c;
-    const others = TRACK_IDS.filter((t) => t !== this.track);
-    return others[Math.floor(Math.random() * others.length)];
+    if (!this.radioQueue.length) {
+      this.radioQueue = shuffled(TRACK_IDS);
+      // Nova volta do baralho não começa pela faixa que acabou de tocar.
+      if (this.radioQueue[0] === this.track) this.radioQueue.push(this.radioQueue.shift()!);
+    }
+    return this.radioQueue.shift()!;
   }
 
   private start(id: TrackId) {
     const synth = this.synth!;
     this.fadeOut();
     this.bus = synth.ctx.createGain();
+    this.bus.gain.value = TRACKS[id].gain;
     this.bus.connect(synth.input);
     this.track = id;
     this.bar = 0;
@@ -167,7 +185,8 @@ class MusicPlayer {
       if (this.bar >= tr.bars) {
         this.bar = 0;
         this.loops++;
-        if ((this.choice === "radio" || isGenre(this.choice)) && this.loops >= LOOPS_PER_TRACK) {
+        const limit = this.choice === "radio" ? LOOPS_RADIO : LOOPS_PER_TRACK;
+        if ((this.choice === "radio" || isGenre(this.choice)) && this.loops >= limit) {
           const startAt = this.barTime;
           this.start(this.pick());
           this.barTime = startAt;

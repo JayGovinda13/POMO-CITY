@@ -1,4 +1,6 @@
-// Trilhas originais do POMO-CITY: 8 faixas de Jazz, Bossa Nova, Tango e Salsa (32 no total).
+// Trilhas originais do POMO-CITY: 8 faixas de Jazz, Bossa Nova, Tango, Salsa, música árabe e
+// música indiana (48 no total). As árabes usam maqamat (com quartos de tom) e as indianas, ragas,
+// sobre bordão.
 // Cada faixa é um ciclo de 16 compassos (4/4) com harmonia própria. A 1ª faixa de cada gênero
 // tem melodia escrita à mão; as outras têm melodia composta de forma determinística
 // (forma A–A'–B–A'', notas do acorde nos tempos fortes, movimento por grau e cadência na
@@ -16,7 +18,7 @@ export interface NoteEvent {
   vel: number;
 }
 
-export type GenreId = "jazz" | "bossa" | "tango" | "salsa";
+export type GenreId = "jazz" | "bossa" | "tango" | "salsa" | "arabe" | "indiana";
 /** "jazz-1" … "salsa-8". */
 export type TrackId = `${GenreId}-${number}`;
 
@@ -30,6 +32,8 @@ export interface Track {
   /** Swing: quanto a colcheia do contratempo atrasa (0 = reto; 1/6 ≈ swing de jazz). */
   swing: number;
   bars: number;
+  /** Ganho da faixa: equaliza o volume entre gêneros (instrumentação mais rala soa mais baixo). */
+  gain: number;
   render(bar: number): NoteEvent[];
 }
 
@@ -45,6 +49,8 @@ export function midi(name: string): number {
 }
 
 const QUALITY: Record<string, number[]> = {
+  /** Bordão (tônica e quinta): base das músicas modais. */
+  "5": [0, 7],
   maj: [0, 4, 7],
   m: [0, 3, 7],
   "7": [0, 4, 7, 10],
@@ -169,6 +175,23 @@ const CELLS: Record<GenreId, Cell[]> = {
     [-0.5, 0.5, 0.5, 0.5, 1, 0.5, 0.5],
     [1.5, 0.5, 2],
   ],
+  arabe: [
+    [1, 0.5, 0.5, 1, 1],
+    [0.5, 0.5, 0.5, 0.5, 2],
+    [1.5, 0.5, 1, 1],
+    [0.25, 0.25, 0.25, 0.25, 1, 2],
+    [2, 1, 1],
+    [-1, 0.5, 0.5, 1, 1],
+    [0.5, 0.5, 1, 0.5, 0.5, 1],
+  ],
+  indiana: [
+    [2, 1, 1],
+    [1, 0.5, 0.5, 2],
+    [0.5, 0.5, 1, 2],
+    [3, 1],
+    [0.25, 0.25, 0.5, 1, 1, 1],
+    [1, 1, 0.5, 0.5, 1],
+  ],
   salsa: [
     [0.5, 0.5, -0.5, 0.5, -0.5, 1, -0.5],
     [0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 1],
@@ -183,6 +206,10 @@ interface Composition {
   chords: Chords;
   key: number;
   mode: Mode;
+  /** Escala explícita (intervalos, aceita quartos de tom: 1.5, 3.5…) — maqam ou raga. */
+  scale?: number[];
+  /** Música modal: tempos fortes também podem cair na 3ª e na 5ª da escala (não só no bordão). */
+  modal?: boolean;
   genre: GenreId;
   seed: number;
   /** Centro da tessitura (MIDI). */
@@ -200,16 +227,24 @@ export function composeMelody(c: Composition): { t: number; dur: number; midi: n
   const pick = () => [0, 1, 2, 3].map(() => cells[Math.floor(r() * cells.length)]);
   const A = pick();
   const B = pick();
-  const scale = MODES[c.mode].map((i) => (c.key + i) % 12);
+  const ivs = c.scale ?? MODES[c.mode];
+  const pc = (x: number) => ((x % 12) + 12) % 12;
+  const scale = ivs.map((i) => pc(c.key + i));
   const lo = c.center - 9;
   const hi = c.center + 9;
+  const samePc = (a: number, b: number) => Math.abs(pc(a) - pc(b)) < 1e-6;
 
   const allowed = (ch: Chord, strong: boolean) => {
-    const tones = ch.tones.map((t) => (ch.root + t) % 12);
-    const pcs = new Set(strong ? tones : [...scale, ...tones]);
+    const tones = ch.tones.map((t) => pc(ch.root + t));
+    if (c.modal && strong) tones.push(pc(c.key + ivs[2]), pc(c.key + ivs[4]));
+    const pcs = strong ? tones : [...scale, ...tones];
     const out: number[] = [];
-    for (let m = lo; m <= hi; m++) if (pcs.has(m % 12)) out.push(m);
-    return out;
+    for (let o = Math.floor(lo / 12) - 1; o <= Math.ceil(hi / 12); o++)
+      for (const p of pcs) {
+        const m = o * 12 + p;
+        if (m >= lo && m <= hi && !out.some((x) => Math.abs(x - m) < 1e-6)) out.push(m);
+      }
+    return out.sort((a, b) => a - b);
   };
   const nearest = (cands: number[], target: number) =>
     cands.reduce((best, m) => (Math.abs(m - target) < Math.abs(best - target) || (Math.abs(m - target) === Math.abs(best - target) && r() < 0.5) ? m : best), cands[0]);
@@ -246,7 +281,7 @@ export function composeMelody(c: Composition): { t: number; dur: number; midi: n
         const strong = t % 1 === 0 && (t % 2 === 0 || dur >= 1);
         const cands = allowed(ch, strong);
         let m: number;
-        if (bar === 14) m = nearest(cands.filter((x) => x % 12 === ch.root), prev);
+        if (bar === 14) m = nearest(cands.filter((x) => samePc(x, ch.root)), prev);
         else if ((section === 1 || section === 3) && contour[inSection]?.[k] !== undefined) m = nearest(cands, prev + contour[inSection][k]);
         else m = walk(cands, prev);
         if (section === 0) (contour[inSection] ??= [])[k] = m - prev;
@@ -267,18 +302,56 @@ export function composeMelody(c: Composition): { t: number; dur: number; midi: n
 interface Song {
   title: string;
   bpm: number;
-  chords: string[];
+  /** Harmonia (16 compassos). Nas músicas modais, use `drones`. */
+  chords?: string[];
+  /** Música modal: grau da escala do bordão em cada compasso (16 valores; 0 = tônica). */
+  drones?: number[];
+  /** Escala explícita (maqam/raga), em semitons a partir da tônica; aceita quartos de tom. */
+  scale?: number[];
   /** Tonalidade (para a melodia composta): "F", "Am"… */
   key: string;
   mode?: Mode;
   /** Melodia escrita à mão (16 compassos); sem ela, o compositor cria uma. */
   melody?: string[];
   lead?: InstId;
-  /** Variação do acompanhamento (0 ou 1) — muda batida, comping ou montuno. */
+  /** Variação do acompanhamento — muda batida, comping, montuno ou ritmo (iqa'/tala). */
   variant?: number;
 }
 
-const GENRE_NAMES: Record<GenreId, string> = { jazz: "Jazz", bossa: "Bossa Nova", tango: "Tango", salsa: "Salsa" };
+const GENRE_NAMES: Record<GenreId, string> = {
+  jazz: "Jazz",
+  bossa: "Bossa Nova",
+  tango: "Tango",
+  salsa: "Salsa",
+  arabe: "Música Árabe",
+  indiana: "Música Indiana",
+};
+
+// Maqamat (quartos de tom em .5) e ragas.
+const MAQAM = {
+  hijaz: [0, 1, 4, 5, 7, 8, 10],
+  rast: [0, 2, 3.5, 5, 7, 9, 10.5],
+  bayati: [0, 1.5, 3, 5, 7, 8, 10],
+  nahawand: [0, 2, 3, 5, 7, 8, 11],
+  kurd: [0, 1, 3, 5, 7, 8, 10],
+  ajam: [0, 2, 4, 5, 7, 9, 11],
+  saba: [0, 1.5, 3, 4, 7, 8, 10],
+};
+const RAGA = {
+  yaman: [0, 2, 4, 6, 7, 9, 11],
+  kafi: [0, 2, 3, 5, 7, 9, 10],
+  khamaj: [0, 2, 4, 5, 7, 9, 10],
+  bhairav: [0, 1, 4, 5, 7, 8, 11],
+  desh: [0, 2, 4, 5, 7, 9, 10],
+  bhairavi: [0, 1, 3, 5, 7, 8, 10],
+  todi: [0, 1, 3, 6, 7, 8, 11],
+  marwa: [0, 1, 4, 6, 7, 9, 11],
+};
+/** Bordões típicos: tônica com idas à 4ª (grau 3) e à 5ª (grau 4). */
+const DRONE_A = [0, 0, 0, 0, 0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 0];
+const DRONE_B = [0, 0, 3, 0, 0, 0, 4, 0, 3, 3, 4, 4, 0, 3, 0, 0];
+const DRONE_TONIC = new Array(16).fill(0);
+const DRONE_PA = [0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 4, 4, 0, 0];
 
 const SONGS: Record<GenreId, Song[]> = {
   jazz: [
@@ -415,11 +488,34 @@ const SONGS: Record<GenreId, Song[]> = {
     { title: "Noche de Feria", bpm: 186, key: "Bb", lead: "lead", chords: ["Bb", "Eb", "F7", "Bb", "Gm", "Cm", "F7", "Bb", "Eb", "F7", "Dm", "Gm", "Cm", "F7", "Bb", "F7"] },
     { title: "Guaguancó do Porto", bpm: 194, key: "Fm", mode: "harmonic", variant: 1, chords: ["Fm", "Bbm", "C7", "Fm", "Fm", "Bbm", "C7", "Fm", "Db", "Eb", "C7", "Fm", "Bbm", "C7", "Fm", "C7"] },
   ],
+  // Ritmos (variant): 0 = maqsum, 1 = baladi, 2 = saidi.
+  arabe: [
+    { title: "Café no Souk", bpm: 100, key: "D", scale: MAQAM.hijaz, drones: DRONE_A, lead: "oud", variant: 0 },
+    { title: "Lanternas de Latão", bpm: 92, key: "C", scale: MAQAM.rast, drones: DRONE_B, lead: "ney", variant: 1 },
+    { title: "Areia na Avenida", bpm: 104, key: "D", scale: MAQAM.bayati, drones: DRONE_A, lead: "lead", variant: 2 },
+    { title: "Minarete ao Pôr do Sol", bpm: 84, key: "G", scale: MAQAM.nahawand, drones: DRONE_B, lead: "ney", variant: 0 },
+    { title: "Caravana da Periferia", bpm: 110, key: "A", scale: MAQAM.kurd, drones: DRONE_A, lead: "oud", variant: 1 },
+    { title: "Jardim de Tâmaras", bpm: 96, key: "F", scale: MAQAM.ajam, drones: DRONE_B, lead: "lead", variant: 0 },
+    { title: "Noite no Bazar", bpm: 88, key: "D", scale: MAQAM.saba, drones: DRONE_TONIC, lead: "ney", variant: 2 },
+    { title: "Dança do Mercado", bpm: 118, key: "G", scale: MAQAM.hijaz, drones: DRONE_B, lead: "oud", variant: 1 },
+  ],
+  // Talas (variant): 0 = teental (16 tempos), 1 = keherwa (8).
+  indiana: [
+    { title: "Monção no Bairro", bpm: 84, key: "D", scale: RAGA.yaman, drones: DRONE_PA, lead: "sitar", variant: 0 },
+    { title: "Chá de Gengibre", bpm: 100, key: "E", scale: RAGA.kafi, drones: DRONE_PA, lead: "flute", variant: 1 },
+    { title: "Riquixá da Prefeitura", bpm: 120, key: "D", scale: RAGA.khamaj, drones: DRONE_PA, lead: "sitar", variant: 1 },
+    { title: "Templo de Pedra", bpm: 72, key: "C#", scale: RAGA.bhairav, drones: DRONE_TONIC, lead: "sitar", variant: 0 },
+    { title: "Pipas no Telhado", bpm: 108, key: "F", scale: RAGA.desh, drones: DRONE_PA, lead: "flute", variant: 1 },
+    { title: "Lua de Diwali", bpm: 90, key: "E", scale: RAGA.bhairavi, drones: DRONE_PA, lead: "sitar", variant: 0 },
+    { title: "Feira de Especiarias", bpm: 96, key: "D", scale: RAGA.todi, drones: DRONE_TONIC, lead: "ney", variant: 1 },
+    { title: "Rio Sagrado", bpm: 78, key: "C", scale: RAGA.marwa, drones: DRONE_TONIC, lead: "flute", variant: 0 },
+  ],
 };
 
-const DEFAULT_LEAD: Record<GenreId, InstId> = { jazz: "lead", bossa: "flute", tango: "bandoneon", salsa: "brass" };
+const GENRE_GAIN: Record<GenreId, number> = { jazz: 1, bossa: 1, tango: 1.2, salsa: 1.1, arabe: 1.35, indiana: 1.45 };
+const DEFAULT_LEAD: Record<GenreId, InstId> = { jazz: "lead", bossa: "flute", tango: "bandoneon", salsa: "brass", arabe: "oud", indiana: "sitar" };
 /** Centro da tessitura da melodia por gênero (perto de G5/A5). */
-const CENTER: Record<GenreId, number> = { jazz: 74, bossa: 74, tango: 74, salsa: 76 };
+const CENTER: Record<GenreId, number> = { jazz: 74, bossa: 74, tango: 74, salsa: 76, arabe: 70, indiana: 72 };
 
 // ───────────────────────── acompanhamento por gênero ─────────────────────────
 
@@ -527,11 +623,77 @@ function salsaBand(bar: number, chords: Chords, variant: number): NoteEvent[] {
   return ev;
 }
 
+/** Iqa'at (D = doum grave, T = tek seco) em colcheias: maqsum, baladi e saidi. */
+const IQA: [number, "doum" | "tek"][][] = [
+  [[0, "doum"], [0.5, "tek"], [1.5, "tek"], [2, "doum"], [3, "tek"]],
+  [[0, "doum"], [0.5, "doum"], [1.5, "tek"], [2, "doum"], [3, "tek"]],
+  [[0, "doum"], [0.5, "tek"], [1.5, "doum"], [2, "doum"], [3, "tek"]],
+];
+
+function arabBand(bar: number, chords: Chords, variant: number): NoteEvent[] {
+  const ev: NoteEvent[] = [];
+  const c = chords(bar, 0);
+  const root = bassRoot(c);
+  for (const [t, kind] of IQA[variant % IQA.length]) {
+    ev.push(hit(t, kind, kind === "doum" ? 1 : 0.85));
+    // O alaúde acompanha o ritmo: tônica nos golpes graves, quinta nos secos.
+    ev.push({ t, dur: 0.45, inst: "oud", midi: kind === "doum" ? root : root + 7, vel: kind === "doum" ? 0.75 : 0.55 });
+  }
+  // Recheios suaves (ka) e platinelas do riq em colcheias.
+  for (const t of [1, 2.5, 3.5]) ev.push(hit(t, "tek", 0.35));
+  for (let k = 0; k < 8; k++) ev.push(hit(k / 2, "riq", k % 4 === 0 ? 1 : 0.55));
+  if (bar % 4 === 3) for (const t of [3.25, 3.75]) ev.push(hit(t, "tek", 0.6));
+  // Baixo: tônica longa no início do compasso.
+  ev.push({ t: 0, dur: 1.8, inst: "bass", midi: root, vel: 0.7 });
+  return ev;
+}
+
+/** Bols do tabla: o que cada sílaba toca (bayan = grave, dayan = agudo afinado na tônica). */
+const BOLS: Record<string, ("tablaGe" | "tablaNa" | "tablaTin" | "tek")[]> = {
+  dha: ["tablaGe", "tablaNa"],
+  dhin: ["tablaGe", "tablaTin"],
+  dhi: ["tablaGe", "tablaTin"],
+  tin: ["tablaTin"],
+  ta: ["tablaNa"],
+  na: ["tablaNa"],
+  ti: ["tablaTin"],
+  ge: ["tablaGe"],
+  ka: ["tek"],
+};
+/** Teental: 16 tempos em 4 compassos (dha dhin dhin dha | … | dha tin tin ta | ta dhin dhin dha). */
+const TEENTAL = ["dha", "dhin", "dhin", "dha", "dha", "dhin", "dhin", "dha", "dha", "tin", "tin", "ta", "ta", "dhin", "dhin", "dha"];
+/** Keherwa: 8 tempos em colcheias por compasso. */
+const KEHERWA = ["dha", "ge", "na", "ti", "na", "ka", "dhi", "na"];
+
+function indianBand(bar: number, chords: Chords, variant: number): NoteEvent[] {
+  const ev: NoteEvent[] = [];
+  const c = chords(bar, 0);
+  const sa = bassRoot(c) + 12;
+  // Tanpura: Pa – Sa – Sa – Sa grave, soando o compasso inteiro.
+  ([[0, sa - 5], [1, sa], [2, sa], [3, sa - 12]] as const).forEach(([t, m]) =>
+    ev.push({ t, dur: 1.6, inst: "tanpura", midi: Math.max(36, m), vel: t === 0 ? 1 : 0.8 }),
+  );
+  const tablaSa = sa + 12;
+  const strokes =
+    variant === 1
+      ? KEHERWA.map((bol, k) => [k / 2, bol] as const)
+      : TEENTAL.slice((bar % 4) * 4, (bar % 4) * 4 + 4).map((bol, k) => [k, bol] as const);
+  for (const [t, bol] of strokes) {
+    for (const inst of BOLS[bol]) ev.push({ t, dur: 0.3, inst, midi: tablaSa, vel: t === 0 ? 1 : 0.75 });
+  }
+  // Teental: recheio "tirakita" no fim do ciclo.
+  if (variant !== 1 && bar % 4 === 3) for (const t of [3.25, 3.5, 3.75]) ev.push({ t, dur: 0.2, inst: "tablaTin", midi: tablaSa, vel: 0.5 });
+  ev.push({ t: 0, dur: 3.5, inst: "bass", midi: bassRoot(c), vel: 0.45 });
+  return ev;
+}
+
 const BANDS: Record<GenreId, (bar: number, chords: Chords, variant: number) => NoteEvent[]> = {
   jazz: jazzBand,
   bossa: bossaBand,
   tango: tangoBand,
   salsa: salsaBand,
+  arabe: arabBand,
+  indiana: indianBand,
 };
 
 // ───────────────────────── montagem ─────────────────────────
@@ -542,18 +704,34 @@ function hashTitle(s: string) {
   return h >>> 0;
 }
 
+/** Bordão de cada compasso a partir dos graus da escala (sempre tônica + quinta). */
+function droneProgression(key: number, scale: number[], degrees: number[]): Chords {
+  if (degrees.length !== 16) throw new Error(`bordão com ${degrees.length} compassos`);
+  const chords = degrees.map((d) => ({ root: Math.round(key + scale[d]) % 12, tones: QUALITY["5"] }));
+  return (bar) => chords[bar % 16];
+}
+
 function buildTrack(genre: GenreId, song: Song, n: number): Track {
-  const chords = progression(song.chords);
+  const keyM = /^([A-G][#b]?)(m?)$/.exec(song.key)!;
+  const key = (midi(`${keyM[1]}4`) - 60 + 12) % 12;
+  const chords = song.drones ? droneProgression(key, song.scale ?? MODES.major, song.drones) : progression(song.chords!);
   const lead = song.lead ?? DEFAULT_LEAD[genre];
   const variant = song.variant ?? 0;
   let melody: NoteEvent[][];
   if (song.melody) {
     melody = song.melody.map((m) => line(m, lead, 1));
   } else {
-    const keyM = /^([A-G][#b]?)(m?)$/.exec(song.key)!;
-    const key = (midi(`${keyM[1]}4`) - 60 + 12) % 12;
     const mode: Mode = song.mode ?? (keyM[2] ? "minor" : "major");
-    melody = composeMelody({ chords, key, mode, genre, seed: hashTitle(song.title), center: CENTER[genre] }).map((bar) =>
+    melody = composeMelody({
+      chords,
+      key,
+      mode,
+      scale: song.scale,
+      modal: !!song.drones,
+      genre,
+      seed: hashTitle(song.title),
+      center: CENTER[genre],
+    }).map((bar) =>
       bar.map((x) => ({ ...x, inst: lead, vel: 1 })),
     );
   }
@@ -565,6 +743,7 @@ function buildTrack(genre: GenreId, song: Song, n: number): Track {
     bpm: song.bpm,
     swing: genre === "jazz" ? 1 / 6 : 0,
     bars: 16,
+    gain: GENRE_GAIN[genre],
     render: (bar) => [...melody[bar % 16], ...BANDS[genre](bar, chords, variant)],
   };
 }

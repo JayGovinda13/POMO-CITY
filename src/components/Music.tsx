@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DEFAULT_MUSIC, loadMusicSettings, music, saveMusicSettings, type MusicChoice, type MusicSettings } from "@/audio/player";
-import { GENRES, TRACKS, tracksOf, type GenreId, type TrackId } from "@/audio/tracks";
+import { GENRES, TRACKS, TRACK_IDS, tracksOf, type GenreId, type TrackId } from "@/audio/tracks";
 import { useGame } from "@/store/game";
 
 // Configurações da música compartilhadas entre o controlador e o botão.
@@ -66,7 +66,7 @@ export function MusicController() {
 }
 
 const CHOICES: { id: MusicChoice; label: string; hint: string }[] = [
-  { id: "radio", label: "📻 Rádio", hint: "Todas as 32 faixas, alternando os gêneros" },
+  { id: "radio", label: "📻 Rádio", hint: `Todas as ${TRACK_IDS.length} faixas em ordem aleatória` },
   ...GENRES.map((g) => ({ id: g.id as MusicChoice, label: g.name, hint: `As 8 faixas de ${g.name} em sequência` })),
   { id: "off", label: "🔇 Desligada", hint: "Sem música" },
 ];

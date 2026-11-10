@@ -21,7 +21,19 @@ export type InstId =
   | "clave"
   | "conga"
   | "congaSlap"
-  | "bongo";
+  | "bongo"
+  // Música árabe
+  | "oud"
+  | "ney"
+  | "doum"
+  | "tek"
+  | "riq"
+  // Música indiana
+  | "sitar"
+  | "tanpura"
+  | "tablaGe"
+  | "tablaNa"
+  | "tablaTin";
 
 export const midiFreq = (m: number) => 440 * 2 ** ((m - 69) / 12);
 
@@ -276,6 +288,146 @@ export class Synth {
         o.connect(lp);
         o2.connect(lp);
         lp.connect(g).connect(dest);
+        break;
+      }
+      case "oud": {
+        // Alaúde árabe: pinçado de som redondo, com leve "escorregada" de afinação no ataque.
+        const end = t + dur + 0.6;
+        const o = this.osc("triangle", f, t, end);
+        const o2 = this.osc("sawtooth", f, t, end);
+        for (const x of [o, o2]) {
+          x.detune.setValueAtTime(-35, t);
+          x.detune.linearRampToValueAtTime(0, t + 0.04);
+        }
+        const mix = ctx.createGain();
+        mix.gain.value = 0.25;
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.Q.value = 2;
+        lp.frequency.setValueAtTime(2400, t);
+        lp.frequency.setTargetAtTime(700, t, 0.1);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.14 * v, t + 0.004);
+        g.gain.setTargetAtTime(0.0001, t + 0.01, 0.25 + dur * 0.12);
+        o.connect(lp);
+        o2.connect(mix).connect(lp);
+        lp.connect(g).connect(dest);
+        break;
+      }
+      case "ney": {
+        // Flauta de bambu: tom suave, sopro de ar e vibrato largo.
+        const end = t + dur + 0.3;
+        const o = this.osc("sine", f, t, end);
+        const o2 = this.osc("triangle", f, t, end);
+        this.vibrato(o, t, end, 4.5, 22, 0.25);
+        this.vibrato(o2, t, end, 4.5, 22, 0.25);
+        const g = this.env(t, 0.16 * v, 0.09, 0.8, dur, 0.2);
+        const og = ctx.createGain();
+        og.gain.value = 0.4;
+        o.connect(g);
+        o2.connect(og).connect(g);
+        g.connect(dest);
+        // Sopro.
+        const n = this.noiseSrc(t, end);
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = f * 2;
+        bp.Q.value = 4;
+        const ng = this.env(t, 0.05 * v, 0.05, 0.4, dur, 0.15);
+        n.connect(bp).connect(ng).connect(dest);
+        break;
+      }
+      case "sitar": {
+        // Cítara: corda brilhante com zumbido (jawari) e ressonância longa.
+        const end = t + dur + 1.2;
+        const o = this.osc("sawtooth", f, t, end);
+        o.detune.setValueAtTime(-20, t);
+        o.detune.linearRampToValueAtTime(0, t + 0.06);
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.Q.value = 6;
+        bp.frequency.setValueAtTime(f * 6, t);
+        bp.frequency.exponentialRampToValueAtTime(f * 2.5, t + 0.5);
+        const lp = this.lowpass(3500);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.2 * v, t + 0.003);
+        g.gain.setTargetAtTime(0.0001, t + 0.01, 0.45 + dur * 0.2);
+        const body = this.osc("triangle", f, t, end);
+        const bg = ctx.createGain();
+        bg.gain.value = 0.35;
+        o.connect(bp).connect(lp);
+        body.connect(bg).connect(lp);
+        lp.connect(g).connect(dest);
+        break;
+      }
+      case "tanpura": {
+        // Bordão: cordas soltas que soam longas, com brilho que "respira".
+        const end = t + dur + 2;
+        const o = this.osc("sawtooth", f, t, end);
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.Q.value = 3;
+        lp.frequency.setValueAtTime(f * 8, t);
+        lp.frequency.exponentialRampToValueAtTime(f * 3, t + dur + 1);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.045 * v, t + 0.05);
+        g.gain.setTargetAtTime(0.0001, t + dur, 0.6);
+        o.connect(lp).connect(g).connect(dest);
+        break;
+      }
+      case "doum": {
+        // Darbuka, golpe grave no centro.
+        const o = this.osc("sine", 140, t, t + 0.4);
+        o.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.42 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        o.connect(g).connect(dest);
+        break;
+      }
+      case "tek": {
+        // Darbuka, golpe seco na borda.
+        this.hit(dest, t, 0.05, 3500, "bandpass", 0.3 * v, 3);
+        const o = this.osc("sine", 720, t, t + 0.06);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.12 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        o.connect(g).connect(dest);
+        break;
+      }
+      case "riq":
+        // Pandeiro árabe: platinelas metálicas.
+        this.hit(dest, t, 0.12, 7500, "bandpass", 0.1 * v, 2);
+        this.hit(dest, t, 0.08, 10000, "highpass", 0.05 * v);
+        break;
+      case "tablaGe": {
+        // Bayan (tambor grave): a afinação sobe com a pressão da mão.
+        const o = this.osc("sine", 75, t, t + 0.5);
+        o.frequency.linearRampToValueAtTime(115, t + 0.18);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.38 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        o.connect(g).connect(dest);
+        break;
+      }
+      case "tablaNa":
+      case "tablaTin": {
+        // Dayan (tambor agudo afinado na tônica): "na" ressoa, "tin" é abafado.
+        const len = inst === "tablaNa" ? 0.4 : 0.16;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.16 * v, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + len);
+        for (const [mult, amp] of [[1, 1], [2, 0.5], [3, 0.25]] as const) {
+          const o = this.osc("sine", f * mult, t, t + len + 0.05);
+          const og = ctx.createGain();
+          og.gain.value = amp;
+          o.connect(og).connect(g);
+        }
+        g.connect(dest);
+        this.hit(dest, t, 0.015, 5000, "bandpass", 0.08 * v, 2);
         break;
       }
       case "kick": {

@@ -100,9 +100,10 @@ quem mora ou trabalha ali.
 
 ## Trilha sonora 16 bits
 
-São 32 músicas originais, 8 de cada gênero, sintetizadas na hora com Web Audio, sem nenhum
-arquivo de áudio. O som imita o chip dos consoles dos anos 90: ondas de pulso, piano elétrico
-em FM, percussão de ruído filtrado e eco.
+São 48 músicas originais: 8 de cada estação (Jazz, Bossa Nova, Tango, Salsa, Música Árabe e
+Música Indiana). Tudo é sintetizado na hora com Web Audio, sem nenhum arquivo de áudio. O som
+imita o chip dos consoles dos anos 90: ondas de pulso, piano elétrico em FM, percussão de ruído
+filtrado e eco.
 
 | Gênero | Faixas |
 | --- | --- |
@@ -110,6 +111,8 @@ em FM, percussão de ruído filtrado e eco.
 | Bossa Nova | Garoa de Setembro · Varanda ao Entardecer · Mar de Prédios · Café com Chuva · Feira de Domingo · Sombra do Coqueiro · Bonde Azul · Luz de Poste |
 | Tango | Bandoneón do Porto · Calle del Reloj · Último Bonde · Garoa Portenha · Milonga da Fábrica · Esquina Escura · Lua no Cais · Fole e Ferrugem |
 | Salsa | Noite no Mercado · Mercado de Peixe · Ladeira do Sol · Calor de Janeiro · Rumba da Obra · Prefeitura en Clave · Noche de Feria · Guaguancó do Porto |
+| Música Árabe | Café no Souk · Lanternas de Latão · Areia na Avenida · Minarete ao Pôr do Sol · Caravana da Periferia · Jardim de Tâmaras · Noite no Bazar · Dança do Mercado |
+| Música Indiana | Monção no Bairro · Chá de Gengibre · Riquixá da Prefeitura · Templo de Pedra · Pipas no Telhado · Lua de Diwali · Feira de Especiarias · Rio Sagrado |
 
 **Como as faixas são feitas**
 
@@ -123,13 +126,22 @@ em FM, percussão de ruído filtrado e eco.
 - O acompanhamento segue o ritmo de cada gênero: baixo caminhante e condução no prato no jazz,
   batida de violão na bossa, marcato e síncopa 3-3-2 no tango, tumbao, montuno e clave 2-3 na
   salsa. Algumas faixas usam outro solista ou uma variação da batida.
+- **Música Árabe:**
+  - maqamat Hijaz, Rast, Bayati, Nahawand, Kurd, Ajam e Saba, com quartos de tom de verdade;
+  - alaúde (oud), ney ou violino sobre bordão;
+  - darbuka (doum/tek) e riq nos ritmos maqsum, baladi e saidi.
+- **Música Indiana:**
+  - ragas Yaman, Kafi, Khamaj, Bhairav, Desh, Bhairavi, Todi e Marwa;
+  - cítara (sitar) ou bansuri sobre o bordão da tanpura;
+  - tabla (bayan e dayan afinado na tônica) nos talas teental e keherwa.
 
 **Botão 🎵** (barra superior e tela inicial)
 
-- **📻 Rádio**: todas as faixas.
+- **📻 Rádio**: todas as 48 faixas em ordem aleatória, uma volta cada. Nenhuma repete até todas
+  tocarem.
 - **Gênero**: as 8 faixas daquele gênero, em sequência.
 - **Faixa da lista**: repete só aquela faixa.
-- Nos modos Rádio e Gênero, a faixa muda a cada duas voltas.
+- No modo Gênero, a faixa muda a cada duas voltas.
 - Também ajusta o volume e pode silenciar a música durante o foco.
 - A música começa no primeiro clique, por causa da política de autoplay do navegador.
 

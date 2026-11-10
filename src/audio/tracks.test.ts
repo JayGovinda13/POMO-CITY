@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GENRE_IDS, TRACKS, TRACK_IDS, chord, midi, tracksOf } from "./tracks";
 import { validChoice } from "./player";
 
-const LEADS = new Set(["lead", "flute", "bandoneon", "brass", "rhodes"]);
+const LEADS = new Set(["lead", "flute", "bandoneon", "brass", "rhodes", "ney", "sitar", "oud"]);
 
 describe("trilhas sonoras", () => {
   it("notas e acordes", () => {
@@ -14,9 +14,9 @@ describe("trilhas sonoras", () => {
   });
 
   it("8 faixas por gênero, com títulos únicos", () => {
-    expect(TRACK_IDS).toHaveLength(32);
+    expect(TRACK_IDS).toHaveLength(48);
     for (const g of GENRE_IDS) expect(tracksOf(g)).toHaveLength(8);
-    expect(new Set(TRACK_IDS.map((id) => TRACKS[id].title)).size).toBe(32);
+    expect(new Set(TRACK_IDS.map((id) => TRACKS[id].title)).size).toBe(48);
   });
 
   it.each(TRACK_IDS)("%s: 16 compassos completos, melodia e baixo no tempo e na tessitura", (id) => {
@@ -28,7 +28,7 @@ describe("trilhas sonoras", () => {
       for (const e of ev) {
         expect(e.t).toBeGreaterThanOrEqual(0);
         expect(e.t).toBeLessThan(4);
-        expect(e.t + e.dur).toBeLessThanOrEqual(4.01);
+        if (e.inst !== "tanpura") expect(e.t + e.dur).toBeLessThanOrEqual(4.01); // o bordão soa através do compasso
         expect(e.midi).toBeGreaterThanOrEqual(36);
         expect(e.midi).toBeLessThanOrEqual(96);
       }
@@ -39,11 +39,11 @@ describe("trilhas sonoras", () => {
     expect(melodyNotes + (id === "jazz-7" || id === "bossa-8" ? 100 : 0)).toBeGreaterThan(40);
   });
 
-  it("as 32 melodias são diferentes entre si", () => {
+  it("as 48 melodias são diferentes entre si", () => {
     const signature = (id: (typeof TRACK_IDS)[number]) =>
       [0, 1, 2, 3].flatMap((b) => TRACKS[id].render(b).filter((e) => LEADS.has(e.inst)).map((e) => e.midi)).join(",");
     const sigs = new Set(TRACK_IDS.map(signature));
-    expect(sigs.size).toBe(32);
+    expect(sigs.size).toBe(48);
   });
 
   it("escolha salva antiga continua válida", () => {
