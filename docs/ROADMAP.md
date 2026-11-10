@@ -1,12 +1,13 @@
 # POMO-CITY — Roadmap de funcionalidades
 
-Este documento organiza em fases as mecânicas clássicas de city-builder que vamos
-adaptar para o POMO-CITY. A referência de estudo foi o manual do SimCity 2000 (Maxis, 1993).
+Este documento organiza em fases as mecânicas de city-builder que vamos adaptar para o
+POMO-CITY. A referência de estudo foi o manual do SimCity 2000 (Maxis, 1993), somada às
+decisões de design do projeto.
 
 > **Originalidade.** Usamos o manual só como referência de *mecânicas de gênero*:
 > zoneamento, energia, água, serviços e orçamento. Nomes, textos, arte, ícones e
 > números do POMO-CITY são próprios. Não usamos marcas, personagens nem elementos
-> visuais do jogo original.
+> visuais do jogo original, nem nomes oficiais de eventos reais.
 
 ## Princípios de adaptação
 
@@ -20,30 +21,33 @@ Toda mecânica importada passa por cinco filtros:
    chegam com o passar dos anos, aqui chegam com o trabalho acumulado do jogador.
    - Ritmo de referência: com ~8 ciclos por dia, um ano da cidade passa em meio dia de
      trabalho, uma década em ~5 dias e um século em ~2 meses.
-3. **O lugar importa.** Ao fundar a cidade, o jogador escolhe a **própria localidade**
-   (mesmo clima e mesmas estações) ou **outra parte do mundo**. As estações, o clima e o
-   bioma vêm dessa escolha (Fase 2).
-4. **Nunca punir a ausência.** Nada decai em tempo real. Desastres, envelhecimento e
-   manutenção só acontecem quando ciclos são concluídos, e sempre podem ser mitigados.
+3. **O clima é real; o lugar, não.** Ao fundar a cidade, o jogador escolhe a **própria região**
+   ou **outra parte do mundo**. Isso define o clima: temperatura média, época de chuvas e de
+   seca, e as estações. O mapa é sempre fictício (Fase 2).
+4. **Ausência nunca é punida; ciclo quebrado, sim.** Nada decai em tempo real: ficar dias sem
+   jogar não custa nada. Já **abandonar um ciclo que começou** pode causar um desastre na
+   cidade (Fase 5). O seguro e os serviços públicos amortecem esses desastres.
 5. **O servidor é a autoridade.** Toda regra nova vive em `src/sim` (TS puro e
    determinístico) e é revalidada pelo servidor. Aleatoriedade usa PRNG com seed.
 
 ## Visão geral
 
-| Fase | Tema | Mecânicas do manual adaptadas | Status |
-|------|------|-------------------------------|--------|
-| 0 | Preparação técnica | — (fundação para as demais) | ✅ Concluída |
-| 1 | Zoneamento e energia | Zonas R/C/I leve/densa, crescimento orgânico, indicador de demanda, usinas, linhas de transmissão, apagões | ✅ Concluída |
-| 2 | Localização, clima e estações | Escolha do local no início, hemisfério e nome das estações, clima sazonal, bioma derivado do clima | ⏳ Próxima |
-| 3 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos municipais | ⏳ |
-| 4 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ |
-| 5 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação (QE), crime, poluição, valor do solo | ⏳ |
-| 6 | Transporte avançado | Tráfego por geração de viagens, ônibus, trilhos, rodovias, portos | ⏳ |
-| 7 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ⏳ |
-| 8 | Eras, invenções e recompensas | Árvore tecnológica por ano, vida útil de usinas, marcos de população, megaestruturas | ⏳ |
-| 9 | Informação | Gráficos históricos, jornal da cidade, ferramenta de consulta, mapas temáticos | ⏳ |
-| 10 | Eventos | Desastres opcionais e mitigáveis, ligados ao clima da estação | ⏳ |
-| 11 | Indústrias e vizinhos | Setores industriais com demanda nacional, impostos por setor, vizinhos = outros jogadores | ⏳ |
+| Fase | Tema | O que entra | Status |
+|------|------|-------------|--------|
+| 0 | Preparação técnica | Fundação para as demais | ✅ Concluída |
+| 1 | Zoneamento e energia | Zonas R/C/I, crescimento orgânico, demanda, usinas, linhas, apagões | ✅ Concluída |
+| 2 | Clima e estações | Escolha da região (só o clima), hemisfério, estações, chuvas e secas, bioma | ⏳ Próxima |
+| 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ⏳ |
+| 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ⏳ |
+| 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | ⏳ |
+| 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ |
+| 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ |
+| 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ⏳ |
+| 9 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ⏳ |
+| 10 | Eras, invenções e recompensas | Árvore tecnológica por ano, vida útil de usinas, marcos de população | ⏳ |
+| 11 | Informação | Gráficos, jornal da cidade, ferramenta de consulta, minimapa | ⏳ |
+| 12 | Grandes eventos e metas | Eventos sorteados com anos de antecedência (ex.: uma copa) e metas para a cidade | ⏳ |
+| 13 | Indústrias e vizinhos | Setores industriais, vizinhos = outros jogadores, mercado multiplayer | ⏳ |
 
 As fases 2 em diante são delegadas uma a uma, conforme os pareceres sobre o desenvolvimento.
 
@@ -133,25 +137,34 @@ cidade **cresce sozinha** quando há demanda, estrada e energia.
 
 ---
 
-## Fase 2 — Localização, clima e estações
+## Fase 2 — Clima e estações
 
 *Manual: Climate, Water (variação sazonal), Power (solar/eólica dependem do tempo).*
 
-Objetivo: a cidade vive no mesmo lugar e nas mesmas estações que o jogador escolher.
-Ela é jogada sobre o clima real daquela região.
+Objetivo: a cidade vive o **clima** da região escolhida pelo jogador (temperatura média,
+época de chuvas e de seca, estações), num **mapa fictício**.
 
-### Fundar a cidade: escolher o lugar
+### Fundar a cidade: escolher a região
 
-- **"Minha localidade"**: usa a geolocalização do navegador (com permissão) ou o nome da
-  cidade digitado. A cidade terá o mesmo clima e as mesmas estações que o jogador vive.
-- **"Outra parte do mundo"**: escolha em um mapa-múndi ou em uma lista de regiões. Serve
-  para jogar no inverno do outro hemisfério, no deserto ou na tundra.
-- **Privacidade:**
-  - a geolocalização é opcional;
-  - só gravamos a coordenada arredondada (~1°, cerca de 100 km) e o perfil climático derivado;
-  - nunca gravamos a posição exata.
-- **Cidades já existentes:** no próximo acesso, o jogador escolhe o lugar uma única vez.
-  A escolha define clima e hemisfério, e o mapa atual é mantido.
+- **"Minha região"**: usa a geolocalização do navegador (com permissão) ou o nome da cidade
+  digitado, e encaixa o jogador na região mais próxima da tabela de climas.
+- **"Outra parte do mundo"**: escolha direta numa lista ou mapa-múndi das regiões da tabela.
+  Serve para jogar no inverno do outro hemisfério, no deserto ou na tundra.
+- **O lugar não é reproduzido.** Não há geografia real (costa, relevo ou ruas). Só o perfil
+  climático é usado, e o mapa continua procedural.
+- **Privacidade:** a geolocalização é opcional e serve só para escolher a região. Gravamos o
+  **id da região climática**, nunca coordenadas.
+- **Cidades já existentes:** no próximo acesso, o jogador escolhe a região uma única vez.
+  O mapa atual é mantido.
+
+### Tabela de climas (decisão: tabela própria)
+
+- **~40 regiões** embutidas no código, sem dependência externa. Cada uma tem:
+  - hemisfério e tipo de clima (tropical úmido, tropical com estação seca, semiárido,
+    árido, temperado, continental frio, polar, altitude);
+  - **por trimestre:** temperatura média, chuva, horas de sol, vento e um rótulo de estação
+    ("verão", "estação chuvosa", "seca"…).
+- Os valores vêm de normais climatológicas públicas, arredondados.
 
 ### Calendário e estações
 
@@ -159,15 +172,13 @@ Ela é jogada sobre o clima real daquela região.
   inverno no Norte.
 - **Regiões tropicais** usam as estações que existem de fato (chuvosa e seca) em vez de
   quatro estações temperadas.
-- A cidade **começa na estação real atual** do local escolhido. Depois disso, o calendário
-  avança uma estação por ciclo concluído.
-- **Na pausa, a HUD mostra a próxima estação**, para planejar. Exemplo: "inverno chegando:
-  estoque madeira para a termelétrica".
+- A cidade **começa na estação real atual** da região. Depois disso, o calendário avança
+  uma estação por ciclo concluído.
+- **Na pausa, a HUD mostra a próxima estação**, para planejar. Exemplo: "seca chegando:
+  estoque comida e água".
 
 ### Clima → simulação
 
-- **Perfil climático por trimestre:** temperatura média, chuva, horas de sol e vento, a partir
-  de normais climatológicas.
 - **O tempo de cada ciclo é sorteado com seed** em torno da normal da estação: ano seco,
   inverno rigoroso etc. Cliente e servidor chegam ao mesmo resultado.
 - **Efeitos:**
@@ -175,45 +186,100 @@ Ela é jogada sobre o clima real daquela região.
   - **Energia:** solar acompanha as horas de sol; eólica acompanha o vento; hidrelétrica
     acompanha a chuva (a seca reduz a geração).
   - **Consumo:** aquecimento em invernos frios e refrigeração em verões quentes aumentam a
-    demanda de energia, o que torna os apagões sazonais.
-  - **Água (Fase 4):** chuva e seca definem o abastecimento, e caixas d'água guardam excedente
-    entre estações.
-
-### Bioma derivado do clima
-
-- O bioma deixa de ser sorteado e passa a vir do clima do local, numa classificação
-  simplificada:
+    demanda de energia (e de lenha, na Fase 3).
+  - **Água (Fase 6):** chuva e seca definem o abastecimento.
+- **O bioma vem do clima** em vez de ser sorteado:
   - tropical úmido → floresta;
   - temperado → planície;
   - semiárido ou árido → **deserto** (novo);
   - frio ou polar → **tundra** (novo);
   - altitude → montanhas.
-- Novos biomas ampliam a **produção assimétrica** e o comércio entre jogadores.
-- **Litoral:** um local costeiro gera mapa com costa, e regiões com rios geram rios.
+- O clima também ajusta o mapa procedural: regiões chuvosas geram mais lagos e rios, e as
+  áridas geram menos.
 
 ### Multiplayer
 
 Jogadores em hemisférios opostos têm safras em épocas opostas. Isso cria **comércio sazonal**
-natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 11.
-
-### Decisões em aberto
-
-1. **Fonte dos dados climáticos:**
-   - (a) uma tabela própria embutida com ~40 regiões, sem dependência externa;
-   - (b) um serviço de normais climáticas consultado na fundação, para qualquer coordenada.
-   - Sugestão: começar com (a) e encaixar a localização do jogador na região mais próxima.
-2. **Geografia real:** usar relevo e costa reais exige dados geográficos. Sugestão:
-   - nesta fase, só parâmetros (costa sim ou não, rios, densidade de floresta);
-   - a geografia real fica como opção da Fase 7.
+natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 13.
 
 **Critérios de aceite:**
-- fundar a cidade com localização própria ou escolhida;
-- estações nomeadas conforme o hemisfério;
+- fundar a cidade escolhendo a própria região ou outra;
+- estações nomeadas conforme o hemisfério e o tipo de clima;
 - clima sazonal afetando agricultura e energia, com testes;
-- cidades antigas pedem o local uma vez;
-- nenhuma coordenada exata é armazenada.
+- cidades antigas pedem a região uma vez;
+- nenhuma coordenada é armazenada.
 
-## Fase 3 — Orçamento e finanças
+## Fase 3 — Economia de recursos
+
+Objetivo: **os cidadãos vivem dos recursos e as construções dependem deles**. Tudo pode ser
+feito só com dinheiro (importando), mas produzir localmente sai mais barato. O excedente
+pode ser vendido ou estocado.
+
+### Estoque (armazenamento)
+
+- **Capacidade limitada por recurso.** A prefeitura tem uma capacidade inicial, e
+  **armazéns** e **silos** (novas construções) aumentam o limite.
+- **Perdas:** comida estocada perde uma parte por estação. A perda é maior em climas quentes
+  e úmidos, e menor com silos.
+- **O estoque faz parte da estratégia:** guardar comida para a seca, madeira para o inverno
+  e materiais para uma obra grande.
+
+### Consumo: cidadãos e obras
+
+- **Cesta por cidadão por estação:**
+  - comida (já existe);
+  - lenha ou energia para aquecimento no inverno frio (vem do clima, Fase 2);
+  - bens de consumo, a partir de uma população mínima.
+- **Construções consomem materiais**, além de dinheiro:
+  - obras públicas: estradas com pedra ou madeira, usinas com metal e tábuas etc.;
+  - **crescimento das zonas:** cada nível novo de um lote consome materiais (tábuas, metal).
+- **Se falta o recurso, a cidade compra automaticamente** no mercado externo, pagando o
+  preço de importação. Por isso **é possível jogar só com dinheiro**. Exemplo: uma cidade
+  com fazendas precisa comprar menos comida para sustentar os cidadãos.
+
+### Mercado externo (comerciante NPC)
+
+- **Preço base** por recurso, que varia com a estação (comida mais cara no inverno e na seca).
+- **Importar custa mais que exportar** (frete e intermediário), por exemplo +25% na compra e
+  −20% na venda. Por isso produzir localmente é a forma de baratear a cidade.
+- **O mercado externo só negocia até o Rank B.** Recursos A e S precisam ser produzidos ou
+  comprados de outros jogadores (Fase 13), o que preserva o valor do foco de alta qualidade.
+
+### Valor e rendimento por Rank
+
+| Rank | D | C | B | A | S |
+|------|---|---|---|---|---|
+| Valor de venda | 100% | 110% | 120% | 130% | 140%* |
+| Rendimento | 1,0 | 1,1 | 1,2 | 1,3 | 1,4* |
+
+- **"Rende o equivalente":** 1 unidade de comida A alimenta como 1,3 unidade de comida D,
+  e 1 tábua A vale 1,3 tábua D numa obra. Em suma, foco de qualidade rende mais por unidade.
+- \*O valor do Rank S não foi definido. A sugestão é 140%, seguindo a progressão de +10%.
+
+### Excedente: vender ou estocar
+
+- **Política por recurso**, definida na pausa:
+  - estocar tudo;
+  - vender tudo o que passar da demanda;
+  - vender uma porcentagem do excedente;
+  - manter uma reserva mínima (por exemplo, 2 estações de comida) e vender o resto.
+- A venda acontece no fim do ciclo, e o relatório mostra o que foi produzido, consumido,
+  comprado, vendido e estocado.
+
+### Ajustes no que já existe
+
+- O **desperdício industrial** por Rank (D 40% … S 0%) e a **eficiência da termelétrica** por
+  Rank precisam ser harmonizados com o rendimento acima, para o Rank não contar duas vezes.
+  Sugestão: manter o desperdício só no refino e usar o rendimento no consumo e nas obras.
+
+**Critérios de aceite:**
+- cidade jogável só com dinheiro (importação automática);
+- produzir localmente reduz o gasto, com testes que comparam as duas cidades;
+- valor e rendimento por Rank aplicados na venda, no consumo e nas obras;
+- políticas de excedente e limite de estoque funcionando;
+- relatório do ciclo com o balanço por recurso.
+
+## Fase 4 — Orçamento e finanças
 
 *Manual: Budget Window, Property Taxes, Bond Payments, City Ordinances.*
 
@@ -234,7 +300,54 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
 - **Livro-caixa** com receitas e despesas por categoria, além da projeção do próximo ciclo.
 - Nível de dificuldade no início: dinheiro inicial e demanda externa (fácil, médio, difícil).
 
-## Fase 4 — Água
+## Fase 5 — Ciclos quebrados, desastres e seguro
+
+*Manual: Disasters.*
+
+Objetivo: dar peso ao compromisso com o ciclo. **Abandonar um ciclo que começou pode causar um
+desastre**, e o jogador pode se proteger com um **seguro** contratado com antecedência.
+
+### Desastres por ciclo quebrado
+
+- **Só o abandono dispara desastre.** Ficar sem jogar nunca dispara nada (princípio 4).
+- **A chance cresce com quebras seguidas.** Por exemplo, 1ª quebra 30%, 2ª seguida 50%,
+  3ª 70%; o contador zera após um ciclo concluído. O sorteio usa seed e é feito no servidor.
+- **O tipo de desastre depende da estação e do clima** (Fase 2):
+  - incêndio na seca;
+  - enchente na estação chuvosa;
+  - tempestade ou nevasca no inverno;
+  - praga na lavoura (perda de comida estocada);
+  - pane elétrica (usina parada por um ciclo).
+- **Gravidade:**
+  - reduzida pelos serviços (bombeiros na Fase 7, drenagem e caixas d'água na Fase 6);
+  - maior para quem tinha uma sequência longa e a quebrou.
+- **Danos possíveis:** lotes perdem níveis, construções ficam danificadas (inoperantes até
+  reparo pago em dinheiro e materiais) e o estoque perde recursos.
+- O relatório e o jornal (Fase 11) explicam o que aconteceu e por quê.
+
+### Seguro da cidade
+
+- **Opcional.** A cidade pode contratar ou não.
+- **Prêmio por estação** (ciclo), proporcional ao valor da cidade (infraestrutura e estoque)
+  e ao risco: histórico de quebras e cobertura de bombeiros.
+- **Carência:** a cobertura só começa depois de **N ciclos concluídos** desde a contratação
+  (sugestão: 4 ciclos, ou seja, 1 ano). Isso impede contratar logo depois de prever uma
+  quebra. Cancelar e recontratar reinicia a carência.
+- **Planos:**
+  - **básico:** cobre 50% dos danos, com franquia;
+  - **completo:** cobre 90% dos danos, com prêmio maior.
+- **Indenização automática** no relatório do ciclo do sinistro.
+- **Bônus e malus:** o prêmio cai a cada ano sem sinistro e com sequências longas de foco,
+  e sobe após sinistros.
+- **Sem dinheiro para o prêmio, a apólice fica suspensa.** Voltar a pagar exige nova carência.
+
+**Critérios de aceite:**
+- abandono → desastre sorteado com seed no servidor (replay impossível);
+- ausência nunca dispara desastre;
+- seguro com carência, franquia e cobertura testados;
+- interface de contratação na pausa e relatório do sinistro.
+
+## Fase 6 — Água
 
 *Manual: Water System.*
 
@@ -247,9 +360,9 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
   **Dessalinização** é cara e rende 2× uma bomba de rio.
 - **Encanamento** em uma camada subterrânea, com visão alternada no Phaser.
 - **Sem água, a densidade fica limitada:** zonas densas não passam do nível 2.
-- **Ligação com o Rank:** a água tratada pode ter "pureza" e alimentar a saúde na Fase 5.
+- **Ligação com o Rank:** a água tratada pode ter "pureza" e alimentar a saúde na Fase 7.
 
-## Fase 5 — Serviços e qualidade de vida
+## Fase 7 — Serviços e qualidade de vida
 
 *Manual: City Services, Education, Health, Crime, Pollution, Land Value.*
 
@@ -257,17 +370,18 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
   valor do solo e cobertura de polícia e bombeiros.
 - **Polícia:** reduz o crime em um raio. A prisão melhora a eficiência das delegacias quando o crime
   é alto.
-- **Bombeiros:** reduzem o risco de incêndio e se preparam para a Fase 10.
+- **Bombeiros:** reduzem a gravidade dos incêndios da Fase 5 (e baixam o prêmio do seguro).
 - **Saúde:** o hospital atende até N habitantes. A expectativa de vida sobe ou cai devagar.
 - **Educação (QE de 0 a 150):**
   - escola até 90, faculdade até 140;
   - bibliotecas e museus impedem a erosão do QE;
-  - QE alto libera indústrias high-tech na Fase 11.
+  - QE alto libera indústrias high-tech na Fase 13.
 - **Lazer** (praças, parques, zoológico, estádio, marina): aumenta o valor do solo e a demanda residencial.
+  O **estádio** e o **turismo** (hotéis e restaurantes como comércio especializado) servem às metas da Fase 12.
 - O valor do solo passa a definir a riqueza dos moradores e os impostos.
 - Overlays: crime, poluição, valor do solo e cobertura.
 
-## Fase 6 — Transporte avançado
+## Fase 8 — Transporte avançado
 
 *Manual: Transportation, traffic model.*
 
@@ -279,16 +393,16 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
 - **Portos:** o aeroporto impulsiona o comércio a partir de certa população, e o porto marítimo
   impulsiona a indústria.
 
-## Fase 7 — Terreno e paisagem
+## Fase 9 — Terreno e paisagem
 
 *Manual: Terrain/Landscape tools.*
 
 - **Altitude** com rampas no isométrico, e pontes e túneis.
 - **Árvores** aumentam o valor do solo. **Água** pode ser criada (caro, pago com Rank).
-- **Editor de mapa antes de fundar a cidade:** rios, costa, lagos e floresta, combinando com os biomas
-  existentes.
+- **Editor de mapa antes de fundar a cidade:** rios, costa, lagos e floresta, combinando com o bioma
+  derivado do clima. O mapa é sempre fictício (não reproduz um lugar real).
 
-## Fase 8 — Eras, invenções e recompensas
+## Fase 10 — Eras, invenções e recompensas
 
 *Manual: Inventions timeline, Rewards, power plant aging.*
 
@@ -297,13 +411,13 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
     dessalinização em ~1990, fusão em ~2050.
   - Com 4 ciclos por ano, 1920 chega após ~80 ciclos (~10 dias de foco) e 2050 após ~600.
     As datas podem ser comprimidas se o ritmo ficar lento demais.
-  - Cada invenção sai no jornal (Fase 9).
+  - Cada invenção sai no jornal (Fase 11).
 - **Vida útil das usinas:** 50 anos, ou seja, 200 ciclos, com avisos antes do fim. Isso cria um
   planejamento de longo prazo.
 - **Marcos de população** liberam construções especiais: residência do prefeito, nova prefeitura,
   monumento e megaestruturas habitacionais densas. Algumas exigem materiais de Rank S.
 
-## Fase 9 — Informação
+## Fase 11 — Informação
 
 *Manual: Graphs, Map window, Newspapers, Query tool.*
 
@@ -314,25 +428,64 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
 - **Ferramenta de consulta:** clique em um tile para ver nível, energia, água, valor e idade.
 - **Minimapa** com camadas temáticas.
 
-## Fase 10 — Eventos
+## Fase 12 — Grandes eventos e metas
 
-*Manual: Disasters.*
+Objetivo: dar objetivos de médio prazo. **Eventos sorteados** são anunciados com anos de
+antecedência e trazem **metas** para a cidade cumprir até a data.
 
-- **Eventos negativos ligados ao clima da estação:** incêndio na seca, enchente na estação
-  chuvosa, tempestade.
-- São sempre **opcionais** (configuração) e **mitigáveis** pela infraestrutura (bombeiros,
-  drenagem, caixas d'água).
-- Nunca são disparados por ausência. A gravidade cai com a sequência de foco, o que
-  recompensa a constância.
+### Como funciona
 
-## Fase 11 — Indústrias e vizinhos
+- **Convite:** um evento é sorteado com seed e anunciado no jornal. Exemplo: "a cidade foi
+  escolhida para sediar uma copa de futebol daqui a 6 anos", ou seja, 24 ciclos.
+- **O jogador aceita ou recusa.** Recusar não tem custo; aceitar compromete a cidade com as metas.
+- **Exemplos de metas:**
+  - construir um **estádio**;
+  - ter **N leitos de hotel** e **N restaurantes** (comércio especializado da Fase 7);
+  - **melhorar o transporte**: capacidade de tráfego, ônibus ou metrô até o estádio (Fase 8);
+  - energia de reserva, segurança e cobertura de saúde;
+  - estoque de comida para os visitantes.
+- **Progresso na HUD:** checklist de metas com contagem regressiva em estações.
+
+### Resultado
+
+- **Todas as metas cumpridas:**
+  - boom de turismo (receita extra por alguns ciclos);
+  - reputação maior (mais demanda residencial e comercial);
+  - uma construção-troféu exclusiva.
+- **Parcial:** recompensa proporcional.
+- **Fracasso:** manchetes negativas e uma queda leve e temporária da demanda. Nunca é catastrófico.
+
+### Catálogo inicial de eventos
+
+Os nomes são próprios e genéricos (sem marcas de eventos reais):
+- copa de futebol;
+- jogos regionais;
+- feira internacional;
+- festival de música;
+- visita de chefe de Estado;
+- bienal de arte, ligada à galeria do POMO-CITY.
+
+### Dependências
+
+Estádio, hotéis e restaurantes (Fase 7), transporte (Fase 8) e jornal (Fase 11). A estrutura de
+eventos e metas pode ser criada antes, com metas que usam só o que já existe.
+
+**Critérios de aceite:**
+- evento sorteado e anunciado com antecedência;
+- aceitar ou recusar;
+- metas verificadas a cada ciclo;
+- recompensas e consequências aplicadas no prazo, com testes.
+
+## Fase 13 — Indústrias e vizinhos
 
 *Manual: Industry window, Neighbors, national demand.*
 
 - **Setores industriais** (aço, alimentos, eletrônicos, petroquímica…) com **demanda nacional**
   variável por era, e impostos por setor para incentivar ou frear um setor.
-- **Os vizinhos são os outros jogadores:** a demanda externa e o turismo vêm das cidades reais
-  vizinhas. Isso prepara o **mercado multiplayer** (livro de ofertas por recurso e Rank).
+- **Os vizinhos são os outros jogadores:** a demanda externa e o turismo vêm das cidades
+  vizinhas. O **mercado multiplayer** (livro de ofertas por recurso e Rank) passa a dividir espaço
+  com o mercado externo da Fase 3. Recursos Rank A e S, que o mercado externo não vende,
+  só são obtidos produzindo ou comprando de outros jogadores.
 - **Desafios:** cidade pré-montada, problema, meta e prazo em ciclos. São cenários adaptados como
   desafios semanais de foco.
 
@@ -342,7 +495,7 @@ natural: comida do Sul no inverno do Norte. É um gancho para o mercado da Fase 
 
 Ao iniciar uma fase, inclua no pedido:
 
-1. A fase (por exemplo, "Fase 2 — Localização, clima e estações").
+1. A fase (por exemplo, "Fase 2 — Clima e estações").
 2. Ajustes de escopo ou pareceres sobre as fases anteriores.
 3. As prioridades: o que é obrigatório e o que pode ficar para depois.
 
