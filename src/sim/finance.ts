@@ -21,7 +21,7 @@ export const taxRevenue = (kind: ZoneKind, units: number, rate: number) => (unit
 export type Department = "transport" | "energy" | "police" | "fire" | "health" | "education";
 export const DEPARTMENTS: Department[] = ["transport", "energy", "police", "fire", "health", "education"];
 export const DEPARTMENT_NAMES: Record<Department, string> = {
-  transport: "Transportes (estradas)",
+  transport: "Transportes (vias e transporte público)",
   energy: "Energia (usinas)",
   police: "Polícia (delegacias, prisão)",
   fire: "Bombeiros",
@@ -30,7 +30,7 @@ export const DEPARTMENT_NAMES: Record<Department, string> = {
 };
 
 export function departmentOf(type: keyof typeof BUILDINGS): Department | null {
-  if (type === "road") return "transport";
+  if (type === "road" || type === "highway" || type === "onramp" || type === "rail" || type === "bus_stop" || type === "train_station") return "transport";
   if (BUILDINGS[type].generates && type !== "cityhall") return "energy";
   const kind = BUILDINGS[type].service?.kind;
   if (kind === "police" || kind === "prison") return "police";

@@ -37,7 +37,14 @@ export type BuildingType =
   | "plaza"
   | "park"
   | "zoo"
-  | "stadium";
+  | "stadium"
+  | "highway"
+  | "onramp"
+  | "rail"
+  | "bus_stop"
+  | "train_station"
+  | "airport"
+  | "seaport";
 
 /** 0 = terra, 1 = água */
 export type Terrain = 0 | 1;
@@ -209,6 +216,8 @@ export interface CycleReport {
   /** Clima da estação vivida (null se a cidade ainda não escolheu a região). */
   weather: WeatherSummary | null;
   zones: { grown: number; declined: number };
+  /** Trânsito (Fase 8). */
+  traffic?: { trips: number; failed: number; congested: number; bus: number; rail: number; avgCommute: number };
   /** Qualidade de vida (Fase 7): médias nos lotes ocupados e indicadores da cidade. */
   services?: { crime: number; pollution: number; landValue: number; eq: number; lifeExpectancy: number };
   /** Seguro: a apólice foi cancelada por falta de dinheiro para o prêmio. */

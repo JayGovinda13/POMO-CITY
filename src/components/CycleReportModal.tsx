@@ -146,6 +146,14 @@ export function CycleReportModal() {
                   {report.water.shortage && " — faltou água! Bombas, canos ou caixas d'água."}
                 </p>
               )}
+              {report.traffic && report.traffic.trips > 0 && (
+                <p className={report.traffic.congested ? "text-amber-300" : ""}>
+                  🚗 {report.traffic.trips} viagens · tempo médio {report.traffic.avgCommute}
+                  {report.traffic.congested > 0 && ` · ${report.traffic.congested} trechos congestionados`}
+                  {report.traffic.failed > 0 && ` · ${report.traffic.failed} sem emprego ao alcance`}
+                  {(report.traffic.bus > 0 || report.traffic.rail > 0) && ` · 🚌 ${report.traffic.bus} · 🚆 ${report.traffic.rail}`}
+                </p>
+              )}
               {report.services && (
                 <p>
                   🎓 QE {Math.round(report.services.eq)} · ❤️ vida {Math.round(report.services.lifeExpectancy)} anos · 🚨 crime{" "}

@@ -202,6 +202,70 @@ for (let mask = 0; mask < 16; mask++) {
   })
 }
 
+// Rodovia (Fase 8): pista larga de concreto com mureta central e faixas brancas.
+for (let mask = 0; mask < 16; mask++) {
+  sprite(`highway_${mask}`, { w: 32, h: 16 }, (c) => {
+    c.poly(ground(0), "I")
+    for (const bit of [1, 2, 4, 8]) {
+      if (mask & bit) continue
+      const e = EDGES[bit]
+      c.line(e.a[0], e.a[1], e.b[0], e.b[1], "J")
+    }
+    const conns = [1, 2, 4, 8].filter((bit) => mask & bit)
+    for (const bit of conns) {
+      const [mx, my] = EDGES[bit].mid
+      // Mureta central (cinza claro) e faixas brancas tracejadas dos dois lados.
+      c.line(16, 8, mx, my, "H")
+      for (let t = 0.2; t < 1; t += 0.35) {
+        const x = Math.round(16 + (mx - 16) * t), y = Math.round(8 + (my - 8) * t)
+        c.px(x - 3, y - 1, "Y")
+        c.px(x + 3, y + 1, "Y")
+      }
+    }
+    if (conns.length !== 2) c.rect(15, 7, 2, 2, "J")
+  })
+}
+
+// Trilho (Fase 8): leito de brita, dormentes de madeira e dois trilhos de aço.
+for (let mask = 0; mask < 16; mask++) {
+  sprite(`rail_${mask}`, { w: 32, h: 16 }, (c) => {
+    c.poly(ground(0), "g")
+    const conns = [1, 2, 4, 8].filter((bit) => mask & bit)
+    const ends = conns.length ? conns : [1, 4]
+    // Direção transversal na tela: via no eixo x (bits 1/4) → dormentes no eixo y, e vice-versa.
+    const across = (bit) => (bit === 1 || bit === 4 ? [2, -1] : [2, 1])
+    for (const bit of ends) {
+      const [mx, my] = EDGES[bit].mid
+      const [ax, ay] = across(bit)
+      c.poly([16 + ax * 2, 8 + ay * 2, mx + ax * 2, my + ay * 2, mx - ax * 2, my - ay * 2, 16 - ax * 2, 8 - ay * 2], "j")
+    }
+    for (const bit of ends) {
+      const [mx, my] = EDGES[bit].mid
+      const [ax, ay] = across(bit)
+      for (const t of [0.2, 0.55, 0.9]) {
+        const x = Math.round(16 + (mx - 16) * t), y = Math.round(8 + (my - 8) * t)
+        c.line(x - ax * 2, y - ay * 2, x + ax * 2, y + ay * 2, "D")
+      }
+    }
+    for (const bit of ends) {
+      const [mx, my] = EDGES[bit].mid
+      const [ax, ay] = across(bit)
+      c.line(16 + ax, 8 + ay, mx + ax, my + ay, "J")
+      c.line(16 - ax, 8 - ay, mx - ax, my - ay, "J")
+    }
+  })
+}
+
+// Acesso à rodovia: trevo com setas.
+sprite("onramp", { w: 32, h: 16 }, (c) => {
+  c.poly(ground(0), "a")
+  c.poly(ground(0, 10), "g")
+  c.line(4, 8, 16, 2, "y")
+  c.line(16, 14, 28, 8, "y")
+  c.px(16, 2, "Y")
+  c.px(28, 8, "Y")
+})
+
 // ───────────────────────────────── vegetação ─────────────────────────────────
 
 sprite("_tree_round", { w: 12, h: 16 }, (c) => {
@@ -710,6 +774,59 @@ building("stadium", 40, (c, oy) => {
   }
 })
 
+// ───────────────────────────── transporte (Fase 8) ─────────────────────────────
+
+building("bus_stop", 30, (c, oy) => {
+  c.poly(ground(oy, 6), "p")
+  // Abrigo: cobertura, banco e placa.
+  c.rect(9, oy - 2, 12, 2, "Q")
+  c.vline(10, oy, 9, "I")
+  c.vline(20, oy, 9, "I")
+  c.rect(11, oy + 5, 8, 2, "D")
+  c.vline(24, oy - 4, 14, "J")
+  c.rect(22, oy - 6, 5, 4, "y")
+  c.px(24, oy - 5, "d")
+})
+building("train_station", 40, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 13, H: 11, left: "o", right: "O" })
+  windows(c, b, { floors: 1, fh: 9, col: "d", lit: "l", every: 2, h: 3 })
+  door(c, b, 0.5)
+  hipRoof(c, b, 6, "u", "d")
+  // Relógio no telhado.
+  c.circ(b.cx, b.cy - b.H - 4, 2, "Y")
+  c.px(b.cx, b.cy - b.H - 5, "k")
+})
+building("airport", 40, (c, oy) => {
+  c.poly(ground(oy, 0), "I")
+  // Pista com faixas e terminal com torre de controle.
+  c.line(2, oy + 8, 16, oy + 15, "Y")
+  c.line(16, oy + 1, 30, oy + 8, "a")
+  for (let k = 0; k < 4; k++) c.px(20 + k * 2, oy + 3 + k, "Y")
+  const b = block(c, { oy, hw: 8, H: 7, top: "J", left: "H", right: "J", dx: -5, dy: -1 })
+  windows(c, b, { floors: 1, fh: 6, col: "q", lit: "c", every: 2 })
+  c.rect(b.cx + 7, b.cy - 18, 3, 16, "J")
+  c.rect(b.cx + 6, b.cy - 22, 5, 4, "q")
+  // Avião estacionado.
+  c.rect(19, oy + 9, 9, 2, "H")
+  c.rect(22, oy + 7, 2, 6, "H")
+  c.px(27, oy + 8, "N")
+})
+building("seaport", 40, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  // Cais de madeira, contêineres e guindaste.
+  c.poly([2, oy + 8, 16, oy + 15, 18, oy + 14, 4, oy + 7], "P")
+  for (const [x, y, col] of [[8, oy + 3, "N"], [13, oy + 5, "Q"], [10, oy + 1, "E"]]) {
+    c.rect(x, y, 6, 3, col)
+    c.hline(x, y, 6, "k")
+  }
+  c.vline(22, oy - 14, 22, "y")
+  c.line(22, oy - 14, 30, oy - 8, "y")
+  c.line(22, oy - 14, 16, oy - 10, "y")
+  c.vline(29, oy - 8, 8, "J")
+  c.rect(28, oy, 3, 2, "z")
+})
+
 // Poste de transmissão.
 sprite("power_pole", { w: 8, h: 16, outline: "k" }, (c) => {
   c.vline(3, 2, 14, "D")
@@ -793,4 +910,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "power_pole", "pt_*"], { pad: 1 })

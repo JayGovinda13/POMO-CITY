@@ -3,6 +3,7 @@ import { BASE_GROWTH_SLOTS, RANK_GROWTH_BONUS } from "./config";
 import { laborStats, type LaborStats } from "./status";
 import { demandModifiers } from "./finance";
 import { CRIME_HIGH, POLLUTION_HIGH, computeServices, serviceDemand, type ServiceFields } from "./services";
+import { TRIP_LIMIT_POPULATION, computeTraffic, trafficDemand, type TrafficResult } from "./traffic";
 import { ZONE_KINDS, type CityState, type Rank, type ZoneKind } from "./types";
 
 export type Demand = Record<ZoneKind, number>;
@@ -20,8 +21,10 @@ export function computeDemand(
   s: CityState,
   labor: LaborStats = laborStats(s),
   approval = 0,
-  services: ServiceFields = computeServices(s),
+  services?: ServiceFields,
+  traffic: TrafficResult = computeTraffic(s),
 ): Demand {
+  services ??= computeServices(s, undefined, traffic);
   const workers = s.population;
   const commerceTarget = workers * 0.35;
   const industryTarget = workers * 0.45 + 6;
@@ -29,11 +32,13 @@ export function computeDemand(
   const mod = demandModifiers(s);
   // Qualidade de vida e atrações (Fase 7).
   const q = serviceDemand(s, services);
+  // Transporte (Fase 8): congestionamento, viagens impossíveis e portos.
+  const tr = trafficDemand(s, traffic);
   return {
     // Cidade feliz atrai moradores; cidade triste espanta (aprovação em [−1, 1]).
-    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25 + mod.R + q.R)),
-    C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget) + mod.C + q.C)),
-    I: round2(clamp((industryTarget - labor.industrialJobs) / Math.max(8, industryTarget) + mod.I)),
+    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25 + mod.R + q.R + tr.R)),
+    C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget) + mod.C + q.C + tr.C)),
+    I: round2(clamp((industryTarget - labor.industrialJobs) / Math.max(8, industryTarget) + mod.I + tr.I)),
   };
 }
 
@@ -75,15 +80,20 @@ export function developZones(
     watered?: Uint8Array;
     /** Campos de serviço (Fase 7): crime/poluição altos travam o lote; valor do solo dá a ordem. */
     services?: ServiceFields;
+    /** Trânsito (Fase 8): com 60+ habitantes, lote residencial sem emprego ao alcance não cresce. */
+    traffic?: TrafficResult;
     /** Paga os materiais de um nível novo; false = não há material nem dinheiro (o lote não cresce). */
     pay?: (kind: ZoneKind, dense: boolean) => boolean;
   },
 ): GrowthResult {
-  const services = opts.services ?? computeServices(s);
-  const demand = computeDemand(s, undefined, opts.approval ?? 0, services);
+  const traffic = opts.traffic ?? computeTraffic(s);
+  const services = opts.services ?? computeServices(s, undefined, traffic);
+  const demand = computeDemand(s, undefined, opts.approval ?? 0, services, traffic);
+  const tooFar = (i: number) => s.population >= TRIP_LIMIT_POPULATION && traffic.failed[i] === 1;
   /** Lote travado pela qualidade de vida: crime alto (R, C) ou poluição alta (R). */
   const blocked = (kind: ZoneKind, i: number) =>
-    (kind !== "I" && services.crime[i] > CRIME_HIGH + (kind === "C" ? 10 : 0)) || (kind === "R" && services.pollution[i] > POLLUTION_HIGH);
+    (kind !== "I" && services.crime[i] > CRIME_HIGH + (kind === "C" ? 10 : 0)) ||
+    (kind === "R" && (services.pollution[i] > POLLUTION_HIGH || tooFar(i)));
   const slots = BASE_GROWTH_SLOTS + RANK_GROWTH_BONUS[opts.rank];
   let grown = 0;
   let declined = 0;

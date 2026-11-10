@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeServices, computeWater, type CityState } from "@/sim";
+import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeServices, computeTraffic, computeWater, type CityState } from "@/sim";
 import { isAreaTool, useGame } from "@/store/game";
 import { bus } from "./bus";
 
@@ -177,7 +177,7 @@ export class CityScene extends Phaser.Scene {
     if (!t) return;
     // Estrada, linha e demolição podem ser "pintadas" arrastando; o resto é um clique.
     const tool = useGame.getState().tool;
-    const paintable = tool === "road" || tool === "wire" || tool === "pipe" || tool === "demolish";
+    const paintable = tool === "road" || tool === "highway" || tool === "rail" || tool === "wire" || tool === "pipe" || tool === "demolish";
     if (this.painted.size > 0 && !paintable) return;
     // Mouse rápido pula tiles entre dois eventos: preenche o caminho (Bresenham na grade),
     // para uma estrada arrastada nunca ficar com buracos.
@@ -266,8 +266,18 @@ export class CityScene extends Phaser.Scene {
     const status = buildingStatus(city, power.powered);
     const syncedMaxId = (serverState?.nextId ?? 1) - 1;
     const buildingAt = new Map(city.buildings.map((b) => [b.y * city.width + b.x, b]));
-    const isRoad = (x: number, y: number) =>
-      x >= 0 && y >= 0 && x < city.width && y < city.height && buildingAt.get(y * city.width + x)?.type === "road";
+    // Vias se ligam a vizinhos compatíveis: estrada ↔ estrada/acesso/estação; rodovia ↔ rodovia/acesso;
+    // trilho ↔ trilho/estação.
+    const LINKS: Record<string, string[]> = {
+      road: ["road", "onramp", "bus_stop"],
+      highway: ["highway", "onramp"],
+      rail: ["rail", "train_station"],
+    };
+    const linkMask = (type: string, x: number, y: number) => {
+      const ok = (nx: number, ny: number) =>
+        nx >= 0 && ny >= 0 && nx < city.width && ny < city.height && LINKS[type].includes(buildingAt.get(ny * city.width + nx)?.type ?? "");
+      return (ok(x - 1, y) ? 1 : 0) | (ok(x, y - 1) ? 2 : 0) | (ok(x + 1, y) ? 4 : 0) | (ok(x, y + 1) ? 8 : 0);
+    };
 
     this.flatLayer.removeAll(true);
     this.spriteLayer.removeAll(true);
@@ -309,9 +319,9 @@ export class CityScene extends Phaser.Scene {
         const zone = city.zoneType[i];
         const baseY = sy + TH / 2 + 1; // vértice inferior do tile + 1 px do contorno
 
-        if (b?.type === "road") {
-          const mask = (isRoad(x - 1, y) ? 1 : 0) | (isRoad(x, y - 1) ? 2 : 0) | (isRoad(x + 1, y) ? 4 : 0) | (isRoad(x, y + 1) ? 8 : 0);
-          const img = this.add.image(sx, sy, "city", `road_${mask}`).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
+        if (b && (BUILDINGS[b.type].linear || b.type === "onramp")) {
+          const frame = b.type === "onramp" ? "onramp" : `${b.type}_${linkMask(b.type, x, y)}`;
+          const img = this.add.image(sx, sy, "city", this.frame(frame) ?? `road_0`).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
           // Estrada sem verba: desgaste (marrom) e danificada (avermelhada, sem conexão).
           const cond = b.condition ?? 100;
           if (cond < 30) img.setTint(0xb05a40);
@@ -444,6 +454,22 @@ export class CityScene extends Phaser.Scene {
 
   /** Mapas de calor da Fase 7: crime, poluição, valor do solo e cobertura de serviços. */
   private drawHeatmap(city: CityState, o: Phaser.GameObjects.Graphics, overlay: string) {
+    if (overlay === "traffic") {
+      // Trânsito: vias por carga (verde → amarelo → vermelho) e lotes sem emprego ao alcance (roxo).
+      const t = computeTraffic(city);
+      for (let i = 0; i < city.zoneType.length; i++) {
+        const { sx, sy } = iso(i % city.width, Math.floor(i / city.width));
+        if (t.capacity[i]) {
+          const r = t.load[i] / t.capacity[i];
+          o.fillStyle(r >= 1 ? 0xe03030 : r >= 0.5 ? 0xf0c040 : 0x40c060, r > 0 ? 0.65 : 0.25);
+          this.diamond(o, sx, sy, 0.95);
+        } else if (t.failed[i]) {
+          o.fillStyle(0xa040d0, 0.5);
+          this.diamond(o, sx, sy, 0.95);
+        }
+      }
+      return;
+    }
     if (overlay !== "crime" && overlay !== "pollution" && overlay !== "landValue" && overlay !== "coverage") return;
     const f = computeServices(city, buildingStatus(city, computePower(city).powered));
     const lerp = (a: number, b: number, t: number) => {
@@ -515,7 +541,7 @@ export class CityScene extends Phaser.Scene {
         if (b) {
           const def = BUILDINGS[b.type];
           const alpha = b.id > syncedMaxId ? 0.75 : 1;
-          if (b.type === "road") {
+          if (def.linear || b.type === "onramp") {
             g.fillStyle(def.color, alpha);
             this.diamond(g, sx, sy, 0.98);
             g.fillStyle(0xd8c04a, alpha);

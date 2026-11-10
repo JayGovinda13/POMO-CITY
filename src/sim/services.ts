@@ -7,6 +7,7 @@
 
 import { BUILDINGS } from "./catalog";
 import { buildingStatus, laborStats, type BuildingStatus } from "./status";
+import { computeTraffic, type TrafficResult } from "./traffic";
 import { START_EQ, START_LIFE } from "./config";
 import { ZONE, type CityState } from "./types";
 
@@ -90,7 +91,11 @@ function spread(s: CityState, field: Float32Array, x: number, y: number, r: numb
 }
 
 /** Calcula todos os campos de serviço. `status` informa eficiência (trabalhadores, energia, estrada). */
-export function computeServices(s: CityState, status: Map<number, BuildingStatus> = buildingStatus(s)): ServiceFields {
+export function computeServices(
+  s: CityState,
+  status: Map<number, BuildingStatus> = buildingStatus(s),
+  traffic: TrafficResult = computeTraffic(s),
+): ServiceFields {
   const n = s.width * s.height;
   const pollution = new Float32Array(n);
   const crime = new Float32Array(n);
@@ -161,7 +166,12 @@ export function computeServices(s: CityState, status: Map<number, BuildingStatus
     const y = Math.floor(i / s.width);
     if (s.zoneType[i] === ZONE.I && s.zoneLevel[i] > 0) spread(s, pollution, x, y, 3, s.zoneLevel[i] * (s.zoneDensity[i] ? 5 : 3), "add");
   }
-  for (const b of s.buildings) if (b.type === "road") spread(s, pollution, b.x, b.y, 1, 2, "add");
+  // Tráfego (Fase 8): via vazia polui pouco; congestionada, muito.
+  for (let i = 0; i < n; i++) {
+    if (!traffic.capacity[i]) continue;
+    const ratio = Math.min(2, traffic.load[i] / traffic.capacity[i]);
+    spread(s, pollution, i % s.width, Math.floor(i / s.width), 1, 1 + ratio * 6, "add");
+  }
   for (let i = 0; i < n; i++) pollution[i] = clamp(pollution[i] - cleaning[i]);
 
   // ── Crime: densidade e desemprego aumentam; polícia derruba. Prisão reforça com crime alto. ──

@@ -1,6 +1,6 @@
 import type { BiomeId, BuildingType, Rank, ResourceId, ZoneKind } from "./types";
 
-export type BuildCategory = "infra" | "energy" | "water" | "services" | "leisure" | "production" | "storage" | "special";
+export type BuildCategory = "infra" | "transport" | "energy" | "water" | "services" | "leisure" | "production" | "storage" | "special";
 
 /** Requisitos de desbloqueio (ver unlocks.ts). */
 export interface Requirement {
@@ -67,6 +67,10 @@ export interface BuildingDef {
     /** Bônus de demanda residencial e comercial enquanto existir (atrações). */
     demand?: number;
   };
+  /** Via pintada arrastando (estrada, rodovia, trilho): sprite plano que se liga aos vizinhos. */
+  linear?: boolean;
+  /** Transporte (Fase 8): demanda extra para comércio/indústria (aeroporto, porto). */
+  transport?: { kind: "bus" | "station" | "airport" | "seaport"; demand?: { C?: number; I?: number } };
   /** Poluição emitida (Fase 7). */
   pollution?: number;
   /** Capacidade extra de estoque por recurso (armazém, silo). */
@@ -90,6 +94,113 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     needsRoad: false,
     color: 0x4a4a52,
     height: 0,
+    linear: true,
+  },
+  // ── Fase 8: transporte ──
+  highway: {
+    category: "transport",
+    name: "Rodovia",
+    description: "Comporta o dobro de carros e as viagens rendem 3× mais. Liga-se às estradas só por acessos.",
+    buildable: true,
+    cost: 40,
+    materials: [{ resource: "wood", qty: 1 }, { resource: "metal", qty: 1 }],
+    upkeep: 3,
+    workers: 0,
+    needsRoad: false,
+    color: 0x5a5a66,
+    height: 0,
+    linear: true,
+  },
+  onramp: {
+    category: "transport",
+    name: "Acesso à rodovia",
+    description: "Trevo que liga a estrada à rodovia.",
+    buildable: true,
+    cost: 60,
+    materials: [{ resource: "metal", qty: 1 }],
+    upkeep: 2,
+    workers: 0,
+    needsRoad: false,
+    color: 0x6a6a76,
+    height: 0,
+  },
+  rail: {
+    category: "transport",
+    name: "Trilho",
+    description: "Trens levam muitos passageiros sem congestionar. Entra-se pelas estações.",
+    buildable: true,
+    requires: { year: 1901 },
+    cost: 25,
+    materials: [{ resource: "wood", qty: 1 }, { resource: "metal", qty: 1 }],
+    upkeep: 1,
+    workers: 0,
+    needsRoad: false,
+    color: 0x7a6a5a,
+    height: 0,
+    linear: true,
+  },
+  bus_stop: {
+    category: "transport",
+    name: "Ponto de ônibus",
+    description: "Em pares: quem mora e trabalha perto de pontos vai de ônibus e alivia as ruas (raio 4).",
+    buildable: true,
+    cost: 60,
+    upkeep: 2,
+    workers: 1,
+    needsRoad: true,
+    transport: { kind: "bus" },
+    color: 0xd8b84a,
+    height: 10,
+  },
+  train_station: {
+    category: "transport",
+    name: "Estação de trem",
+    description: "Liga estrada e trilho. Indústria perto da estação produz 25% mais (frete).",
+    buildable: true,
+    requires: { year: 1901 },
+    cost: 300,
+    materials: [{ resource: "planks", qty: 6 }, { resource: "metal", qty: 4 }],
+    upkeep: 4,
+    workers: 3,
+    powerUse: 1,
+    needsRoad: true,
+    transport: { kind: "station" },
+    color: 0xa0603a,
+    height: 16,
+  },
+  airport: {
+    category: "transport",
+    name: "Aeroporto",
+    description: "Impulsiona o comércio (+15% de demanda). Barulhento. Requer 200 habitantes.",
+    buildable: true,
+    requires: { population: 200 },
+    cost: 3000,
+    materials: [{ resource: "metal", qty: 20 }, { resource: "planks", qty: 10 }],
+    upkeep: 15,
+    workers: 8,
+    powerUse: 5,
+    needsRoad: true,
+    pollution: 6,
+    transport: { kind: "airport", demand: { C: 0.15 } },
+    color: 0xc8c8d0,
+    height: 14,
+  },
+  seaport: {
+    category: "transport",
+    name: "Porto",
+    description: "À beira d'água: impulsiona a indústria (+15% de demanda). Requer 60 habitantes.",
+    buildable: true,
+    requires: { population: 60 },
+    cost: 1500,
+    materials: [{ resource: "planks", qty: 12 }, { resource: "metal", qty: 6 }],
+    upkeep: 8,
+    workers: 6,
+    needsRoad: true,
+    needsWaterAdjacent: true,
+    pollution: 4,
+    transport: { kind: "seaport", demand: { I: 0.15 } },
+    color: 0x5a7a9a,
+    height: 16,
   },
   cityhall: {
     category: "special",

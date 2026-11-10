@@ -46,6 +46,9 @@ function quoteFor(c: CitizenView, r: () => number): string {
     "Festival da cidade": ["O festival foi o melhor dos últimos anos!", "A cidade ganhou vida com o festival."],
     "Reprova a jogatina": ["Esses jogos de azar não fazem bem à cidade.", "Não gosto nada desses cassinos."],
     "Prêmio de produtividade": ["O bônus de produtividade veio em boa hora.", "Trabalhar focado compensa: veio o prêmio!"],
+    "Trânsito parado": ["Duas horas pra atravessar o centro! Cadê o ônibus?", "Buzina, fumaça e fila. Esse trânsito não anda."],
+    "Trabalho longe demais": ["Não acho emprego perto de casa. Faltam vias até o centro.", "O trabalho fica tão longe que nem compensa ir."],
+    "Transporte público perto": ["Vou de ônibus e chego descansado.", "O trem passa aqui do lado: ótimo pra ir trabalhar."],
     "Bairro perigoso": ["Não saio mais à noite. Precisamos de policiamento!", "Assaltaram a padaria de novo. Cadê a delegacia?"],
     "Bairro seguro": ["Com a delegacia aqui perto, as crianças brincam na rua.", "Durmo tranquilo: o bairro está seguro."],
     "Ar poluído": ["Esse ar está me fazendo tossir. Menos fumaça, por favor!", "A fumaça das fábricas chega até a minha janela."],
@@ -170,6 +173,22 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
       title: "Seguradora cancela a apólice da cidade",
       body: "Sem dinheiro em caixa para o prêmio, a cidade ficou sem seguro. Recontratar exige nova carência.",
       tone: "bad",
+    });
+  }
+
+  // Trânsito (Fase 8).
+  const tr = report.traffic;
+  if (tr && tr.congested > 0) {
+    stories.push({
+      title: `Engarrafamento em ${plural(tr.congested, "trecho", "trechos")}`,
+      body: "Ruas acima da capacidade poluem e espantam moradores. Rodovias comportam o dobro; ônibus e trens tiram carros das ruas.",
+      tone: "bad",
+    });
+  } else if (tr && (tr.bus > 0 || tr.rail > 0)) {
+    stories.push({
+      title: "Transporte público ganha passageiros",
+      body: `${tr.bus} viagens de ônibus e ${tr.rail} de trem nesta estação. Tempo médio até o trabalho: ${tr.avgCommute}.`,
+      tone: "good",
     });
   }
 

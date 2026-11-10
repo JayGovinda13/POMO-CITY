@@ -128,7 +128,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
   if (cmd.type === "wire") {
     if (s.terrain[i] !== 0) return "Linhas não passam sobre a água";
     if (s.wires[i]) return "Já existe uma linha aqui";
-    if (here && here.type !== "road") return "Linhas só cruzam estradas ou terreno livre";
+    if (here && !BUILDINGS[here.type].linear) return "Linhas só cruzam vias ou terreno livre";
     if (s.zoneLevel[i] > 0) return "Lote ocupado";
     if (s.money < WIRE_COST) return "Dinheiro insuficiente";
     return null;
@@ -142,7 +142,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     if (s.terrain[i] !== 0) return "Não dá para construir na água";
     if (here) return "Tile ocupado";
     if (s.zoneLevel[i] > 0) return "Lote já desenvolvido — demolir primeiro";
-    if (s.wires[i] && cmd.building !== "road") return "Há uma linha de transmissão aqui";
+    if (s.wires[i] && !def.linear) return "Há uma linha de transmissão aqui";
     if (def.needsWaterAdjacent) {
       const touchesWater = DIRS4.some(([dx, dy]) => {
         const x = cmd.x + dx;

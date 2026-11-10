@@ -133,8 +133,17 @@ const DIRS = [
  */
 export function connectedRoads(s: CityState): Set<number> {
   const roads = new Set<number>();
+  // Rodovias e acessos (Fase 8) levam a malha a outros bairros; só estrada e acesso dão acesso a lotes.
+  const highway = new Set<number>();
+  const ramps = new Set<number>();
   // Estradas danificadas (conservação abaixo de 30, por falta de verba) não conectam.
-  for (const b of s.buildings) if (b.type === "road" && (b.condition ?? 100) >= 30) roads.add(idx(s, b.x, b.y));
+  for (const b of s.buildings) {
+    if (b.type === "road" && (b.condition ?? 100) >= 30) roads.add(idx(s, b.x, b.y));
+    else if (b.type === "onramp") {
+      roads.add(idx(s, b.x, b.y));
+      ramps.add(idx(s, b.x, b.y));
+    } else if (b.type === "highway") highway.add(idx(s, b.x, b.y));
+  }
   const hall = s.buildings.find((b) => b.type === "cityhall");
   const seen = new Set<number>();
   if (!hall) return seen;
@@ -144,10 +153,13 @@ export function connectedRoads(s: CityState): Set<number> {
     const y = hall.y + dy;
     if (inBounds(s, x, y) && roads.has(idx(s, x, y))) queue.push(idx(s, x, y));
   }
+  const viaHighway = new Set<number>();
   while (queue.length) {
     const i = queue.pop()!;
-    if (seen.has(i)) continue;
-    seen.add(i);
+    if (seen.has(i) || viaHighway.has(i)) continue;
+    const onHighway = highway.has(i);
+    if (onHighway) viaHighway.add(i);
+    else seen.add(i);
     const x = i % s.width;
     const y = Math.floor(i / s.width);
     for (const [dx, dy] of DIRS) {
@@ -155,7 +167,9 @@ export function connectedRoads(s: CityState): Set<number> {
       const ny = y + dy;
       if (!inBounds(s, nx, ny)) continue;
       const ni = idx(s, nx, ny);
-      if (roads.has(ni) && !seen.has(ni)) queue.push(ni);
+      if (seen.has(ni) || viaHighway.has(ni)) continue;
+      // Estrada ↔ estrada/acesso; acesso ↔ rodovia; rodovia ↔ rodovia/acesso.
+      if (onHighway ? highway.has(ni) || ramps.has(ni) : roads.has(ni) || (ramps.has(i) && highway.has(ni))) queue.push(ni);
     }
   }
   return seen;

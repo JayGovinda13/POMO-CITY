@@ -45,7 +45,7 @@ Toda mecânica importada passa por cinco filtros:
 | 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | ✅ Concluída |
 | 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ✅ Concluída (dessalinização na Fase 9) |
 | 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ✅ Concluída (marina na Fase 9, hotéis/turismo na Fase 12) |
-| 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ⏳ |
+| 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ✅ Concluída |
 | 9 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ⏳ |
 | 10 | Eras, invenções e recompensas | Árvore tecnológica por ano, vida útil de usinas, marcos de população | ⏳ |
 | 11 | Informação | Gráficos, jornal da cidade, ferramenta de consulta, minimapa | ⏳ |
@@ -494,7 +494,7 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
   "Atendimento médico"; empregos de policial, bombeiro, médico, professor etc.
 - Jornal: notícias de crime, poluição, educação e expectativa de vida. Schema v9.
 
-## Fase 8 — Transporte avançado
+## Fase 8 — Transporte avançado ✅
 
 *Manual: Transportation, traffic model.*
 
@@ -505,6 +505,29 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
 - **Rodovias com acessos:** comportam o dobro de carros e permitem viagens 3× mais longas.
 - **Portos:** o aeroporto impulsiona o comércio a partir de certa população, e o porto marítimo
   impulsiona a indústria.
+
+**Implementado (`src/sim/traffic.ts`):**
+
+- Cada lote residencial procura o emprego mais perto: comércio, indústria ou construção com
+  vagas (pontos e estações não contam como destino).
+- Busca pelo caminho mais curto (Dijkstra), com limite de 14 quadras.
+- Custo por tile: estrada 1, acesso 1, rodovia 1/3, estação 1, trilho 1/4.
+- A rodovia só se liga à estrada pelo **acesso** e não dá acesso a lotes.
+- Quem mora a até 3 tiles do trabalho vai a pé.
+- Capacidade por tile: estrada 10 viagens, rodovia 20.
+- Via congestionada:
+  - polui até 7× mais;
+  - derruba a demanda R e C;
+  - deixa os moradores tristes ("Trânsito parado").
+- Com 60+ habitantes, lote residencial sem emprego ao alcance não cresce ("Trabalho longe demais").
+- Ônibus: com pelo menos 2 pontos, quem mora e trabalha perto de pontos (raio 4) tira 60% dos
+  carros da rua.
+- Trem: estações ligam estrada e trilho. Indústria a até 5 tiles de uma estação produz até 25%
+  mais (frete).
+- Aeroporto (200 hab.): +15% de demanda comercial. Porto (beira d'água, 60 hab.): +15% de demanda
+  industrial.
+- Visão 🚗 Trânsito, carga por tile no painel do tile, relatório, jornal e novos empregos
+  (motorista, maquinista, estivador).
 
 ## Fase 9 — Terreno e paisagem
 

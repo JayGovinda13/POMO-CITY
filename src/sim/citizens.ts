@@ -13,6 +13,7 @@ import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
 import { computePower } from "./power";
 import { buildingStatus } from "./status";
 import { computeServices, wealthOf, type WealthClass } from "./services";
+import { TRIP_LIMIT_POPULATION, computeTraffic } from "./traffic";
 import { ZONE, type BuildingType, type CityState } from "./types";
 import { rng } from "./world";
 
@@ -122,6 +123,10 @@ const BUILDING_JOBS: Partial<Record<BuildingType, { title: { m: string; f: strin
   museum: { title: g("Curador", "Curadora"), category: "servicos" },
   zoo: { title: g("Tratador", "Tratadora"), category: "servicos" },
   stadium: { title: g("Funcionário do estádio", "Funcionária do estádio"), category: "servicos" },
+  bus_stop: { title: g("Motorista de ônibus", "Motorista de ônibus"), category: "servicos" },
+  train_station: { title: g("Maquinista", "Maquinista"), category: "servicos" },
+  airport: { title: g("Controlador de voo", "Comissária de bordo"), category: "servicos" },
+  seaport: { title: g("Estivador", "Estivadora"), category: "servicos" },
 };
 
 const COMMERCE_TITLES = [g("Vendedor", "Vendedora"), g("Caixa", "Caixa"), g("Cozinheiro", "Cozinheira"), g("Gerente de loja", "Gerente de loja"), g("Barbeiro", "Cabeleireira"), g("Garçom", "Garçonete")];
@@ -175,7 +180,20 @@ export function citizensView(s: CityState): CitizenView[] {
   const status = buildingStatus(s, power.powered);
   const slots = jobSlots(s, status);
   const water = computeWater(s, undefined, status);
-  const svc = computeServices(s, status);
+  const traffic = computeTraffic(s);
+  const svc = computeServices(s, status, traffic);
+  /** Há via congestionada a até 2 tiles da casa? */
+  const jammed = (i: number) => {
+    const x = i % s.width;
+    const y = Math.floor(i / s.width);
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < s.width && ny < s.height && traffic.congested[ny * s.width + nx]) return true;
+      }
+    return false;
+  };
 
   const homes: number[] = [];
   for (let i = 0; i < s.zoneType.length; i++) {
@@ -205,6 +223,10 @@ export function citizensView(s: CityState): CitizenView[] {
       if (svc.pollution[homeIdx] > 40) reasons.push({ text: "Ar poluído", delta: -2 });
       if (svc.leisure[homeIdx] > 0) reasons.push({ text: "Parque perto de casa", delta: 1 });
       if (svc.school[homeIdx] > 0 && svc.schoolServed >= 0.8) reasons.push({ text: "Escola no bairro", delta: 1 });
+      // Transporte (Fase 8).
+      if (jammed(homeIdx)) reasons.push({ text: "Trânsito parado", delta: -1 });
+      if (s.population >= TRIP_LIMIT_POPULATION && traffic.failed[homeIdx]) reasons.push({ text: "Trabalho longe demais", delta: -1 });
+      if (traffic.transit[homeIdx]) reasons.push({ text: "Transporte público perto", delta: 1 });
     }
     if (s.population >= 40) {
       if (svc.healthServed >= 0.8) reasons.push({ text: "Atendimento médico", delta: 1 });

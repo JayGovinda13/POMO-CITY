@@ -44,6 +44,7 @@ import { BONUS_MIN, premium } from "./insurance";
 import { computeWater, updateTowers, type WaterResult } from "./water";
 import { citizensView, moodSummary, syncCitizens } from "./citizens";
 import { computeServices, landValueTaxFactor, updateQuality, type ServiceFields } from "./services";
+import { computeTraffic, type TrafficResult } from "./traffic";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
 export function rankForStreak(streak: number): Rank {
@@ -84,6 +85,7 @@ interface CycleContext {
   status?: ReturnType<typeof buildingStatus>;
   water?: WaterResult;
   services?: ServiceFields;
+  traffic?: TrafficResult;
   /** Estoque no início do ciclo (para o balanço por recurso). */
   startStock: Record<ResourceId, number>;
 }
@@ -126,7 +128,10 @@ const zoneGrowthSystem: CycleSystem = (ctx) => {
     access: roadAccess(s),
     approval,
     watered: water.watered,
-    services: computeServices(s, buildingStatus(s, power.powered)),
+    ...(() => {
+      const traffic = computeTraffic(s);
+      return { traffic, services: computeServices(s, buildingStatus(s, power.powered), traffic) };
+    })(),
     pay: (kind, dense) => {
       const mats = ZONES[kind].growth[dense ? 1 : 0];
       const quote = quoteMaterials(s, mats, effects);
@@ -189,7 +194,18 @@ const waterSystem: CycleSystem = (ctx) => {
 /** 3c) Serviços (Fase 7): crime, poluição, valor do solo e coberturas; QE e expectativa de vida. */
 const servicesSystem: CycleSystem = (ctx) => {
   const { s, report, status } = ctx;
-  const f = computeServices(s, status);
+  // Trânsito (Fase 8): viagens casa → trabalho, carga das vias, ônibus e trem.
+  const t = computeTraffic(s);
+  ctx.traffic = t;
+  report.traffic = {
+    trips: t.trips,
+    failed: t.failedTrips,
+    congested: t.congestedTiles,
+    bus: t.busRiders,
+    rail: t.railRiders,
+    avgCommute: t.avgCommute,
+  };
+  const f = computeServices(s, status, t);
   ctx.services = f;
   updateQuality(s, f);
   report.services = {
@@ -202,7 +218,7 @@ const servicesSystem: CycleSystem = (ctx) => {
 };
 
 /** 4) Extração e fábricas: a pureza do lote vem da qualidade do foco. */
-const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water }) => {
+const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water, traffic }) => {
   const biome = BIOMES[s.biome];
   for (const b of byId(s.buildings)) {
     const def = BUILDINGS[b.type];
@@ -221,7 +237,9 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water
   // Zonas industriais fabricam bens de consumo (empregos industriais ocupados).
   const labor = laborStats(s, status);
   const industryFilled = Math.max(0, labor.zoneFilled - labor.commercialJobs);
-  const goods = Math.floor(industryFilled * GOODS_PER_INDUSTRY_JOB);
+  // Frete ferroviário (Fase 8): indústria perto de estação produz até 25% mais.
+  const freight = 1 + 0.25 * (traffic?.freightShare ?? 0);
+  const goods = Math.floor(industryFilled * GOODS_PER_INDUSTRY_JOB * freight);
   addTo(s.inventory, "goods", rank, goods);
   addTo(report.produced, "goods", rank, goods);
 };
