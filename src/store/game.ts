@@ -18,8 +18,9 @@ import {
 /** Ferramentas de zona: "zone-R-light", "zone-I-dense", "zone-none-light" (remover zona). */
 export type ZoneTool = `zone-${ZoneKind | "none"}-${"light" | "dense"}`;
 /** "pan" = ✋ Mover: arrastar com clique normal move a câmera. */
-export type Tool = BuildingType | "demolish" | "wire" | "pan" | ZoneTool | null;
-export type Overlay = "none" | "power" | "zones";
+export type Tool = BuildingType | "demolish" | "wire" | "pipe" | "pan" | ZoneTool | null;
+/** "water" = visão subterrânea (canos e abastecimento). */
+export type Overlay = "none" | "power" | "zones" | "water";
 
 export function parseZoneTool(tool: Tool): { zone: ZoneKind | "none"; dense: boolean } | null {
   if (!tool || !tool.startsWith("zone-")) return null;
@@ -238,7 +239,9 @@ export const useGame = create<GameStore>()(
         },
 
         setTool(tool) {
-          set({ tool });
+          // O cano mostra a visão subterrânea automaticamente.
+          if (tool === "pipe") set({ tool, overlay: "water" });
+          else set({ tool });
         },
 
         setOverlay(overlay) {
@@ -272,10 +275,13 @@ export const useGame = create<GameStore>()(
               set(derive(serverState, pending.filter((_, j) => j !== i)));
               return;
             }
-            get().queue({ type: "demolish", x, y });
+            // Na visão subterrânea, demolir remove o cano do tile.
+            if (get().overlay === "water") get().queue({ type: "demolish", x, y, underground: true });
+            else get().queue({ type: "demolish", x, y });
             return;
           }
           if (tool === "wire") get().queue({ type: "wire", x, y });
+          else if (tool === "pipe") get().queue({ type: "pipe", x, y });
           else get().queue({ type: "build", building: tool as BuildingType, x, y });
         },
 

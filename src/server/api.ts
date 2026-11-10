@@ -100,7 +100,8 @@ export function parseCommands(raw: unknown): Command[] | null {
       continue;
     }
     if (!num(r.x) || !num(r.y)) return null;
-    if (r.type === "demolish" || r.type === "wire") out.push({ type: r.type, x: r.x, y: r.y });
+    if (r.type === "demolish") out.push({ type: "demolish", x: r.x, y: r.y, ...(r.underground === true ? { underground: true } : {}) });
+    else if (r.type === "wire" || r.type === "pipe") out.push({ type: r.type, x: r.x, y: r.y });
     else if (r.type === "build" && typeof r.building === "string" && Object.hasOwn(BUILDINGS, r.building)) {
       out.push({ type: "build", building: r.building as BuildingType, x: r.x, y: r.y });
     } else return null;

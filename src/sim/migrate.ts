@@ -66,6 +66,11 @@ export function migrateState(raw: CityState): CityState {
     s.breaks = 0;
   }
 
+  if (from < 8) {
+    // v7 → v8: camada subterrânea de canos (a prefeitura já tem um poço para começar).
+    s.pipes = new Array(s.width * s.height).fill(0);
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

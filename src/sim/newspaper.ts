@@ -77,6 +77,14 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
   if (report.power.brownout) {
     candidates.push({ priority: 80, tone: "bad", title: "APAGÃO atinge bairros inteiros", body: `A cidade pediu ${report.power.demand} MW, mas só há ${report.power.capacity} MW. A população cobra novas usinas e linhas.` });
   }
+  if (report.water?.shortage) {
+    candidates.push({
+      priority: 75,
+      tone: "bad",
+      title: "Torneiras secas em vários bairros",
+      body: `A cidade precisou de ${report.water.demand} de água e só teve ${report.water.supplied}. Prédios altos sem água começam a esvaziar.`,
+    });
+  }
   if (report.quarter === 0) {
     candidates.push({ priority: 60, tone: "good", title: `Feliz ${report.year}!`, body: "Fogos no céu e balanço do ano: a prefeitura promete uma cidade ainda maior." });
   }

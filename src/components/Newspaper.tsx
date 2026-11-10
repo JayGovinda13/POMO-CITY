@@ -74,6 +74,12 @@ export function NewspaperView({
               <p className={report.power.brownout ? "text-red-800" : ""}>
                 Energia: {report.power.demand}/{report.power.capacity} MW
               </p>
+              {report.water && (
+                <p className={report.water.shortage ? "text-red-800" : ""}>
+                  Água: {report.water.supplied}/{report.water.demand}
+                  {report.water.shortage && " (faltou)"}
+                </p>
+              )}
               <button type="button" className="mt-1 underline" onClick={onDetails}>
                 Ver balanço completo →
               </button>

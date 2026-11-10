@@ -43,8 +43,8 @@ Toda mecânica importada passa por cinco filtros:
 | 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ✅ Concluída |
 | 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ✅ Concluída |
 | 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | ✅ Concluída |
-| 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ Próxima |
-| 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ |
+| 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ✅ Concluída (dessalinização na Fase 9) |
+| 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ Próxima |
 | 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ⏳ |
 | 9 | Terreno e paisagem | Altitude, árvores, água, pontes e túneis, editor de mapa | ⏳ |
 | 10 | Eras, invenções e recompensas | Árvore tecnológica por ano, vida útil de usinas, marcos de população | ⏳ |
@@ -429,7 +429,19 @@ desastre**, e o jogador pode se proteger com um **seguro** contratado com antece
 - seguro com carência, franquia e cobertura testados;
 - interface de contratação na pausa e relatório do sinistro.
 
-## Fase 6 — Água
+## Fase 6 — Água ✅
+
+### Entregue
+
+| Entrega | Onde |
+|---------|------|
+| **Rede de água** como a de energia: passa por canos, construções e lotes zoneados vizinhos; estradas interrompem, a menos que um **cano** (subsolo, $3/tile) passe por baixo. Distribuição por proximidade das fontes; faltando água, os mais distantes ficam secos. | `water.ts` |
+| **Fontes:** poço da prefeitura (20), **bomba** (25 como poço, 50 encostada em lago/rio; precisa de energia), **estação de tratamento** (recicla 30% do consumo da rede, até 40; desde 1903). A chuva da estação muda o rendimento das bombas (seca ~50%, estação chuvosa até 130%). | `catalog.ts`, `climateEffects.water` |
+| **Caixa d'água** guarda a sobra (até 60) e cobre a falta nas estações secas. | `updateTowers` |
+| **Efeitos:** lote **denso sem água não passa do nível 2** (e declina se estiver acima); **fazenda irrigada** segura a colheita (mínimo 85%) no inverno e na seca; "Água encanada" alegra os moradores; manchete "Torneiras secas" quando falta. | `zones.ts`, `extractionSystem`, `citizens.ts`, `newspaper.ts` |
+| **Visão subterrânea 💧** (Visualizar → Água, ou ao escolher o cano): cidade translúcida, canos e tiles abastecidos/secos; demolir nessa visão remove canos. Medidor 💧 na barra. | `CityScene.ts`, `Hud.tsx` |
+| **Dessalinização** fica para a Fase 9 (Terreno): os mapas atuais só têm água doce. | — |
+
 
 *Manual: Water System.*
 

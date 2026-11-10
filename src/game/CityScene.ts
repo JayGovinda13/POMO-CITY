@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, type CityState } from "@/sim";
+import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeWater, type CityState } from "@/sim";
 import { isAreaTool, useGame } from "@/store/game";
 import { bus } from "./bus";
 
@@ -177,7 +177,7 @@ export class CityScene extends Phaser.Scene {
     if (!t) return;
     // Estrada, linha e demolição podem ser "pintadas" arrastando; o resto é um clique.
     const tool = useGame.getState().tool;
-    const paintable = tool === "road" || tool === "wire" || tool === "demolish";
+    const paintable = tool === "road" || tool === "wire" || tool === "pipe" || tool === "demolish";
     if (this.painted.size > 0 && !paintable) return;
     // Mouse rápido pula tiles entre dois eventos: preenche o caminho (Bresenham na grade),
     // para uma estrada arrastada nunca ficar com buracos.
@@ -392,7 +392,39 @@ export class CityScene extends Phaser.Scene {
   private drawOverlay(city: CityState) {
     const { overlay } = useGame.getState();
     const o = this.overlayG.clear();
-    if (overlay === "power") {
+    // Visão subterrânea: a cidade fica translúcida para mostrar os canos e o abastecimento.
+    const underground = overlay === "water";
+    this.spriteLayer.setAlpha(underground ? 0.3 : 1);
+    this.flatLayer.setAlpha(underground ? 0.45 : 1);
+    if (underground) {
+      const water = computeWater(city);
+      for (let i = 0; i < water.conductive.length; i++) {
+        if (!water.conductive[i]) continue;
+        const { sx, sy } = iso(i % city.width, Math.floor(i / city.width));
+        o.fillStyle(water.watered[i] ? 0x3a8ad8 : 0xb04a3a, water.watered[i] ? 0.35 : 0.3);
+        this.diamond(o, sx, sy, 0.95);
+      }
+      // Canos: linhas grossas entre vizinhos (e um ponto em cano isolado).
+      o.lineStyle(3, 0x9ad0ff, 1);
+      for (let y = 0; y < city.height; y++)
+        for (let x = 0; x < city.width; x++) {
+          if (!city.pipes[y * city.width + x]) continue;
+          const a = iso(x, y);
+          o.fillStyle(0x9ad0ff, 1);
+          o.fillRect(a.sx - 2, a.sy - 1, 4, 3);
+          for (const [dx, dy] of [
+            [1, 0],
+            [0, 1],
+          ] as const) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < city.width && ny < city.height && city.pipes[ny * city.width + nx]) {
+              const n = iso(nx, ny);
+              o.lineBetween(a.sx, a.sy, n.sx, n.sy);
+            }
+          }
+        }
+    } else if (overlay === "power") {
       const power = computePower(city);
       for (let i = 0; i < power.conductive.length; i++) {
         if (!power.conductive[i]) continue;

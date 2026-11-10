@@ -19,3 +19,4 @@ export * from "./economy";
 export * from "./finance";
 export * from "./newspaper";
 export * from "./insurance";
+export * from "./water";

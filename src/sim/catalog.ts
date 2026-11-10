@@ -1,6 +1,6 @@
 import type { BiomeId, BuildingType, Rank, ResourceId, ZoneKind } from "./types";
 
-export type BuildCategory = "infra" | "energy" | "production" | "storage" | "special";
+export type BuildCategory = "infra" | "energy" | "water" | "production" | "storage" | "special";
 
 /** Requisitos de desbloqueio (ver unlocks.ts). */
 export interface Requirement {
@@ -51,6 +51,8 @@ export interface BuildingDef {
     /** Tech Tier: rank máximo que este processador consegue entregar. */
     tierCap: Rank;
   };
+  /** Água (Fase 6): bomba, poço da prefeitura, caixa d'água ou estação de tratamento. */
+  water?: { kind: "pump" | "well" | "tower" | "treatment"; capacity: number };
   /** Capacidade extra de estoque por recurso (armazém, silo). */
   storage?: Partial<Record<ResourceId, number>>;
   /** Multiplicador de impostos da cidade (ex.: monumentos). */
@@ -76,6 +78,7 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   cityhall: {
     category: "special",
     generates: { capacity: 12 },
+    water: { kind: "well", capacity: 20 },
     name: "Prefeitura",
     description: "Coração da cidade. A malha viária parte daqui e um gerador de 12 MW dá a partida.",
     buildable: false,
@@ -220,6 +223,51 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     color: 0xdfe8f0,
     height: 34,
   },
+  water_pump: {
+    name: "Bomba d'água",
+    description: "Poço: 25 de água por estação; encostada em lago ou rio, 50. Precisa de energia; a seca reduz.",
+    buildable: true,
+    category: "water",
+    cost: 100,
+    materials: [{ resource: "metal", qty: 2 }],
+    upkeep: 2,
+    workers: 1,
+    powerUse: 2,
+    needsRoad: false,
+    water: { kind: "pump", capacity: 25 },
+    color: 0x4a7ab0,
+    height: 10,
+  },
+  water_tower: {
+    name: "Caixa d'água",
+    description: "Guarda até 60 de água que sobrar e abastece nas estações secas.",
+    buildable: true,
+    category: "water",
+    cost: 250,
+    materials: [{ resource: "planks", qty: 4 }, { resource: "metal", qty: 2 }],
+    upkeep: 1,
+    workers: 0,
+    needsRoad: false,
+    water: { kind: "tower", capacity: 60 },
+    color: 0x8ab0d0,
+    height: 30,
+  },
+  water_treatment: {
+    name: "Estação de tratamento",
+    description: "Recicla 30% da água consumida na rede (até 40 por estação). Disponível em 1903.",
+    buildable: true,
+    category: "water",
+    requires: { year: 1903 },
+    cost: 500,
+    materials: [{ resource: "metal", qty: 6 }, { resource: "planks", qty: 4 }],
+    upkeep: 4,
+    workers: 2,
+    powerUse: 3,
+    needsRoad: true,
+    water: { kind: "treatment", capacity: 40 },
+    color: 0x5a8a9a,
+    height: 14,
+  },
   warehouse: {
     name: "Armazém",
     description: "+150 de estoque para madeira, minério, tábuas, metal e bens.",
@@ -291,6 +339,7 @@ export const ZONES: Record<ZoneKind, ZoneDef> = {
 };
 
 export const WIRE_COST = 2;
+export const PIPE_COST = 3;
 
 export const RESOURCES: Record<ResourceId, { name: string; color: number }> = {
   food: { name: "Comida", color: 0xc9a94a },

@@ -139,6 +139,13 @@ export function CycleReportModal() {
                   lavoura {Math.round(report.weather.effects.farm * 100)}%
                 </p>
               )}
+              {report.water && (
+                <p className={report.water.shortage ? "text-red-300" : ""}>
+                  💧 Água: consumo {report.water.demand} / produção {report.water.produced}
+                  {report.water.stored > 0 && ` + ${report.water.stored} nas caixas`}
+                  {report.water.shortage && " — faltou água! Bombas, canos ou caixas d'água."}
+                </p>
+              )}
               {report.power && (
                 <p className={report.power.brownout ? "text-red-300" : ""}>
                   ⚡ Consumo {report.power.demand} MW / capacidade {report.power.capacity} MW

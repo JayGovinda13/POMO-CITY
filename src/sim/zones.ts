@@ -63,6 +63,8 @@ export function developZones(
     powered: Uint8Array;
     access: Int32Array;
     approval?: number;
+    /** 1 = lote com água (Fase 6). Lote denso sem água não passa do nível 2. */
+    watered?: Uint8Array;
     /** Paga os materiais de um nível novo; false = não há material nem dinheiro (o lote não cresce). */
     pay?: (kind: ZoneKind, dense: boolean) => boolean;
   },
@@ -73,8 +75,11 @@ export function developZones(
   let declined = 0;
   const n = s.zoneType.length;
 
+  // Sem água, prédio denso não se sustenta acima do nível 2 (Fase 6).
+  const dryCap = (i: number) => (opts.watered && s.zoneDensity[i] === 1 && !opts.watered[i] ? 2 : Infinity);
   for (let i = 0; i < n; i++) {
-    if (s.zoneType[i] && s.zoneLevel[i] > 0 && (!opts.powered[i] || opts.access[i] < 0)) {
+    if (!s.zoneType[i] || s.zoneLevel[i] <= 0) continue;
+    if (!opts.powered[i] || opts.access[i] < 0 || s.zoneLevel[i] > dryCap(i)) {
       s.zoneLevel[i]--;
       declined++;
     }
@@ -86,7 +91,7 @@ export function developZones(
     if (d > 0) {
       const candidates: number[] = [];
       for (let i = 0; i < n; i++) {
-        if (s.zoneType[i] !== code || s.zoneLevel[i] >= maxLevel(s, i)) continue;
+        if (s.zoneType[i] !== code || s.zoneLevel[i] >= Math.min(maxLevel(s, i), dryCap(i))) continue;
         if (opts.powered[i] && opts.access[i] >= 0) candidates.push(i);
       }
       for (const i of shuffle(candidates, opts.rand).slice(0, Math.ceil(slots * d))) {

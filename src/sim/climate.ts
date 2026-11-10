@@ -209,7 +209,7 @@ export function seasonName(r: Region, quarter: number): string {
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * clamp(t, 0, 1);
 
-export const NEUTRAL_EFFECTS: ClimateEffects = { farm: 1, wind: 1, hydro: 1, demand: 1 };
+export const NEUTRAL_EFFECTS: ClimateEffects = { farm: 1, wind: 1, hydro: 1, demand: 1, water: 1 };
 
 /** Efeitos do tempo sobre a simulação. */
 export function climateEffects(w: { temp: number; rain: number; wind: number }): ClimateEffects {
@@ -228,6 +228,8 @@ export function climateEffects(w: { temp: number; rain: number; wind: number }):
     wind: round(clamp(w.wind / 4, 0.3, 1.8)),
     hydro: round(clamp(r / 250, 0.25, 1.3)),
     demand: round(demand),
+    // Bombas tiram mais água em estação chuvosa e menos na seca (Fase 6).
+    water: round(clamp(0.45 + r / 500, 0.5, 1.3)),
   };
 }
 

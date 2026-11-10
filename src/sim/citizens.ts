@@ -8,6 +8,7 @@
 import { BUILDINGS } from "./catalog";
 import { REGION_BY_ID, weatherAt, type Continent } from "./climate";
 import { foodSecure } from "./economy";
+import { computeWater } from "./water";
 import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
 import { computePower } from "./power";
 import { buildingStatus } from "./status";
@@ -160,6 +161,7 @@ export function citizensView(s: CityState): CitizenView[] {
   const power = computePower(s);
   const status = buildingStatus(s, power.powered);
   const slots = jobSlots(s, status);
+  const water = computeWater(s, undefined, status);
 
   const homes: number[] = [];
   for (let i = 0; i < s.zoneType.length; i++) {
@@ -181,6 +183,7 @@ export function citizensView(s: CityState): CitizenView[] {
     if (homeIdx === undefined) reasons.push({ text: "Sem moradia", delta: -3 });
     else if (power.powered[homeIdx]) reasons.push({ text: "Casa com energia", delta: 1 });
     else reasons.push({ text: "Casa sem energia", delta: -2 });
+    if (homeIdx !== undefined && water.watered[homeIdx]) reasons.push({ text: "Água encanada", delta: 1 });
     reasons.push(fed ? { text: "Comida na mesa", delta: 1 } : { text: "Falta comida (nem dá para comprar)", delta: -3 });
     if (recentDisaster) reasons.push({ text: "Desastre recente", delta: -2 });
     if (harsh) reasons.push({ text: harsh, delta: -1 });

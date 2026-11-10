@@ -22,7 +22,10 @@ export type BuildingType =
   | "wind_turbine"
   | "hydro_plant"
   | "warehouse"
-  | "silo";
+  | "silo"
+  | "water_pump"
+  | "water_tower"
+  | "water_treatment";
 
 /** 0 = terra, 1 = água */
 export type Terrain = 0 | 1;
@@ -42,6 +45,8 @@ export interface Building {
   condition?: number;
   /** Danificada por desastre: não opera até ser reparada (Fase 5). */
   damaged?: boolean;
+  /** Caixa d'água: água guardada (Fase 6). */
+  water?: number;
 }
 
 export interface Bond {
@@ -56,7 +61,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -87,6 +92,8 @@ export interface CityState {
   zoneLevel: number[];
   /** 1 = linha de transmissão no tile (pode coexistir com estrada). */
   wires: (0 | 1)[];
+  /** 1 = cano de água (camada subterrânea; passa sob estradas, lotes e construções). */
+  pipes: (0 | 1)[];
 
   money: number;
   population: number;
@@ -128,8 +135,9 @@ export interface CityState {
 
 export type Command =
   | { type: "build"; building: BuildingType; x: number; y: number }
-  | { type: "demolish"; x: number; y: number }
+  | { type: "demolish"; x: number; y: number; underground?: boolean }
   | { type: "wire"; x: number; y: number }
+  | { type: "pipe"; x: number; y: number }
   | { type: "policy"; resource: ResourceId; mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }
   | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: { transport: number; energy: number } }
   | { type: "ordinance"; id: keyof CityState["ordinances"]; active: boolean }
@@ -176,6 +184,8 @@ export interface CycleReport {
   starving: boolean;
   netMoney: number;
   power: { capacity: number; demand: number; brownout: boolean };
+  /** Água (Fase 6): produção, guardado nas caixas, consumo e se faltou. */
+  water?: { produced: number; stored: number; demand: number; supplied: number; shortage: boolean };
   /** Clima da estação vivida (null se a cidade ainda não escolheu a região). */
   weather: WeatherSummary | null;
   zones: { grown: number; declined: number };
@@ -205,6 +215,8 @@ export interface ClimateEffects {
   hydro: number;
   /** Consumo de energia de lotes R/C (aquecimento ou refrigeração). */
   demand: number;
+  /** Água que as bombas conseguem tirar (chuva e seca). */
+  water: number;
 }
 
 export interface FinanceBreakdown {

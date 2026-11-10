@@ -88,6 +88,7 @@ export function createCity(seed: number, now: number, biome?: BiomeId, opts: { w
     zoneDensity: new Array(n).fill(0),
     zoneLevel: new Array(n).fill(0),
     wires: new Array(n).fill(0),
+    pipes: new Array(n).fill(0),
     money: STARTING_MONEY,
     population: 0,
     citizens: [],

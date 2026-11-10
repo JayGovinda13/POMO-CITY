@@ -41,6 +41,7 @@ import { RANKS, type Building, type CityState, type ClimateEffects, type CycleRe
 import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
 import { BONUS_MIN, premium } from "./insurance";
+import { computeWater, updateTowers, type WaterResult } from "./water";
 import { citizensView, moodSummary, syncCitizens } from "./citizens";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
@@ -80,6 +81,7 @@ interface CycleContext {
   effects: ClimateEffects;
   power?: PowerResult;
   status?: ReturnType<typeof buildingStatus>;
+  water?: WaterResult;
   /** Estoque no início do ciclo (para o balanço por recurso). */
   startStock: Record<ResourceId, number>;
 }
@@ -113,6 +115,7 @@ function consumeOrImport(ctx: CycleContext, res: ResourceId, need: number): numb
 const zoneGrowthSystem: CycleSystem = (ctx) => {
   const { s, report, effects } = ctx;
   const power = computePower(s, undefined, effects);
+  const water = computeWater(s, effects, buildingStatus(s, power.powered));
   const approval = moodSummary(citizensView(s)).approval;
   const r = developZones(s, {
     rank: ctx.rank,
@@ -120,6 +123,7 @@ const zoneGrowthSystem: CycleSystem = (ctx) => {
     powered: power.powered,
     access: roadAccess(s),
     approval,
+    watered: water.watered,
     pay: (kind, dense) => {
       const mats = ZONES[kind].growth[dense ? 1 : 0];
       const quote = quoteMaterials(s, mats, effects);
@@ -170,15 +174,26 @@ const powerSystem: CycleSystem = (ctx) => {
   report.power = { capacity: ctx.power.capacity, demand: ctx.power.demand, brownout: ctx.power.brownout };
 };
 
+/** 3b) Água: bombas (com energia), poço da prefeitura, tratamento e caixas d'água (Fase 6). */
+const waterSystem: CycleSystem = (ctx) => {
+  const { s, report, effects, status } = ctx;
+  const w = computeWater(s, effects, status);
+  ctx.water = w;
+  report.water = { produced: w.produced, stored: w.stored, demand: w.demand, supplied: w.supplied, shortage: w.shortage };
+  updateTowers(s, w);
+};
+
 /** 4) Extração e fábricas: a pureza do lote vem da qualidade do foco. */
-const extractionSystem: CycleSystem = ({ s, report, rank, status, effects }) => {
+const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water }) => {
   const biome = BIOMES[s.biome];
   for (const b of byId(s.buildings)) {
     const def = BUILDINGS[b.type];
     const eff = status!.get(b.id)!.efficiency;
     if (!def.produces || eff <= 0) continue;
     // A colheita depende do tempo da estação (Fase 2).
-    const climate = def.produces.resource === "food" ? effects.farm : 1;
+    // Fazenda irrigada (com água) segura a colheita na seca e no frio (Fase 6).
+    const irrigated = water?.watered[b.y * s.width + b.x] === 1;
+    const climate = def.produces.resource === "food" ? (irrigated ? Math.max(effects.farm, 0.85) : effects.farm) : 1;
     // Decreto "Prêmio de produtividade": +15% em ciclos de Rank A ou S (Fase 4).
     const bonus = isActive(s, "premio_produtividade") && (rank === "A" || rank === "S") ? 1.15 : 1;
     const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff * climate * bonus);
@@ -421,6 +436,7 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   zoneGrowthSystem,
   moveInSystem,
   powerSystem,
+  waterSystem,
   extractionSystem,
   refiningSystem,
   economySystem,

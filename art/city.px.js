@@ -516,6 +516,44 @@ building("silo", 44, (c, oy) => {
   }
 })
 
+// ───────────────────────────── água ─────────────────────────────
+
+building("water_pump", 30, (c, oy) => {
+  c.poly(ground(oy, 6), "p")
+  const b = block(c, { oy, hw: 8, H: 7, top: "I", left: "K", right: "u" })
+  // Cano saindo do poço e manivela.
+  c.rect(b.cx - 1, b.cy - b.H - b.hh - 5, 3, 5, "J")
+  c.rect(b.cx - 4, b.cy - b.H - b.hh - 6, 9, 2, "I")
+  c.px(b.L[0] + 2, b.L[1] - 3, "c")
+  c.px(b.L[0] + 3, b.L[1] - 2, "c")
+})
+building("water_tower", 52, (c, oy) => {
+  c.poly(ground(oy, 8), "S")
+  const cx = 16, base = oy + 9
+  // Pernas de metal.
+  c.line(cx - 6, base, cx - 4, base - 18, "I")
+  c.line(cx + 6, base, cx + 4, base - 18, "I")
+  c.line(cx, base + 2, cx, base - 18, "J")
+  c.line(cx - 5, base - 9, cx + 5, base - 9, "I")
+  // Tanque cilíndrico com cúpula.
+  c.rect(cx - 7, base - 32, 15, 14, "c")
+  c.rect(cx + 3, base - 32, 5, 14, "b")
+  c.rect(cx - 7, base - 25, 15, 1, "B")
+  c.ellipse(cx, base - 32, 7, 3, "H")
+  c.ellipse(cx, base - 18, 7, 2, "b")
+})
+building("water_treatment", 34, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 9, H: 9, top: "J", left: "i", right: "I", dx: -5, dy: -1 })
+  windows(c, b, { floors: 1, fh: 8, col: "Z", lit: "l", every: 3 })
+  // Tanques de decantação redondos com água.
+  for (const [x, y] of [[22, oy + 6], [18, oy + 11]]) {
+    c.ellipse(x, y, 5, 3, "I")
+    c.ellipse(x, y - 1, 4, 2, "c")
+    c.px(x - 1, y - 1, "H")
+  }
+})
+
 // Poste de transmissão.
 sprite("power_pole", { w: 8, h: 16, outline: "k" }, (c) => {
   c.vline(3, 2, 14, "D")
@@ -599,4 +637,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "power_pole", "pt_*"], { pad: 1 })

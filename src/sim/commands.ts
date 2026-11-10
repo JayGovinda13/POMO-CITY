@@ -1,4 +1,4 @@
-import { BUILDINGS, WIRE_COST, ZONES } from "./catalog";
+import { BUILDINGS, PIPE_COST, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
 import { BOND_VALUE, MAX_TAX, ORDINANCES, creditRating } from "./finance";
@@ -111,6 +111,14 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
   const i = idx(s, cmd.x, cmd.y);
   const here = buildingAt(s, cmd.x, cmd.y);
 
+  if (cmd.type === "pipe") {
+    // Canos ficam no subsolo: passam sob estradas, lotes e construções (Fase 6).
+    if (s.terrain[i] !== 0) return "Canos não passam sob a água";
+    if (s.pipes[i]) return "Já existe um cano aqui";
+    if (s.money < PIPE_COST) return "Dinheiro insuficiente";
+    return null;
+  }
+
   if (cmd.type === "wire") {
     if (s.terrain[i] !== 0) return "Linhas não passam sobre a água";
     if (s.wires[i]) return "Já existe uma linha aqui";
@@ -149,6 +157,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
   }
 
   if (cmd.type === "demolish") {
+    if (cmd.underground) return s.pipes[i] ? null : "Não há cano aqui";
     if (here?.type === "cityhall") return "A prefeitura não pode ser demolida";
     if (!here && !s.wires[i] && !s.zoneType[i]) return "Nada para demolir";
     return null;
@@ -200,6 +209,11 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
       next.zoneLevel[i] = 0;
     }
     next.money -= area.cost;
+  } else if (cmd.type === "pipe") {
+    next.pipes[idx(next, cmd.x, cmd.y)] = 1;
+    next.money -= PIPE_COST;
+  } else if (cmd.type === "demolish" && cmd.underground) {
+    next.pipes[idx(next, cmd.x, cmd.y)] = 0;
   } else if (cmd.type === "wire") {
     next.wires[idx(next, cmd.x, cmd.y)] = 1;
     next.money -= WIRE_COST;
