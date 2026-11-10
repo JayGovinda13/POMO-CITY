@@ -85,7 +85,7 @@ const STEPS: Step[] = [
     title: "Energia",
     body: (
       <p>
-        A prefeitura gera 12 MW. Leve energia com <strong>linhas de transmissão</strong> (elas cruzam estradas) e construa usinas:
+        A prefeitura gera 20 MW. Leve energia com <strong>linhas de transmissão</strong> (elas cruzam estradas) e construa usinas:
         eólica, termelétrica (queima madeira) e hidrelétrica (na água). Se faltar energia, há <strong>apagão</strong>: lotes sem luz
         declinam e construções operam a 50%. Use a visão <strong>⚡ Energia</strong> para conferir.
       </p>

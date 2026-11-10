@@ -185,16 +185,20 @@ describe("Fase 1 — energia", () => {
   });
 
   it("apagão: quando a capacidade acaba, os mais distantes ficam sem luz", () => {
-    let s = apply(city(), [zone("I", 13, 12, 20, 12)]); // fileira encostada na prefeitura
-    for (let x = 13; x <= 20; x++) s.zoneLevel[at(s, x, 12)] = 2; // 2 MW cada → 16 MW > 12 MW
+    // Fileira encostada na prefeitura: 6 lotes densos × 4 MW = 24 MW > 20 MW da prefeitura.
+    let s = apply(city(), [zone("I", 13, 12, 18, 12)]);
+    for (let x = 13; x <= 18; x++) {
+      s.zoneDensity[at(s, x, 12)] = 1;
+      s.zoneLevel[at(s, x, 12)] = 4;
+    }
     const p = computePower(s);
-    expect(p.capacity).toBe(12);
-    expect(p.demand).toBe(16);
+    expect(p.capacity).toBe(20);
+    expect(p.demand).toBe(24);
     expect(p.brownout).toBe(true);
     expect(p.powered[at(s, 13, 12)]).toBe(1);
-    expect(p.powered[at(s, 20, 12)]).toBe(0);
+    expect(p.powered[at(s, 18, 12)]).toBe(0);
     // Uma eólica no fim da linha resolve.
-    s = apply(s, [{ type: "build", building: "wind_turbine", x: 21, y: 12 }]);
+    s = apply(s, [{ type: "build", building: "wind_turbine", x: 19, y: 12 }]);
     expect(computePower(s).brownout).toBe(false);
   });
 
@@ -219,7 +223,7 @@ describe("Fase 1 — energia", () => {
     s.inventory = { "wood:A": 10, "food:C": 50 };
     const { report } = resolveCycle(s, T0);
     expect(report.consumed["wood:A"]).toBe(4);
-    expect(report.power.capacity).toBe(12 + 39); // madeira A: 30 × 1,3
+    expect(report.power.capacity).toBe(20 + 39); // prefeitura 20 + madeira A: 30 × 1,3
   });
 });
 
@@ -248,10 +252,16 @@ describe("Fase 1 — crescimento das zonas", () => {
     const s = grid();
     s.zoneLevel[at(s, 13, 13)] = 2;
     const powered = new Uint8Array(s.width * s.height); // tudo apagado
-    const r = developZones(s, { rank: "S", rand: rng(1), powered, access: roadAccess(s) });
-    expect(r.grown).toBe(0);
-    expect(r.declined).toBe(1);
-    expect(s.zoneLevel[at(s, 13, 13)]).toBe(1);
+    // O declínio sem energia é gradual (1 chance em 3 por ciclo): em alguns ciclos o lote cai.
+    const rand = rng(1);
+    let declined = 0;
+    for (let k = 0; k < 12; k++) {
+      const r = developZones(s, { rank: "S", rand, powered, access: roadAccess(s) });
+      expect(r.grown).toBe(0);
+      declined += r.declined;
+    }
+    expect(declined).toBe(2);
+    expect(s.zoneLevel[at(s, 13, 13)]).toBe(0);
   });
 
   it("foco melhor (Rank S) desenvolve mais lotes que Rank D", () => {

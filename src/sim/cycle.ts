@@ -32,6 +32,8 @@ import {
   ROAD_REPAIR,
   ROAD_WEAR_PER_POINT,
   annualInterest,
+  adminCost,
+  DIFFICULTY,
   departmentOf,
   isActive,
   taxRevenue,
@@ -132,10 +134,14 @@ const zoneGrowthSystem: CycleSystem = (ctx) => {
       const traffic = computeTraffic(s);
       return { traffic, services: computeServices(s, buildingStatus(s, power.powered), traffic) };
     })(),
-    pay: (kind, dense) => {
+    pay: (kind, dense, level) => {
       const mats = ZONES[kind].growth[dense ? 1 : 0];
       const quote = quoteMaterials(s, mats, effects);
-      if (quote.impossible || s.money < quote.importCost) return false;
+      if (quote.impossible || s.money < quote.importCost) {
+        // Primeiro nível de lote leve: sem material nem dinheiro na prefeitura, os moradores
+        // constroem por conta própria (evita a armadilha do caixa negativo no começo).
+        return level === 0 && !dense;
+      }
       report.importCost += payMaterials(s, mats, effects, { consumed: report.consumed, bought: report.bought });
       return true;
     },
@@ -325,7 +331,17 @@ const upkeepSystem: CycleSystem = ({ s, report }) => {
   f.upkeepEnergy = Math.ceil((energy * s.funding.energy) / 100);
   f.upkeepServices = Math.ceil(services);
   f.upkeepOther = other;
-  report.upkeep = f.upkeepTransport + f.upkeepEnergy + f.upkeepServices + f.upkeepOther;
+  f.upkeepAdmin = adminCost(s.population);
+  // Dificuldade (balanceamento): a manutenção pesa 0,85× no fácil e 1,25× no difícil.
+  const k = DIFFICULTY[s.difficulty ?? "medio"]?.upkeep ?? 1;
+  if (k !== 1) {
+    f.upkeepTransport = Math.ceil(f.upkeepTransport * k);
+    f.upkeepEnergy = Math.ceil(f.upkeepEnergy * k);
+    f.upkeepServices = Math.ceil(f.upkeepServices * k);
+    f.upkeepOther = Math.ceil(f.upkeepOther * k);
+    f.upkeepAdmin = Math.ceil(f.upkeepAdmin * k);
+  }
+  report.upkeep = f.upkeepTransport + f.upkeepEnergy + f.upkeepServices + f.upkeepOther + f.upkeepAdmin;
   s.money -= report.upkeep;
 };
 
@@ -545,6 +561,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       upkeepEnergy: 0,
       upkeepServices: 0,
       upkeepOther: 0,
+      upkeepAdmin: 0,
       interest: 0,
       insurance: 0,
     },

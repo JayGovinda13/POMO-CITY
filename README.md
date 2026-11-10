@@ -168,6 +168,16 @@ filtrado e eco.
 Código em `src/audio/`: `synth.ts` (instrumentos), `tracks.ts` (catálogo, compositor e
 acompanhamentos) e `player.ts` (agendador).
 
+## Balanceamento
+
+```bash
+npm run balance
+```
+
+O comando roda um robô que joga 15 anos de cidade em vários cenários (focado, casual, fácil,
+difícil, inverno rigoroso, sem produção local) e imprime a evolução ano a ano. Os achados e os
+números ajustados estão em [docs/BALANCO.md](docs/BALANCO.md).
+
 ## Sprites (pxl)
 
 Os sprites são código: `art/city.px.js` usa o [pxl](https://github.com/crsolver/claude-pxl) para gerar

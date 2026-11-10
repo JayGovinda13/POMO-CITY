@@ -270,6 +270,8 @@ export interface FinanceBreakdown {
   upkeepEnergy: number;
   upkeepServices: number;
   upkeepOther: number;
+  /** Administração municipal: cresce com a população (balanceamento). */
+  upkeepAdmin: number;
   interest: number;
   insurance: number;
 }

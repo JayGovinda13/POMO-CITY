@@ -103,7 +103,9 @@ describe("Fase 6 — efeitos da água", () => {
     const st = apply(s, road);
     const powered = new Uint8Array(st.width * st.height).fill(1);
     const wet = new Uint8Array(st.width * st.height).fill(watered ? 1 : 0);
-    developZones(st, { rank: "S", rand: rng(1), powered, access: roadAccess(st), watered: wet });
+    // O declínio sem água é gradual: alguns ciclos bastam para o prédio denso voltar ao nível 2.
+    const rand = rng(1);
+    for (let k = 0; k < 15; k++) developZones(st, { rank: "S", rand, powered, access: roadAccess(st), watered: wet });
     return st;
   }
 

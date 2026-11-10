@@ -21,6 +21,8 @@ export interface PowerResult {
   /** Capacidade de cada usina (id → MW). */
   plantOutput: Map<number, number>;
   brownout: boolean;
+  /** Consumo em construções/lotes sem ligação com nenhuma usina (MW). */
+  disconnected: number;
 }
 
 /** Consumo do tile em MW (construção operando ou lote desenvolvido). */
@@ -130,6 +132,9 @@ export function computePower(
 
   const { order } = bfsDistances(s, sources, (i) => conductive[i] === 1);
   const remaining = new Map(supplyByComp);
+  // Apagão = rede COM usina que não dá conta. Construção isolada, sem ligação a nenhuma usina, não é
+  // apagão da cidade: fica "sem energia" (alerta no mapa) e conta em `disconnected`.
+  let shortage = false;
   for (const i of order) {
     const c = comp[i];
     const left = remaining.get(c) ?? 0;
@@ -142,7 +147,12 @@ export function computePower(
       powered[i] = 1;
       remaining.set(c, left - need);
       supplied += need;
-    }
+    } else shortage = true;
+  }
+  let disconnected = 0;
+  for (let i = 0; i < n; i++) {
+    if (!conductive[i] || supplyByComp.has(comp[i])) continue;
+    disconnected += tileDemand(s, i, buildingAtTile, connected, effects);
   }
 
   const round = (v: number) => Math.round(v * 10) / 10;
@@ -153,6 +163,7 @@ export function computePower(
     powered,
     conductive,
     plantOutput: capacities,
-    brownout: supplied + 1e-9 < demand,
+    brownout: shortage,
+    disconnected: round(disconnected),
   };
 }

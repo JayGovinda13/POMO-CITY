@@ -9,6 +9,9 @@ import { addTo } from "./inventory";
 
 export type Demand = Record<ZoneKind, number>;
 
+/** Chance por ciclo de um lote sem energia (ou sem água, se denso) perder um nível. */
+export const DECLINE_CHANCE = 1 / 3;
+
 const clamp = (v: number) => Math.max(-1, Math.min(1, v));
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -84,7 +87,7 @@ export function developZones(
     /** Trânsito (Fase 8): com 60+ habitantes, lote residencial sem emprego ao alcance não cresce. */
     traffic?: TrafficResult;
     /** Paga os materiais de um nível novo; false = não há material nem dinheiro (o lote não cresce). */
-    pay?: (kind: ZoneKind, dense: boolean) => boolean;
+    pay?: (kind: ZoneKind, dense: boolean, level: number) => boolean;
   },
 ): GrowthResult {
   const traffic = opts.traffic ?? computeTraffic(s);
@@ -102,9 +105,13 @@ export function developZones(
 
   // Sem água, prédio denso não se sustenta acima do nível 2 (Fase 6).
   const dryCap = (i: number) => (opts.watered && s.zoneDensity[i] === 1 && !opts.watered[i] ? 2 : Infinity);
+  // Sem estrada: o lote decai sempre. Sem energia ou sem água (prédio denso), decai aos poucos —
+  // 1 chance em 3 por ciclo — para um apagão curto não derrubar meia cidade (balanceamento).
   for (let i = 0; i < n; i++) {
     if (!s.zoneType[i] || s.zoneLevel[i] <= 0) continue;
-    if (!opts.powered[i] || opts.access[i] < 0 || s.zoneLevel[i] > dryCap(i)) {
+    const noAccess = opts.access[i] < 0;
+    const lacking = !opts.powered[i] || s.zoneLevel[i] > dryCap(i);
+    if (noAccess || (lacking && opts.rand() < DECLINE_CHANCE)) {
       s.zoneLevel[i]--;
       declined++;
     }
@@ -123,7 +130,7 @@ export function developZones(
       const ordered = shuffle(candidates, opts.rand);
       if (kind !== "I") ordered.sort((a, b) => Math.floor(services.landValue[b] / 10) - Math.floor(services.landValue[a] / 10));
       for (const i of ordered.slice(0, Math.ceil(slots * d))) {
-        if (opts.pay && !opts.pay(kind, s.zoneDensity[i] === 1)) continue;
+        if (opts.pay && !opts.pay(kind, s.zoneDensity[i] === 1, s.zoneLevel[i])) continue;
         s.zoneLevel[i]++;
         if (s.trees?.[i]) {
           s.trees[i] = 0;

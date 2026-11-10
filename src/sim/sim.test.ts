@@ -11,6 +11,7 @@ import {
   DAILY_REWARD_CAP,
   type CityState,
   type Command,
+  TAX_BASE,
 } from "./index";
 
 const T0 = Date.UTC(2026, 10, 9, 12, 0, 0);
@@ -141,7 +142,7 @@ describe("economia do ciclo", () => {
     expect(report.produced["planks:B"]).toBe(4);
     expect(report.wasted["planks:B"] ?? 0).toBe(0);
     expect(report.upkeep).toBe(8 * 1 + 3 + 5 + 2);
-    expect(report.taxes).toBe(16 * 3);
+    expect(report.taxes).toBe(Math.floor(16 * TAX_BASE.R));
     expect(state.money).toBe(s.money + report.netMoney);
     expect(report.netMoney).toBe(report.taxes - report.upkeep - report.importCost + report.salesRevenue);
   });

@@ -9,7 +9,8 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "art": "node scripts/build-art.mjs"
+    "art": "node scripts/build-art.mjs",
+    "balance": "vitest run --config vitest.balance.config.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

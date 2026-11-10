@@ -10,7 +10,16 @@ import { ZONE, type CityState, type ZoneKind } from "./types";
 export const DEFAULT_TAX = 9;
 export const MAX_TAX = 20;
 /** Arrecadação por unidade na alíquota padrão: por morador (R) e por emprego ocupado (C, I). */
-export const TAX_BASE: Record<ZoneKind, number> = { R: 3, C: 1, I: 1 };
+// Balanceamento: R 3 → 2,5 (a cidade média sobrava dinheiro demais; ver docs/BALANCO.md).
+export const TAX_BASE: Record<ZoneKind, number> = { R: 2.2, C: 1, I: 1 };
+
+/**
+ * Administração municipal: o custo de tocar a cidade cresce com ela (folha, papelada, serviços
+ * gerais). Zero até 60 moradores, para não apertar o começo; depois, $1 por morador a mais.
+ */
+export const ADMIN_FREE_POPULATION = 60;
+export const ADMIN_PER_RESIDENT = 1;
+export const adminCost = (population: number) => Math.ceil(Math.max(0, population - ADMIN_FREE_POPULATION) * ADMIN_PER_RESIDENT);
 /** Efeito de cada ponto percentual acima/abaixo do padrão na demanda daquela zona. */
 export const TAX_DEMAND_PER_POINT = 0.04;
 
@@ -188,8 +197,18 @@ export function demandModifiers(s: CityState): Record<ZoneKind, number> {
 // ───────────────────────── dificuldade ─────────────────────────
 
 export type Difficulty = "facil" | "medio" | "dificil";
-export const DIFFICULTY: Record<Difficulty, { name: string; money: number; bonds: number; industryDemand: number; description: string }> = {
-  facil: { name: "Fácil", money: 2000, bonds: 0, industryDemand: 0.15, description: "$2.000 e economia aquecida (mais demanda pela indústria)." },
-  medio: { name: "Médio", money: 1000, bonds: 0, industryDemand: 0, description: "$1.000 e economia estável." },
-  dificil: { name: "Difícil", money: 0, bonds: 1, industryDemand: -0.15, description: "$1.000 vindos de um título a pagar, e economia em recessão." },
+export const DIFFICULTY: Record<
+  Difficulty,
+  { name: string; money: number; bonds: number; industryDemand: number; upkeep: number; description: string }
+> = {
+  facil: { name: "Fácil", money: 2000, bonds: 0, industryDemand: 0.15, upkeep: 0.85, description: "$2.000, economia aquecida e manutenção 15% mais barata." },
+  medio: { name: "Médio", money: 1000, bonds: 0, industryDemand: 0, upkeep: 1, description: "$1.000 e economia estável." },
+  dificil: {
+    name: "Difícil",
+    money: 0,
+    bonds: 1,
+    industryDemand: -0.15,
+    upkeep: 1.25,
+    description: "$1.000 vindos de um título a pagar, economia em recessão e manutenção 25% mais cara.",
+  },
 };

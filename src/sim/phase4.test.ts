@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  TAX_BASE,
   BOND_VALUE,
   applyCommand,
   applyCommands,
@@ -53,7 +54,7 @@ describe("Fase 4 — impostos por zona", () => {
   it("alíquota padrão (9%) arrecada como antes; mais imposto rende mais e derruba a demanda", () => {
     const s = town();
     const base = resolveCycle(s, T0).report;
-    expect(base.finance.taxR).toBe(base.populationAfter * 3);
+    expect(base.finance.taxR).toBe(Math.floor(base.populationAfter * TAX_BASE.R));
     const high = budget(s, { taxes: { R: 18, C: 9, I: 9 } });
     const r = resolveCycle(high, T0).report;
     expect(r.finance.taxR).toBeGreaterThan(base.finance.taxR);
@@ -85,7 +86,7 @@ describe("Fase 4 — verbas dos departamentos", () => {
     const half = plantCapacities(budget(s, { funding: { transport: 100, energy: 0 } })).get(turbine.id)!;
     expect(half).toBeCloseTo(full / 2);
     const hall = s.buildings.find((b) => b.type === "cityhall")!;
-    expect(plantCapacities(budget(s, { funding: { transport: 100, energy: 0 } })).get(hall.id)).toBe(12);
+    expect(plantCapacities(budget(s, { funding: { transport: 100, energy: 0 } })).get(hall.id)).toBe(20);
   });
 });
 
@@ -147,9 +148,9 @@ describe("Fase 4 — decretos", () => {
   it("conservação de energia chega a +15% em 4 ciclos", () => {
     let s = on(town(), "conservacao_energia");
     const hall = s.buildings.find((b) => b.type === "cityhall")!;
-    expect(plantCapacities(s).get(hall.id)).toBe(12);
+    expect(plantCapacities(s).get(hall.id)).toBe(20);
     s.cyclesCompleted += 4;
-    expect(plantCapacities(s).get(hall.id)).toBeCloseTo(13.8);
+    expect(plantCapacities(s).get(hall.id)).toBeCloseTo(23);
   });
 
   it("embelezamento alegra os moradores; jogos entristecem", () => {
@@ -206,6 +207,6 @@ describe("Fase 4 — dificuldade, saldo e migração", () => {
     expect(m.bonds).toEqual([]);
     expect(m.difficulty).toBe("medio");
     expect(m.zoneType[0]).toBe(ZONE.NONE);
-    expect(computePower(m).capacity).toBe(12);
+    expect(computePower(m).capacity).toBe(20);
   });
 });

@@ -19,6 +19,7 @@ import {
   ZONE,
   type CityState,
   type Command,
+  BUILDINGS,
 } from "./index";
 
 const T0 = Date.UTC(2026, 10, 10, 12);
@@ -172,11 +173,11 @@ describe("Fase 7 — orçamento, seguro e ciclo", () => {
       { type: "build", building: "school", x: 17, y: 13 },
     ]);
     const full = resolveCycle(s, T0).report;
-    expect(full.finance.upkeepServices).toBe(6 + 4);
+    expect(full.finance.upkeepServices).toBe(BUILDINGS.police.upkeep + BUILDINGS.school.upkeep);
     const cut = applyCommand(s, { type: "budget", funding: { police: 50, education: 50 } });
     expect(cut.ok).toBe(true);
     if (!cut.ok) return;
-    expect(resolveCycle(cut.state, T0).report.finance.upkeepServices).toBe(5);
+    expect(resolveCycle(cut.state, T0).report.finance.upkeepServices).toBe(Math.ceil((BUILDINGS.police.upkeep + BUILDINGS.school.upkeep) / 2));
     expect(full.services?.eq).toBeGreaterThan(0);
   });
 
