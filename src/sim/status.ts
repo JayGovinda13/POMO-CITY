@@ -46,8 +46,10 @@ export interface LaborStats {
   publicFilled: number;
   commercialJobs: number;
   industrialJobs: number;
-  /** Empregos preenchidos em zonas C/I. */
+  /** Empregos preenchidos em zonas C/I (comércio é preenchido primeiro). */
   zoneFilled: number;
+  commercialFilled: number;
+  industrialFilled: number;
   totalJobs: number;
   unemployed: number;
 }
@@ -75,6 +77,7 @@ export function laborStats(s: CityState, status = buildingStatus(s)): LaborStats
   }
   const zoneJobs = commercialJobs + industrialJobs;
   const zoneFilled = Math.min(zoneJobs, Math.max(0, s.population - publicFilled));
+  const commercialFilled = Math.min(commercialJobs, zoneFilled);
   return {
     housing,
     publicJobs,
@@ -82,6 +85,8 @@ export function laborStats(s: CityState, status = buildingStatus(s)): LaborStats
     commercialJobs,
     industrialJobs,
     zoneFilled,
+    commercialFilled,
+    industrialFilled: zoneFilled - commercialFilled,
     totalJobs: publicJobs + zoneJobs,
     unemployed: Math.max(0, s.population - publicFilled - zoneFilled),
   };

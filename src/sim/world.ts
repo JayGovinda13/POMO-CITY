@@ -95,6 +95,12 @@ export function createCity(seed: number, now: number, biome?: BiomeId, opts: { w
     lastDisasterCycle: null,
     inventory: { ...STARTING_INVENTORY },
     policies: structuredClone(DEFAULT_POLICIES),
+    taxes: { R: 9, C: 9, I: 9 },
+    funding: { transport: 100, energy: 100 },
+    bonds: [],
+    nextBondId: 1,
+    ordinances: {},
+    difficulty: "medio",
     streak: 0,
     streakFrozen: false,
     disasterCount: 0,
@@ -122,7 +128,8 @@ const DIRS = [
  */
 export function connectedRoads(s: CityState): Set<number> {
   const roads = new Set<number>();
-  for (const b of s.buildings) if (b.type === "road") roads.add(idx(s, b.x, b.y));
+  // Estradas danificadas (conservação abaixo de 30, por falta de verba) não conectam.
+  for (const b of s.buildings) if (b.type === "road" && (b.condition ?? 100) >= 30) roads.add(idx(s, b.x, b.y));
   const hall = s.buildings.find((b) => b.type === "cityhall");
   const seen = new Set<number>();
   if (!hall) return seen;

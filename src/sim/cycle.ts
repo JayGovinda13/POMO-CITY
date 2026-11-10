@@ -26,6 +26,16 @@ import {
   unitsToSell,
 } from "./economy";
 import { computePower, plantCapacities, type PowerResult } from "./power";
+import {
+  ORDINANCES,
+  ORDINANCE_IDS,
+  ROAD_REPAIR,
+  ROAD_WEAR_PER_POINT,
+  annualInterest,
+  departmentOf,
+  isActive,
+  taxRevenue,
+} from "./finance";
 import { buildingStatus, laborStats } from "./status";
 import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Inventory, type Rank, type ResourceId } from "./types";
 import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
@@ -168,7 +178,9 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects }) => 
     if (!def.produces || eff <= 0) continue;
     // A colheita depende do tempo da estação (Fase 2).
     const climate = def.produces.resource === "food" ? effects.farm : 1;
-    const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff * climate);
+    // Decreto "Prêmio de produtividade": +15% em ciclos de Rank A ou S (Fase 4).
+    const bonus = isActive(s, "premio_produtividade") && (rank === "A" || rank === "S") ? 1.15 : 1;
+    const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff * climate * bonus);
     addTo(s.inventory, def.produces.resource, rank, qty);
     addTo(report.produced, def.produces.resource, rank, qty);
   }
@@ -222,15 +234,61 @@ const economySystem: CycleSystem = (ctx) => {
     const bonus = BUILDINGS[b.type].taxBonus ?? 0;
     return acc + (status!.get(b.id)!.connected ? bonus : 0);
   }, 0);
-  const base = pop * TAX_PER_RESIDENT * (report.starving ? 0.5 : 1) + labor.zoneFilled * TAX_PER_JOB;
-  report.taxes = Math.floor(base * (1 + taxBonus));
-  s.money += report.taxes;
+  // Impostos por zona (Fase 4): moradores (R), empregos do comércio (C) e da indústria (I).
+  const f = report.finance;
+  const m = 1 + taxBonus;
+  f.taxR = Math.floor(taxRevenue("R", pop * (report.starving ? 0.5 : 1), s.taxes.R) * m);
+  f.taxC = Math.floor(taxRevenue("C", labor.commercialFilled, s.taxes.C) * m);
+  f.taxI = Math.floor(taxRevenue("I", labor.industrialFilled, s.taxes.I) * m);
+  report.taxes = f.taxR + f.taxC + f.taxI;
+  // Decretos: receita ou custo por ciclo.
+  for (const id of ORDINANCE_IDS) {
+    if (!isActive(s, id)) continue;
+    const v = ORDINANCES[id].money(s);
+    if (v >= 0) f.ordinanceRevenue += v;
+    else f.ordinanceCost += -v;
+  }
+  s.money += report.taxes + f.ordinanceRevenue - f.ordinanceCost;
 };
 
 /** 7) Manutenção: estradas e construções custam a cada ciclo concluído. */
 const upkeepSystem: CycleSystem = ({ s, report }) => {
-  report.upkeep = s.buildings.reduce((acc, b) => acc + BUILDINGS[b.type].upkeep, 0);
+  // A verba de cada departamento (Fase 4) reduz a manutenção paga — e cobra o preço depois.
+  const f = report.finance;
+  let transport = 0;
+  let energy = 0;
+  let other = 0;
+  for (const b of s.buildings) {
+    const cost = BUILDINGS[b.type].upkeep;
+    const dept = departmentOf(b.type);
+    if (dept === "transport") transport += cost;
+    else if (dept === "energy") energy += cost;
+    else other += cost;
+  }
+  f.upkeepTransport = Math.ceil((transport * s.funding.transport) / 100);
+  f.upkeepEnergy = Math.ceil((energy * s.funding.energy) / 100);
+  f.upkeepOther = other;
+  report.upkeep = f.upkeepTransport + f.upkeepEnergy + f.upkeepOther;
   s.money -= report.upkeep;
+};
+
+/** 7b) Conservação das estradas: verba integral recupera; verba reduzida desgasta até danificar. */
+const roadsSystem: CycleSystem = ({ s }) => {
+  const fund = s.funding.transport;
+  for (const b of s.buildings) {
+    if (b.type !== "road") continue;
+    const c = b.condition ?? 100;
+    const next = fund >= 100 ? Math.min(100, c + ROAD_REPAIR) : Math.max(0, c - (100 - fund) * ROAD_WEAR_PER_POINT);
+    if (next >= 100) delete b.condition;
+    else b.condition = Math.round(next);
+  }
+};
+
+/** 7c) Juros dos títulos: cobrados uma vez por ano, ao fim do 4º trimestre. */
+const interestSystem: CycleSystem = ({ s, report }) => {
+  if (s.cyclesCompleted % 4 !== 0 || !s.bonds.length) return;
+  report.finance.interest = annualInterest(s);
+  s.money -= report.finance.interest;
 };
 
 /**
@@ -251,11 +309,16 @@ const storageSystem: CycleSystem = ({ s, report, effects, weather }) => {
   }
 
   const capacity = storageCapacity(s);
+  // Comida: a reserva considera quem já mora e quem vai morar nas casas construídas.
+  const housing = laborStats(s).housing;
   for (const res of RESOURCE_IDS) {
-    // Política: demanda estimada = o que a cidade consumiu neste ciclo.
-    const demand = RANKS.reduce((acc, r) => acc + getQty(report.consumed, res, r), 0);
+    // Política: demanda estimada = o que a cidade consumiu neste ciclo (comida: no mínimo a
+    // necessidade dos moradores atuais e das casas prontas).
+    let demand = RANKS.reduce((acc, r) => acc + getQty(report.consumed, res, r), 0);
+    if (res === "food") demand = Math.max(demand, Math.ceil(Math.max(s.population, housing) * FOOD_PER_RESIDENT));
     const sellable = RANKS.slice(0, 3).reduce((acc, r) => acc + getQty(s.inventory, res, r), 0);
-    const units = unitsToSell(s.policies[res], sellable, demand);
+    // Cidade ainda sem moradores não vende nada pela política (só o excesso de estoque).
+    const units = s.population > 0 ? unitsToSell(s.policies[res], sellable, demand) : 0;
     if (units > 0) {
       const sale = sellUnits(s.inventory, res, units, effects);
       addTaken(report.sold, res, sale.sold);
@@ -315,7 +378,11 @@ const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
     };
     if (row.produced || row.consumed || row.bought || row.sold || row.lost || row.stock || startStock[res]) report.ledger[res] = row;
   }
-  report.netMoney = report.taxes - report.upkeep - report.importCost + report.salesRevenue;
+  const f = report.finance;
+  f.imports = report.importCost;
+  f.sales = report.salesRevenue;
+  report.netMoney =
+    report.taxes + f.ordinanceRevenue - f.ordinanceCost - report.upkeep - f.interest - report.importCost + report.salesRevenue;
 };
 
 export const CYCLE_SYSTEMS: CycleSystem[] = [
@@ -326,6 +393,8 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   refiningSystem,
   economySystem,
   upkeepSystem,
+  roadsSystem,
+  interestSystem,
   storageSystem,
   starvationSystem,
   citizensSystem,
@@ -371,6 +440,19 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
     ledger: {},
     taxes: 0,
     upkeep: 0,
+    finance: {
+      taxR: 0,
+      taxC: 0,
+      taxI: 0,
+      ordinanceRevenue: 0,
+      ordinanceCost: 0,
+      sales: 0,
+      imports: 0,
+      upkeepTransport: 0,
+      upkeepEnergy: 0,
+      upkeepOther: 0,
+      interest: 0,
+    },
     populationBefore: s.population,
     populationAfter: s.population,
     starving: false,

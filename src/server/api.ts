@@ -7,6 +7,8 @@ import {
   LONG_BREAK_SECONDS,
   ZONES,
   RESOURCE_IDS,
+  ORDINANCES,
+  type OrdinanceId,
   type PolicyMode,
   type ResourceId,
   type BuildingType,
@@ -60,6 +62,25 @@ export function parseCommands(raw: unknown): Command[] | null {
         x1: r.x1 as number,
         y1: r.y1 as number,
       });
+      continue;
+    }
+    if (r.type === "budget") {
+      const t = r.taxes as Record<string, unknown> | undefined;
+      const f = r.funding as Record<string, unknown> | undefined;
+      const taxes = t && [t.R, t.C, t.I].every(num) ? { R: t.R as number, C: t.C as number, I: t.I as number } : undefined;
+      const funding = f && [f.transport, f.energy].every(num) ? { transport: f.transport as number, energy: f.energy as number } : undefined;
+      if ((t && !taxes) || (f && !funding) || (!taxes && !funding)) return null;
+      out.push({ type: "budget", taxes, funding });
+      continue;
+    }
+    if (r.type === "ordinance") {
+      if (typeof r.id !== "string" || !Object.hasOwn(ORDINANCES, r.id) || typeof r.active !== "boolean") return null;
+      out.push({ type: "ordinance", id: r.id as OrdinanceId, active: r.active });
+      continue;
+    }
+    if (r.type === "bond") {
+      if (r.action !== "issue" && r.action !== "repay") return null;
+      out.push({ type: "bond", action: r.action });
       continue;
     }
     if (r.type === "policy") {

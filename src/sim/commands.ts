@@ -1,6 +1,7 @@
 import { BUILDINGS, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
+import { BOND_VALUE, MAX_TAX, ORDINANCES, creditRating } from "./finance";
 import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
 import { lockReason } from "./unlocks";
@@ -62,6 +63,35 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     return validatePolicy({ mode: cmd.mode, value: cmd.value });
   }
 
+  if (cmd.type === "budget") {
+    for (const v of Object.values(cmd.taxes ?? {})) if (!isInt(v) || v < 0 || v > MAX_TAX) return `Impostos de 0 a ${MAX_TAX}%`;
+    if (cmd.taxes && !["R", "C", "I"].every((k) => k in cmd.taxes!)) return "Impostos incompletos";
+    for (const v of Object.values(cmd.funding ?? {})) if (!isInt(v) || v < 0 || v > 100) return "Verba de 0 a 100%";
+    if (cmd.funding && !("transport" in cmd.funding && "energy" in cmd.funding)) return "Verbas incompletas";
+    return null;
+  }
+
+  if (cmd.type === "ordinance") {
+    if (!(cmd.id in ORDINANCES)) return "Decreto desconhecido";
+    const active = s.ordinances[cmd.id] !== undefined;
+    if (cmd.active === active) return cmd.active ? "Decreto já está em vigor" : "Decreto não está em vigor";
+    return null;
+  }
+
+  if (cmd.type === "bond") {
+    if (cmd.action === "issue") {
+      const r = creditRating(s);
+      if (s.bonds.length >= r.maxBonds) return `Rating ${r.rating}: o banco não empresta mais`;
+      return null;
+    }
+    if (cmd.action === "repay") {
+      if (!s.bonds.length) return "Não há títulos a pagar";
+      if (s.money < s.bonds[0].principal) return `Precisa de $${s.bonds[0].principal} para quitar o título mais antigo`;
+      return null;
+    }
+    return "Ação inválida";
+  }
+
   if (!isInt(cmd.x) || !isInt(cmd.y) || !inBounds(s, cmd.x, cmd.y)) return "Fora do mapa";
   const i = idx(s, cmd.x, cmd.y);
   const here = buildingAt(s, cmd.x, cmd.y);
@@ -119,6 +149,26 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
 
   if (cmd.type === "policy") {
     next.policies = { ...next.policies, [cmd.resource]: { mode: cmd.mode, value: cmd.value } };
+  } else if (cmd.type === "budget") {
+    if (cmd.taxes) next.taxes = { R: cmd.taxes.R, C: cmd.taxes.C, I: cmd.taxes.I };
+    if (cmd.funding) next.funding = { transport: cmd.funding.transport, energy: cmd.funding.energy };
+  } else if (cmd.type === "ordinance") {
+    if (cmd.active) next.ordinances = { ...next.ordinances, [cmd.id]: next.cyclesCompleted };
+    else {
+      const rest = { ...next.ordinances };
+      delete rest[cmd.id];
+      next.ordinances = rest;
+    }
+  } else if (cmd.type === "bond") {
+    if (cmd.action === "issue") {
+      // Juros travados no rating do momento da emissão.
+      next.bonds = [...next.bonds, { id: next.nextBondId++, principal: BOND_VALUE, rate: creditRating(next).rate, issuedCycle: next.cyclesCompleted }];
+      next.money += BOND_VALUE;
+    } else {
+      const [oldest, ...rest] = next.bonds;
+      next.money -= oldest.principal;
+      next.bonds = rest;
+    }
   } else if (cmd.type === "zone") {
     const area = zoneArea(next, cmd) as ZoneArea;
     const code: ZoneCode = cmd.zone === "none" ? ZONE.NONE : ZONE[cmd.zone];

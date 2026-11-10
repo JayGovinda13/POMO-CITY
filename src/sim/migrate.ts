@@ -50,6 +50,16 @@ export function migrateState(raw: CityState): CityState {
     s.policies = structuredClone(DEFAULT_POLICIES);
   }
 
+  if (from < 6) {
+    // v5 → v6: orçamento (impostos, verbas, títulos, decretos, dificuldade).
+    s.taxes = { R: 9, C: 9, I: 9 };
+    s.funding = { transport: 100, energy: 100 };
+    s.bonds = [];
+    s.nextBondId = 1;
+    s.ordinances = {};
+    s.difficulty = "medio";
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

@@ -41,8 +41,8 @@ Toda mecânica importada passa por cinco filtros:
 | 1 | Zoneamento e energia | Zonas R/C/I, crescimento orgânico, demanda, usinas, linhas, apagões | ✅ Concluída |
 | 2 | Clima e estações | Escolha da região (só o clima), hemisfério, estações, chuvas e secas, bioma; menu e sessão | ✅ Concluída |
 | 3 | Economia de recursos | Estoque, consumo dos cidadãos e das obras, compra e venda externa, valor por Rank, excedente | ✅ Concluída |
-| 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ⏳ Próxima |
-| 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | 🟡 Desastres entregues; falta o seguro |
+| 4 | Orçamento e finanças | Impostos por zona, financiamento de departamentos, títulos e rating, decretos | ✅ Concluída |
+| 5 | Ciclos quebrados, desastres e seguro | Desastres causados por ciclos abandonados, seguro com carência | 🟡 Desastres entregues; falta o seguro · ⏳ Próxima |
 | 6 | Água | Bombas, poços, caixas d'água, tratamento, dessalinização, camada subterrânea | ⏳ |
 | 7 | Serviços e qualidade de vida | Polícia, bombeiros, saúde, educação, lazer, estádio, turismo, crime, poluição, valor do solo | ⏳ |
 | 8 | Transporte avançado | Tráfego, ônibus, trilhos, rodovias, portos | ⏳ |
@@ -317,7 +317,21 @@ pode ser vendido ou estocado.
 - políticas de excedente e limite de estoque funcionando;
 - relatório do ciclo com o balanço por recurso.
 
-## Fase 4 — Orçamento e finanças
+## Fase 4 — Orçamento e finanças ✅
+
+### Entregue
+
+| Entrega | Onde |
+|---------|------|
+| **Impostos por zona** (R, C, I) de 0 a 20%, padrão 9% (= arrecadação anterior). Cada ponto acima do padrão tira 0,04 da demanda da zona; abaixo, soma. | `finance.ts`, `economySystem` |
+| **Verbas** de Transportes e Energia (0–100%) reduzem a manutenção paga. Estradas sem verba integral se desgastam (−0,3 de conservação por ponto que falta, por ciclo) e, abaixo de 30, ficam danificadas e não conectam; com verba integral, recuperam 20/ciclo. Usinas geram de 50% (verba zero) a 100%. | `upkeepSystem`, `roadsSystem`, `power.ts` |
+| **Títulos de $1.000** com juros travados na emissão (4% + spread do rating), cobrados no fim de cada ano; quitação do mais antigo para o mais novo. **Rating AAA–C** pela razão dívida/valor da cidade (caixa negativo derruba uma nota); o rating limita quantos títulos o banco aceita. | `creditRating`, comando `bond` |
+| **7 decretos:** imposto sobre vendas, imposto de renda, jogos legalizados, conservação de energia (+15% em 4 ciclos), embelezamento (+humor, +demanda R), festival (+humor, +demanda C) e **prêmio de produtividade** (ligado ao foco: +15% de extração em ciclos A/S). | `ORDINANCES`, comando `ordinance` |
+| **Livro-caixa** com o último ciclo e a **projeção exata do próximo** (a simulação determinística roda o ciclo de verdade sobre a cidade atual). | `BudgetPanel.tsx` |
+| **Dificuldade** na fundação: Fácil ($2.000, indústria aquecida), Médio ($1.000), Difícil ($1.000 de um título a pagar, rating C e recessão). | `DIFFICULTY`, `foundCity` |
+| Pedidos junto com esta fase: câmera só pelo mouse (sem WASD/setas) com a ferramenta **✋ Mover**; **tutorial** oferecido ao abrir a cidade (e no Menu). | `CityScene.ts`, `Tutorial.tsx` |
+| Correção: cidade sem moradores não vende mais a comida inicial pela política de reserva. | `storageSystem` |
+
 
 *Manual: Budget Window, Property Taxes, Bond Payments, City Ordinances.*
 
@@ -550,7 +564,7 @@ eventos e metas pode ser criada antes, com metas que usam só o que já existe.
 
 Ao iniciar uma fase, inclua no pedido:
 
-1. A fase (por exemplo, "Fase 4 — Orçamento e finanças").
+1. A fase (por exemplo, "Fase 5 — Seguro da cidade").
 2. Ajustes de escopo ou pareceres sobre as fases anteriores.
 3. As prioridades: o que é obrigatório e o que pode ficar para depois.
 

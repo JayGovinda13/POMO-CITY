@@ -1,6 +1,7 @@
 import { ZONES } from "./catalog";
 import { BASE_GROWTH_SLOTS, RANK_GROWTH_BONUS } from "./config";
 import { laborStats, type LaborStats } from "./status";
+import { demandModifiers } from "./finance";
 import { ZONE_KINDS, type CityState, type Rank, type ZoneKind } from "./types";
 
 export type Demand = Record<ZoneKind, number>;
@@ -18,11 +19,13 @@ export function computeDemand(s: CityState, labor: LaborStats = laborStats(s), a
   const workers = s.population;
   const commerceTarget = workers * 0.35;
   const industryTarget = workers * 0.45 + 6;
+  // Impostos, decretos e dificuldade (Fase 4).
+  const mod = demandModifiers(s);
   return {
     // Cidade feliz atrai moradores; cidade triste espanta (aprovação em [−1, 1]).
-    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25)),
-    C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget))),
-    I: round2(clamp((industryTarget - labor.industrialJobs) / Math.max(8, industryTarget))),
+    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25 + mod.R)),
+    C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget) + mod.C)),
+    I: round2(clamp((industryTarget - labor.industrialJobs) / Math.max(8, industryTarget) + mod.I)),
   };
 }
 

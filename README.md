@@ -71,6 +71,17 @@ só com dinheiro), mas produzir sai mais barato. Recursos de Rank alto rendem ma
 S = 1,4×). Em **🏪 Mercado**, defina o que fazer com o excedente de cada recurso; armazéns e silos
 ampliam o estoque.
 
+## Orçamento
+
+Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se
+desgastam), decretos municipais, títulos (empréstimos com rating de crédito) e o livro-caixa com a
+projeção exata do próximo ciclo.
+
+## Controles
+
+Arraste com o **botão direito** (ou use **✋ Mover**) para mover o mapa; roda do mouse = zoom. Na
+primeira vez, o jogo oferece um **tutorial** (também em ☰ Menu).
+
 ## Cidadãos
 
 Cada morador é um indivíduo com nome, retrato, casa, emprego e humor (😊 feliz, 😐 ok, ☹️ triste).

@@ -1,5 +1,6 @@
 import { BUILDINGS, ZONES } from "./catalog";
 import { RANK_YIELD } from "./config";
+import { conservationFactor, energyFundingFactor } from "./finance";
 import { bfsDistances, components } from "./grid";
 import { averageRank, getQty } from "./inventory";
 import { effectsOf, weatherAt } from "./climate";
@@ -77,6 +78,9 @@ export function plantCapacities(
       cap = rank ? cap * RANK_YIELD[rank] : 0;
     }
     if (gen.climate) cap *= effects[gen.climate];
+    // Verba de energia (prefeitura não depende dela) e conservação de energia (Fase 4).
+    if (b.type !== "cityhall") cap *= energyFundingFactor(s.funding?.energy ?? 100);
+    cap *= conservationFactor(s);
     out.set(b.id, Math.round(cap * 10) / 10);
   }
   return out;

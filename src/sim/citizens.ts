@@ -8,6 +8,7 @@
 import { BUILDINGS } from "./catalog";
 import { REGION_BY_ID, weatherAt, type Continent } from "./climate";
 import { foodSecure } from "./economy";
+import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
 import { computePower } from "./power";
 import { buildingStatus } from "./status";
 import { ZONE, type BuildingType, type CityState } from "./types";
@@ -184,6 +185,12 @@ export function citizensView(s: CityState): CitizenView[] {
     if (recentDisaster) reasons.push({ text: "Desastre recente", delta: -2 });
     if (harsh) reasons.push({ text: harsh, delta: -1 });
     if (s.streak >= 3) reasons.push({ text: "Prefeitura focada", delta: 1 });
+    // Decretos que mexem com o humor (Fase 4).
+    for (const oid of ORDINANCE_IDS) {
+      const mood = ORDINANCES[oid].mood;
+      if (mood && isActive(s, oid)) reasons.push({ text: mood.text, delta: mood.delta });
+    }
+    if (isActive(s, "premio_produtividade") && s.streak >= 4) reasons.push({ text: "Prêmio de produtividade", delta: 1 });
     if (p.trait) reasons.push({ text: p.trait > 0 ? "Otimista" : "Rabugento(a)", delta: p.trait });
     const score = reasons.reduce((acc, r) => acc + r.delta, 0);
     return {

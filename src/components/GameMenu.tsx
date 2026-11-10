@@ -50,6 +50,16 @@ export function GameMenu() {
               >
                 ✚ Novo jogo
               </button>
+              <button
+                type="button"
+                className="retro-button w-full"
+                onClick={() => {
+                  setOpen(false);
+                  useGame.getState().setTutorialOpen(true);
+                }}
+              >
+                📖 Tutorial
+              </button>
               <button type="button" className="retro-button w-full" onClick={() => setOpen(false)}>
                 Voltar à cidade
               </button>

@@ -1,4 +1,5 @@
 import { annualRain, biomeOf, REGION_BY_ID } from "./climate";
+import { BOND_VALUE, DIFFICULTY, creditRating, type Difficulty } from "./finance";
 import { ZONE, type CityState } from "./types";
 import { createCity } from "./world";
 
@@ -23,16 +24,25 @@ export type FoundResult = { ok: true; state: CityState } | { ok: false; error: s
  *   calendário começa na estação real atual da região.
  * - Cidade já construída: mantém mapa, bioma e calendário; só passa a viver o clima.
  */
-export function foundCity(s: CityState, regionId: string, now: number): FoundResult {
+export function foundCity(s: CityState, regionId: string, now: number, difficulty: Difficulty = "medio"): FoundResult {
   const region = REGION_BY_ID[regionId];
   if (!region) return { ok: false, error: "Região desconhecida" };
   if (s.regionId) return { ok: false, error: "A região da cidade já foi escolhida" };
+  if (!(difficulty in DIFFICULTY)) return { ok: false, error: "Dificuldade inválida" };
 
   if (!isPristine(s)) {
     return { ok: true, state: { ...structuredClone(s), regionId, version: s.version + 1 } };
   }
   const wetness = Math.max(0, Math.min(1, annualRain(region) / 2000));
   const fresh = createCity(s.seed, now, biomeOf(region), { wetness });
+  // Dificuldade (Fase 4): dinheiro inicial e, no difícil, um título já emitido.
+  const d = DIFFICULTY[difficulty];
+  fresh.difficulty = difficulty;
+  fresh.money = d.money;
+  for (let k = 0; k < d.bonds; k++) {
+    fresh.bonds.push({ id: fresh.nextBondId++, principal: BOND_VALUE, rate: creditRating(fresh).rate + 0.02, issuedCycle: 0 });
+    fresh.money += BOND_VALUE;
+  }
   return {
     ok: true,
     state: {

@@ -11,7 +11,9 @@ import {
   nearestRegion,
   searchRegions,
   seasonName,
+  DIFFICULTY,
   type Continent,
+  type Difficulty,
   type Region,
 } from "@/sim";
 import { useGame } from "@/store/game";
@@ -30,6 +32,7 @@ export function RegionPicker() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Region | null>(null);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medio");
 
   const results = useMemo(() => searchRegions(query), [query]);
   const byContinent = useMemo(() => {
@@ -108,11 +111,24 @@ export function RegionPicker() {
               Só o clima é usado: o mapa da cidade é fictício. Não guardamos sua localização, apenas a região escolhida.
               {keepsMap && " Sua cidade já construída mantém o mapa e o bioma atuais."}
             </p>
+            {!keepsMap && (
+              <fieldset className="space-y-1">
+                <legend className="text-zinc-400">Dificuldade</legend>
+                {(Object.keys(DIFFICULTY) as Difficulty[]).map((d) => (
+                  <label key={d} className="flex items-start gap-1">
+                    <input type="radio" name="difficulty" checked={difficulty === d} onChange={() => setDifficulty(d)} />
+                    <span>
+                      <strong>{DIFFICULTY[d].name}</strong> <span className="text-zinc-400">— {DIFFICULTY[d].description}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            )}
             <button
               type="button"
               className="retro-button retro-button-primary w-full py-2"
               disabled={!selected || busy}
-              onClick={() => selected && useGame.getState().chooseRegion(selected.id)}
+              onClick={() => selected && useGame.getState().chooseRegion(selected.id, difficulty)}
             >
               Fundar em {selected?.name ?? "…"}
             </button>

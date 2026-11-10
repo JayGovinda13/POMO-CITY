@@ -41,6 +41,7 @@ import { CycleReportModal } from "./CycleReportModal";
 import { AccountButton } from "./AccountButton";
 import { GameMenu } from "./GameMenu";
 import { MarketButton } from "./MarketPanel";
+import { BudgetButton } from "./BudgetPanel";
 import { CitizensButton } from "./CitizensPanel";
 import { MOOD_ICON, Portrait } from "./Portrait";
 
@@ -126,6 +127,7 @@ export function Hud() {
         {pending > 0 && <span className="text-amber-300">{pending} obra(s) aguardando sincronia</span>}
         <CitizensButton />
         <MarketButton />
+        <BudgetButton />
         <AccountButton />
         <GameMenu />
       </div>
@@ -143,6 +145,7 @@ export function Hud() {
           </button>
           {toolsOpen && (
             <div className="max-h-[45dvh] space-y-2 overflow-y-auto p-2 md:max-h-[70dvh]">
+              <ToolButton tool="pan" disabled={false} label="✋ Mover a câmera" />
               <ToolGroup title="Infraestrutura">
                 <ToolButton tool="road" disabled={locked} label={BUILDINGS.road.name} cost={BUILDINGS.road.cost} color={BUILDINGS.road.color} />
                 <ToolButton tool="wire" disabled={locked} label="Linha de transmissão" cost={WIRE_COST} color={0x3a2a1a} />

@@ -17,7 +17,8 @@ import {
 
 /** Ferramentas de zona: "zone-R-light", "zone-I-dense", "zone-none-light" (remover zona). */
 export type ZoneTool = `zone-${ZoneKind | "none"}-${"light" | "dense"}`;
-export type Tool = BuildingType | "demolish" | "wire" | ZoneTool | null;
+/** "pan" = ✋ Mover: arrastar com clique normal move a câmera. */
+export type Tool = BuildingType | "demolish" | "wire" | "pan" | ZoneTool | null;
 export type Overlay = "none" | "power" | "zones";
 
 export function parseZoneTool(tool: Tool): { zone: ZoneKind | "none"; dense: boolean } | null {
@@ -67,7 +68,11 @@ interface GameStore {
   tool: Tool;
   overlay: Overlay;
   report: CycleReport | null;
+  /** Último relatório recebido (fica disponível no livro-caixa depois de fechado). */
+  lastReport: CycleReport | null;
   disaster: DisasterReport | null;
+  tutorialOpen: boolean;
+  setTutorialOpen(open: boolean): void;
   screen: Screen;
   /** Presença registrada no servidor ("playing" = sessão aberta). */
   presence: "playing" | "exited";
@@ -82,7 +87,7 @@ interface GameStore {
   /** "Novo jogo": cidade nova, mesma sequência de foco. */
   newGame(): Promise<void>;
   /** Fundação: escolhe a região climática da cidade. */
-  chooseRegion(regionId: string): Promise<boolean>;
+  chooseRegion(regionId: string, difficulty?: "facil" | "medio" | "dificil"): Promise<boolean>;
   dismissDisaster(): void;
   /** Troca de conta: descarta a fila local e recarrega a cidade do novo usuário. */
   reset(): Promise<void>;
@@ -151,7 +156,12 @@ export const useGame = create<GameStore>()(
         tool: "road",
         overlay: "none",
         report: null,
+        lastReport: null,
         disaster: null,
+        tutorialOpen: false,
+        setTutorialOpen(open) {
+          set({ tutorialOpen: open });
+        },
         screen: "menu",
         presence: "exited",
         toast: null,
@@ -203,10 +213,10 @@ export const useGame = create<GameStore>()(
           }
         },
 
-        async chooseRegion(regionId) {
+        async chooseRegion(regionId, difficulty = "medio") {
           set({ busy: true });
           try {
-            const snap = await call("/api/city/region", { regionId });
+            const snap = await call("/api/city/region", { regionId, difficulty });
             if (snap.error) {
               get().showToast(snap.error);
               return false;
@@ -253,7 +263,7 @@ export const useGame = create<GameStore>()(
 
         clickTile(x, y) {
           const { tool, pending, serverState, city } = get();
-          if (!tool || isAreaTool(tool)) return;
+          if (!tool || tool === "pan" || isAreaTool(tool)) return;
           if (tool === "demolish") {
             // Desfazer obra ainda não sincronizada: remove o comando da fila em vez de enfileirar demolição.
             const i = pending.findLastIndex((c) => c.type === "build" && c.x === x && c.y === y);
@@ -311,6 +321,7 @@ export const useGame = create<GameStore>()(
               phase: "break",
               endsAt: Date.now() + (long ? cfg.longBreakSeconds : cfg.breakSeconds) * 1000,
               report: snap.report ?? null,
+              lastReport: snap.report ?? get().lastReport,
             });
           } catch (e) {
             get().showToast((e as Error).message || "Falha ao concluir o ciclo");

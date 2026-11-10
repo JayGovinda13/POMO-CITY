@@ -176,6 +176,13 @@ describe("Fase 3 — estoque e excedente", () => {
     expect(unitsToSell({ mode: "reserve", value: 2 }, 100, 10)).toBe(80);
   });
 
+  it("cidade nova, sem moradores, não vende a comida inicial", () => {
+    const s = base();
+    const { state, report } = resolveCycle(s, T0);
+    expect(report.salesRevenue).toBe(0);
+    expect(stockOf(state.inventory, "food")).toBeGreaterThan(30);
+  });
+
   it("vender o excedente rende dinheiro e nunca vende A/S", () => {
     const s = village(16);
     s.inventory = { "wood:C": 60, "wood:A": 20, "food:C": 80 };

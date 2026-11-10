@@ -107,7 +107,7 @@ export class CityScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unsubscribe?.());
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-      if (p.rightButtonDown() || p.middleButtonDown()) {
+      if (p.rightButtonDown() || p.middleButtonDown() || useGame.getState().tool === "pan") {
         const cam = this.cameras.main;
         this.panFrom = { x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY };
         return;
@@ -152,20 +152,7 @@ export class CityScene extends Phaser.Scene {
       this.zoomIdx = Phaser.Math.Clamp(this.zoomIdx + (dy > 0 ? -1 : 1), 0, ZOOMS.length - 1);
       this.cameras.main.setZoom(ZOOMS[this.zoomIdx]); // zoom inteiro mantém o pixel art nítido
     });
-
-    const keys = this.input.keyboard?.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT") as
-      | Record<string, Phaser.Input.Keyboard.Key>
-      | undefined;
-    if (keys) {
-      this.events.on(Phaser.Scenes.Events.UPDATE, (_t: number, dt: number) => {
-        const cam = this.cameras.main;
-        const v = (0.4 * dt) / cam.zoom;
-        if (keys.A.isDown || keys.LEFT.isDown) cam.scrollX -= v;
-        if (keys.D.isDown || keys.RIGHT.isDown) cam.scrollX += v;
-        if (keys.W.isDown || keys.UP.isDown) cam.scrollY -= v;
-        if (keys.S.isDown || keys.DOWN.isDown) cam.scrollY += v;
-      });
-    }
+    // Câmera só pelo mouse (sem teclado): arrastar com o botão direito/do meio ou com a ferramenta Mover.
   }
 
   private centerOn(city: CityState) {
@@ -325,6 +312,10 @@ export class CityScene extends Phaser.Scene {
         if (b?.type === "road") {
           const mask = (isRoad(x - 1, y) ? 1 : 0) | (isRoad(x, y - 1) ? 2 : 0) | (isRoad(x + 1, y) ? 4 : 0) | (isRoad(x, y + 1) ? 8 : 0);
           const img = this.add.image(sx, sy, "city", `road_${mask}`).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
+          // Estrada sem verba: desgaste (marrom) e danificada (avermelhada, sem conexão).
+          const cond = b.condition ?? 100;
+          if (cond < 30) img.setTint(0xb05a40);
+          else if (cond < 70) img.setTint(0xc8a888);
           this.flatLayer.add(img);
         } else if (b) {
           const name = this.frame(b.type) ?? "farm";

@@ -7,6 +7,7 @@ import { Hud } from "./Hud";
 import { TitleScreen } from "./TitleScreen";
 import { RegionPicker } from "./RegionPicker";
 import { DisasterModal } from "./DisasterModal";
+import { Tutorial } from "./Tutorial";
 
 // Phaser acessa window/canvas: carregamos apenas no cliente.
 const PhaserGame = dynamic(() => import("@/game/PhaserGame"), { ssr: false });
@@ -45,6 +46,7 @@ export function GameApp() {
       <Hud />
       <RegionPicker />
       <DisasterModal />
+      <Tutorial />
     </main>
   );
 }

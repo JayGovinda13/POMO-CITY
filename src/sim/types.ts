@@ -38,13 +38,23 @@ export interface Building {
   type: BuildingType;
   x: number;
   y: number;
+  /** Estradas: conservação 0..100 (abaixo de 30, danificada). Ausente = 100. */
+  condition?: number;
+}
+
+export interface Bond {
+  id: number;
+  principal: number;
+  /** Juros anuais (ex.: 0.05 = 5% ao ano). */
+  rate: number;
+  issuedCycle: number;
 }
 
 /** Chave no formato "recurso:rank", ex.: "wood:A" */
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -84,6 +94,16 @@ export interface CityState {
   /** Ciclo do último desastre (humor dos moradores). */
   lastDisasterCycle: number | null;
   inventory: Inventory;
+  // ── Fase 4: orçamento ──
+  /** Alíquota de imposto por zona (%, 0..20). */
+  taxes: Record<ZoneKind, number>;
+  /** Verba por departamento (%, 0..100). */
+  funding: { transport: number; energy: number };
+  bonds: Bond[];
+  nextBondId: number;
+  /** Decretos ativos → ciclo em que foram ativados. */
+  ordinances: Partial<Record<"imposto_vendas" | "imposto_renda" | "jogos" | "conservacao_energia" | "embelezamento" | "festival" | "premio_produtividade", number>>;
+  difficulty: "facil" | "medio" | "dificil";
   /** Política de excedente por recurso (Fase 3). */
   policies: Record<ResourceId, { mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }>;
   /** Ciclos de foco consecutivos (com decaimento, nunca zera de uma vez). */
@@ -105,6 +125,9 @@ export type Command =
   | { type: "demolish"; x: number; y: number }
   | { type: "wire"; x: number; y: number }
   | { type: "policy"; resource: ResourceId; mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }
+  | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: { transport: number; energy: number } }
+  | { type: "ordinance"; id: keyof CityState["ordinances"]; active: boolean }
+  | { type: "bond"; action: "issue" | "repay" }
   | {
       type: "zone";
       /** "none" remove o zoneamento de lotes vazios. */
@@ -138,6 +161,8 @@ export interface CycleReport {
   ledger: Partial<Record<ResourceId, { produced: number; consumed: number; bought: number; sold: number; lost: number; stock: number; capacity: number }>>;
   taxes: number;
   upkeep: number;
+  /** Livro-caixa do ciclo por categoria (Fase 4). */
+  finance: FinanceBreakdown;
   populationBefore: number;
   populationAfter: number;
   starving: boolean;
@@ -170,4 +195,18 @@ export interface ClimateEffects {
   hydro: number;
   /** Consumo de energia de lotes R/C (aquecimento ou refrigeração). */
   demand: number;
+}
+
+export interface FinanceBreakdown {
+  taxR: number;
+  taxC: number;
+  taxI: number;
+  ordinanceRevenue: number;
+  ordinanceCost: number;
+  sales: number;
+  imports: number;
+  upkeepTransport: number;
+  upkeepEnergy: number;
+  upkeepOther: number;
+  interest: number;
 }

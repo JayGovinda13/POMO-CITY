@@ -16,3 +16,4 @@ export * from "./founding";
 export * from "./disasters";
 export * from "./citizens";
 export * from "./economy";
+export * from "./finance";
