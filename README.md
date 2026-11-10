@@ -63,6 +63,24 @@ O roadmap completo de funcionalidades está em [`docs/ROADMAP.md`](docs/ROADMAP.
 Abandonar um ciclo, ou ficar mais de 90 min sem concluir um, **reduz** a sequência em 2 (não zera).
 Acima de 16 ciclos no dia, os ciclos contam mas não geram recompensa.
 
+## Cidadãos
+
+Cada morador é um indivíduo com nome, retrato, casa, emprego e humor (😊 feliz, 😐 ok, ☹️ triste).
+O humor depende de emprego, luz em casa, comida, desastres recentes, clima extremo e da sequência
+de foco do prefeito. Veja todos em **👥** na barra superior, ou passe o mouse sobre um lote para ver
+quem mora ou trabalha ali.
+
+## Sprites (pxl)
+
+Os sprites são código: `art/city.px.js` usa o [pxl](https://github.com/crsolver/claude-pxl) para gerar
+`public/sprites/city.png` + `city.json`, carregados pelo Phaser e pelos retratos da HUD.
+
+```bash
+npm run art
+```
+
+O script procura o pxl em `~/.claude/skills/pxl-pixel-art` (ou na variável `PXL`).
+
 ## Arquitetura
 
 ```

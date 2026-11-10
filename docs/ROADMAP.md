@@ -54,6 +54,13 @@ Toda mecânica importada passa por cinco filtros:
 
 As fases 2 em diante são delegadas uma a uma, conforme os pareceres sobre o desenvolvimento.
 
+### Entregas fora das fases
+
+| Entrega | Onde |
+|---------|------|
+| **Visual 2,5D com sprites em pixel art** gerados com [pxl](https://github.com/crsolver/claude-pxl): terreno por bioma, água, estradas que se conectam (16 variações), vegetação decorativa, zonas por nível e densidade, prefeitura, produção, usinas, postes e cabos. Sombras projetadas proporcionais à altura de cada construção. | `art/city.px.js`, `npm run art`, `public/sprites/`, `CityScene.ts` |
+| **Cidadãos individuais:** cada morador tem nome (conforme o continente da região), retrato próprio (pele, cabelo, roupa da profissão, rosto pelo humor), casa, emprego e humor (triste, ok ou feliz) com os motivos. Quando a população cai, os mais tristes vão embora; a aprovação da cidade mexe na demanda residencial. | `src/sim/citizens.ts`, `CitizensPanel.tsx`, `Portrait.tsx` |
+
 ---
 
 ## Fase 0 — Preparação técnica ✅

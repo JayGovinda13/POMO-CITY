@@ -15,6 +15,7 @@ import { buildingStatus, laborStats } from "./status";
 import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Rank } from "./types";
 import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
+import { citizensView, moodSummary, syncCitizens } from "./citizens";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
 export function rankForStreak(streak: number): Rank {
@@ -60,7 +61,8 @@ type CycleSystem = (ctx: CycleContext) => void;
 /** 1) Lotes crescem/declinam com base em energia, acesso viário e demanda (estimativa pré-ciclo). */
 const zoneGrowthSystem: CycleSystem = (ctx) => {
   const power = computePower(ctx.s, undefined, ctx.effects);
-  const r = developZones(ctx.s, { rank: ctx.rank, rand: ctx.rand, powered: power.powered, access: roadAccess(ctx.s) });
+  const approval = moodSummary(citizensView(ctx.s)).approval;
+  const r = developZones(ctx.s, { rank: ctx.rank, rand: ctx.rand, powered: power.powered, access: roadAccess(ctx.s), approval });
   ctx.report.zones = { grown: r.grown, declined: r.declined };
 };
 
@@ -168,6 +170,21 @@ const starvationSystem: CycleSystem = ({ s, report }) => {
   report.populationAfter = s.population;
 };
 
+/** 9) Moradores: chegam novos (ids novos) ou vão embora os mais tristes; humor final no relatório. */
+const citizensSystem: CycleSystem = ({ s, report }) => {
+  const before = new Set(s.citizens);
+  syncCitizens(s);
+  const after = new Set(s.citizens);
+  const m = moodSummary(citizensView(s));
+  report.citizens = {
+    feliz: m.feliz,
+    ok: m.ok,
+    triste: m.triste,
+    arrived: [...after].filter((id) => !before.has(id)).length,
+    left: [...before].filter((id) => !after.has(id)).length,
+  };
+};
+
 export const CYCLE_SYSTEMS: CycleSystem[] = [
   zoneGrowthSystem,
   moveInSystem,
@@ -177,6 +194,7 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   economySystem,
   upkeepSystem,
   starvationSystem,
+  citizensSystem,
 ];
 
 /**

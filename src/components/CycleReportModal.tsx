@@ -62,6 +62,13 @@ export function CycleReportModal() {
                 População {report.populationBefore} → {report.populationAfter}
                 {report.starving && <span className="text-red-300"> · faltou comida!</span>}
               </p>
+              {report.citizens && (
+                <p>
+                  👥 {report.citizens.arrived > 0 && <span className="text-emerald-300">+{report.citizens.arrived} chegaram </span>}
+                  {report.citizens.left > 0 && <span className="text-red-300">−{report.citizens.left} foram embora </span>}· 😊 {report.citizens.feliz} 😐{" "}
+                  {report.citizens.ok} ☹️ {report.citizens.triste}
+                </p>
+              )}
               {report.zones && (
                 <p>
                   Lotes: <span className="text-emerald-300">+{report.zones.grown} cresceram</span>

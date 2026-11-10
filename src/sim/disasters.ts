@@ -114,6 +114,7 @@ export function applyDisaster(
   const moneyLost = Math.max(0, Math.min(cfg.moneyCap, Math.floor(Math.max(0, next.money) * cfg.money)));
   next.money -= moneyLost;
   next.disasterCount++;
+  next.lastDisasterCycle = next.cyclesCompleted;
   next.version++;
 
   return {

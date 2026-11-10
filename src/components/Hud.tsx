@@ -15,6 +15,8 @@ import {
   REGION_BY_ID,
   weatherAt,
   computeDemand,
+  citizensView,
+  moodSummary,
   computePower,
   effectiveStreak,
   getQty,
@@ -35,6 +37,8 @@ import { Timer } from "./Timer";
 import { CycleReportModal } from "./CycleReportModal";
 import { AccountButton } from "./AccountButton";
 import { GameMenu } from "./GameMenu";
+import { CitizensButton } from "./CitizensPanel";
+import { MOOD_ICON, Portrait } from "./Portrait";
 
 const GROUPS: { title: string; category: BuildCategory }[] = [
   { title: "Energia", category: "energy" },
@@ -68,7 +72,10 @@ export function Hud() {
       power,
       status,
       labor,
-      demand: computeDemand(city, labor),
+      ...(() => {
+        const people = citizensView(city);
+        return { people, demand: computeDemand(city, labor, moodSummary(people).approval) };
+      })(),
       access: roadAccess(city),
       weather: weatherAt(city),
     };
@@ -78,7 +85,7 @@ export function Hud() {
     return <div className="absolute inset-0 grid place-items-center text-sm">Carregando a cidade…</div>;
   }
 
-  const { power, status, labor, demand, access, weather } = derived;
+  const { power, status, labor, demand, access, weather, people } = derived;
   const region = city.regionId ? REGION_BY_ID[city.regionId] : null;
   const nextRank = rankForStreak(effectiveStreak(city, Date.now()) + 1);
   const locked = phase === "focus";
@@ -111,6 +118,7 @@ export function Hud() {
         </span>
         <span>Ciclos hoje: {city.cyclesToday}</span>
         {pending > 0 && <span className="text-amber-300">{pending} obra(s) aguardando sincronia</span>}
+        <CitizensButton />
         <AccountButton />
         <GameMenu />
       </div>
@@ -198,6 +206,7 @@ export function Hud() {
               status={status}
               powered={power.powered}
               access={access}
+              people={people}
             />
           )}
         </Panel>
@@ -220,12 +229,14 @@ function TileInfo({
   status,
   powered,
   access,
+  people,
 }: {
   x: number;
   y: number;
   status: ReturnType<typeof buildingStatus>;
   powered: Uint8Array;
   access: Int32Array;
+  people: ReturnType<typeof citizensView>;
 }) {
   const city = useGame((s) => s.city)!;
   const i = y * city.width + x;
@@ -268,6 +279,8 @@ function TileInfo({
         </>
       ) : null}
       {city.wires[i] === 1 && <p className="text-zinc-400">Linha de transmissão</p>}
+      <PeopleHere label="Moradores" list={people.filter((p) => p.home?.x === x && p.home?.y === y)} />
+      <PeopleHere label="Trabalham aqui" list={people.filter((p) => p.job?.x === x && p.job?.y === y)} />
     </div>
   );
 }
@@ -465,5 +478,25 @@ function WeatherPanel({ weather, focus }: { weather: NonNullable<ReturnType<type
         </li>
       </ul>
     </Panel>
+  );
+}
+
+/** Retratos de quem mora ou trabalha no tile sob o cursor. */
+function PeopleHere({ label, list }: { label: string; list: ReturnType<typeof citizensView> }) {
+  if (!list.length) return null;
+  return (
+    <div>
+      <p className="text-zinc-400">
+        {label} ({list.length})
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {list.slice(0, 8).map((p) => (
+          <span key={p.id} title={`${p.name} — ${p.job?.title ?? "sem emprego"} — ${MOOD_ICON[p.mood]}`}>
+            <Portrait citizen={p} scale={1} />
+          </span>
+        ))}
+        {list.length > 8 && <span className="self-center text-zinc-400">+{list.length - 8}</span>}
+      </div>
+    </div>
   );
 }

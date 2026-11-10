@@ -283,6 +283,8 @@ describe("Fase 1 — cidade nova de ponta a ponta", () => {
     cmds.push(zone("I", 17, 10, 20, 11));
     cmds.push({ type: "build", building: "farm", x: 14, y: 13 });
     cmds.push({ type: "wire", x: 13, y: 12 }, { type: "wire", x: 14, y: 12 });
+    // Cidade feliz cresce mais rápido: uma eólica garante energia para a expansão.
+    cmds.push({ type: "build", building: "wind_turbine", x: 15, y: 13 }, { type: "build", building: "wind_turbine", x: 16, y: 13 });
     let s = apply(createCity(7, T0, "plains"), cmds);
     s.terrain = s.terrain.map(() => 0);
     const start = s.money;

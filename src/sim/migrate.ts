@@ -37,6 +37,13 @@ export function migrateState(raw: CityState): CityState {
     s.disasterCount = 0;
   }
 
+  if (from < 4) {
+    // v3 → v4: moradores individuais (os atuais ganham ids 1..população).
+    s.citizens = Array.from({ length: Math.max(0, s.population) }, (_, i) => i + 1);
+    s.nextCitizenId = s.citizens.length + 1;
+    s.lastDisasterCycle = null;
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

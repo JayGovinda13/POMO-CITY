@@ -42,7 +42,7 @@ export interface Building {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -76,6 +76,11 @@ export interface CityState {
 
   money: number;
   population: number;
+  /** Ids dos moradores (nome, aparência, casa, emprego e humor são derivados: citizens.ts). */
+  citizens: number[];
+  nextCitizenId: number;
+  /** Ciclo do último desastre (humor dos moradores). */
+  lastDisasterCycle: number | null;
   inventory: Inventory;
   /** Ciclos de foco consecutivos (com decaimento, nunca zera de uma vez). */
   streak: number;
@@ -126,6 +131,8 @@ export interface CycleReport {
   /** Clima da estação vivida (null se a cidade ainda não escolheu a região). */
   weather: WeatherSummary | null;
   zones: { grown: number; declined: number };
+  /** Humor dos moradores ao fim do ciclo, e quem chegou/saiu. */
+  citizens?: { feliz: number; ok: number; triste: number; arrived: number; left: number };
   jobs: { total: number; filled: number; unemployed: number };
 }
 

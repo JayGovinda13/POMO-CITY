@@ -19,12 +19,25 @@ function shade(color: number, f: number) {
 
 type Tile = { x: number; y: number };
 
+/** Hash determinístico por tile (variações de terreno e decoração). */
+function tileHash(seed: number, x: number, y: number) {
+  let h = (seed ^ Math.imul(x + 1, 0x27d4eb2d) ^ Math.imul(y + 1, 0x165667b1)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0;
+  return (h ^ (h >>> 13)) >>> 0;
+}
+
 /** Motor gráfico: apenas renderiza o estado do Zustand e traduz o mouse em tiles/áreas. */
 export class CityScene extends Phaser.Scene {
   private terrainG!: Phaser.GameObjects.Graphics;
   private buildG!: Phaser.GameObjects.Graphics;
   private overlayG!: Phaser.GameObjects.Graphics;
   private hoverG!: Phaser.GameObjects.Graphics;
+  /** Camadas da renderização por sprites. */
+  private terrainRT?: Phaser.GameObjects.RenderTexture;
+  private lotG!: Phaser.GameObjects.Graphics;
+  private flatLayer!: Phaser.GameObjects.Container;
+  private spriteLayer!: Phaser.GameObjects.Container;
+  private fxG!: Phaser.GameObjects.Graphics;
   private zoomIdx = 1;
   private lastTerrainKey = "";
   private hover: Tile | null = null;
@@ -38,11 +51,21 @@ export class CityScene extends Phaser.Scene {
     super("city");
   }
 
+  preload() {
+    // Folha de sprites gerada com pxl (art/city.px.js → npm run art).
+    this.load.atlas("city", "/sprites/city.png", "/sprites/city.json");
+  }
+
   create() {
-    this.terrainG = this.add.graphics();
-    this.buildG = this.add.graphics();
-    this.overlayG = this.add.graphics();
-    this.hoverG = this.add.graphics();
+    // Ordem de desenho: terreno → lotes/estradas → construções → efeitos → overlays → cursor.
+    this.terrainG = this.add.graphics().setDepth(1);
+    this.lotG = this.add.graphics().setDepth(2);
+    this.flatLayer = this.add.container(0, 0).setDepth(3);
+    this.buildG = this.add.graphics().setDepth(4);
+    this.spriteLayer = this.add.container(0, 0).setDepth(5);
+    this.fxG = this.add.graphics().setDepth(6);
+    this.overlayG = this.add.graphics().setDepth(7);
+    this.hoverG = this.add.graphics().setDepth(8);
     this.cameras.main.setBackgroundColor("#1b1f3a");
     this.cameras.main.setZoom(ZOOMS[this.zoomIdx]);
     this.input.mouse?.disableContextMenu();
@@ -178,7 +201,189 @@ export class CityScene extends Phaser.Scene {
     g.fillRect(sx - 2, top - 4, 4, 2);
   }
 
+  /** Desenha o estado atual: sprites da folha "city" (gerada com pxl) ou, sem ela, formas simples. */
   private redraw() {
+    const { city } = useGame.getState();
+    if (!city) return;
+    if (!this.textures.exists("city")) return this.redrawShapes();
+    this.terrainG.clear();
+    this.buildG.clear();
+    this.redrawSprites(city);
+    this.drawOverlay(city);
+    this.drawHover();
+  }
+
+  private frame(name: string) {
+    return this.textures.get("city").has(name) ? name : null;
+  }
+
+  /** Terreno: desenhado uma vez numa RenderTexture (refeito só se o mapa mudar). */
+  private drawTerrain(city: CityState) {
+    const key = `${city.seed}:${city.biome}:${city.terrain.join("")}`;
+    if (key === this.lastTerrainKey) return;
+    this.lastTerrainKey = key;
+    this.terrainRT?.destroy();
+    const minX = -city.height * (TW / 2);
+    const width = (city.width + city.height) * (TW / 2);
+    const height = (city.width + city.height) * (TH / 2);
+    const rt = this.add.renderTexture(minX, -TH / 2, width, height).setOrigin(0, 0).setDepth(0);
+    for (let y = 0; y < city.height; y++)
+      for (let x = 0; x < city.width; x++) {
+        const { sx, sy } = iso(x, y);
+        const v = tileHash(city.seed, x, y) & 1;
+        const water = city.terrain[y * city.width + x] === 1;
+        const name = (water ? this.frame(`water_${v}`) : this.frame(`ground_${city.biome}_${v}`)) ?? "ground_plains_0";
+        rt.drawFrame("city", name, sx - TW / 2 - minX, sy - TH / 2 + TH / 2);
+      }
+    this.terrainRT = rt;
+  }
+
+  private redrawSprites(city: CityState) {
+    const { serverState } = useGame.getState();
+    this.drawTerrain(city);
+
+    const power = computePower(city);
+    const status = buildingStatus(city, power.powered);
+    const syncedMaxId = (serverState?.nextId ?? 1) - 1;
+    const buildingAt = new Map(city.buildings.map((b) => [b.y * city.width + b.x, b]));
+    const isRoad = (x: number, y: number) =>
+      x >= 0 && y >= 0 && x < city.width && y < city.height && buildingAt.get(y * city.width + x)?.type === "road";
+
+    this.flatLayer.removeAll(true);
+    this.spriteLayer.removeAll(true);
+    const lots = this.lotG.clear();
+    const fx = this.fxG.clear();
+    // 2,5D: sombra projetada no chão (luz vindo de cima-esquerda), proporcional à altura.
+    const shadows = this.buildG.clear();
+    shadows.fillStyle(0x0b0820, 0.28);
+    const castShadow = (sx: number, sy: number, height: number, scale = 0.85) => {
+      const hw = (TW / 2) * scale;
+      const hh = (TH / 2) * scale;
+      const len = Math.min(26, Math.max(3, height * 0.55));
+      const dx = len;
+      const dy = len / 2;
+      const T = [sx, sy - hh];
+      const R = [sx + hw, sy];
+      const B = [sx, sy + hh];
+      shadows.fillPoints(
+        [
+          new V(T[0], T[1]),
+          new V(R[0], R[1]),
+          new V(B[0], B[1]),
+          new V(B[0] + dx, B[1] + dy),
+          new V(R[0] + dx, R[1] + dy),
+          new V(T[0] + dx, T[1] + dy),
+        ],
+        true,
+      );
+    };
+    const decorDensity: Record<string, number> = { forest: 0.32, plains: 0.07, desert: 0.08, tundra: 0.14, mountains: 0.2 };
+
+    // Ordem de profundidade: diagonais (x + y) crescentes.
+    for (let d = 0; d <= city.width + city.height - 2; d++) {
+      for (let x = Math.max(0, d - city.height + 1); x <= Math.min(d, city.width - 1); x++) {
+        const y = d - x;
+        const i = y * city.width + x;
+        const { sx, sy } = iso(x, y);
+        const b = buildingAt.get(i);
+        const zone = city.zoneType[i];
+        const baseY = sy + TH / 2 + 1; // vértice inferior do tile + 1 px do contorno
+
+        if (b?.type === "road") {
+          const mask = (isRoad(x - 1, y) ? 1 : 0) | (isRoad(x, y - 1) ? 2 : 0) | (isRoad(x + 1, y) ? 4 : 0) | (isRoad(x, y + 1) ? 8 : 0);
+          const img = this.add.image(sx, sy, "city", `road_${mask}`).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
+          this.flatLayer.add(img);
+        } else if (b) {
+          const name = this.frame(b.type) ?? "farm";
+          const img = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
+          this.spriteLayer.add(img);
+          castShadow(sx, sy, img.height - TH);
+          const st = status.get(b.id);
+          const top = baseY - img.height;
+          if (st && !st.connected) this.alert(fx, sx, top, 0xe03030);
+          else if (st && !st.powered) this.alert(fx, sx, top, 0xf5e04a);
+          else if (st && st.efficiency < 1) this.alert(fx, sx, top, 0xf0a030);
+        } else if (zone) {
+          const kind = ZONE_KINDS[zone - 1];
+          const lvl = city.zoneLevel[i];
+          const dense = city.zoneDensity[i] === 1;
+          if (lvl === 0) {
+            // Lote vazio: terreno tingido com a cor da zona (mais forte se denso).
+            const color = ZONES[kind].color;
+            lots.fillStyle(color, dense ? 0.5 : 0.32);
+            this.diamond(lots, sx, sy, 0.9);
+            lots.lineStyle(1, shade(color, 0.6), 0.85);
+            this.diamondOutline(lots, sx, sy, 0.9);
+          } else {
+            const name = this.frame(`zone_${kind}_${dense ? "D" : "L"}${lvl}`) ?? `zone_${kind}_L1`;
+            const img = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1);
+            this.spriteLayer.add(img);
+            castShadow(sx, sy, img.height - TH);
+            if (!power.powered[i]) this.alert(fx, sx, baseY - img.height, 0xf5e04a);
+          }
+        } else if (city.terrain[i] === 0 && !city.wires[i]) {
+          // Vegetação decorativa em terreno livre (determinística; some quando o tile é usado).
+          const h = tileHash(city.seed ^ 0x9e37, x, y);
+          if ((h % 1000) / 1000 < (decorDensity[city.biome] ?? 0.1)) {
+            const name = this.frame(`decor_${city.biome}_${(h >> 10) & 1}`);
+            if (name) {
+              this.spriteLayer.add(this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1));
+              castShadow(sx, sy, 12, 0.5);
+            }
+          }
+        }
+
+        if (city.wires[i]) {
+          this.spriteLayer.add(this.add.image(sx, sy + 3, "city", "power_pole").setOrigin(0.5, 1));
+        }
+      }
+    }
+
+    // Cabos entre postes vizinhos (por cima das construções).
+    fx.lineStyle(1, 0x1a1a1a, 0.85);
+    for (let y = 0; y < city.height; y++)
+      for (let x = 0; x < city.width; x++) {
+        if (!city.wires[y * city.width + x]) continue;
+        const a = iso(x, y);
+        for (const [dx, dy] of [
+          [1, 0],
+          [0, 1],
+        ] as const) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < city.width && ny < city.height && city.wires[ny * city.width + nx]) {
+            const n = iso(nx, ny);
+            fx.lineBetween(a.sx - 3, a.sy - 11, n.sx - 3, n.sy - 11);
+            fx.lineBetween(a.sx + 3, a.sy - 11, n.sx + 3, n.sy - 11);
+          }
+        }
+      }
+  }
+
+  /** Camadas de visualização (energia, zonas) por cima de tudo. */
+  private drawOverlay(city: CityState) {
+    const { overlay } = useGame.getState();
+    const o = this.overlayG.clear();
+    if (overlay === "power") {
+      const power = computePower(city);
+      for (let i = 0; i < power.conductive.length; i++) {
+        if (!power.conductive[i]) continue;
+        const { sx, sy } = iso(i % city.width, Math.floor(i / city.width));
+        o.fillStyle(power.powered[i] ? 0xf5e04a : 0xe03030, 0.45);
+        this.diamond(o, sx, sy, 0.95);
+      }
+    } else if (overlay === "zones") {
+      for (let i = 0; i < city.zoneType.length; i++) {
+        const z = city.zoneType[i];
+        const { sx, sy } = iso(i % city.width, Math.floor(i / city.width));
+        o.fillStyle(z ? ZONES[ZONE_KINDS[z - 1]].color : 0x000000, z ? 0.6 : 0.35);
+        this.diamond(o, sx, sy, 0.95);
+      }
+    }
+  }
+
+  /** Renderização por formas (usada só se a folha de sprites não carregar). */
+  private redrawShapes() {
     const { city, serverState, overlay } = useGame.getState();
     if (!city) return;
     const biome = BIOMES[city.biome];

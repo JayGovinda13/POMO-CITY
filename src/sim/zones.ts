@@ -14,12 +14,13 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
  * - C: comércio acompanha a população (clientes).
  * - I: indústria exporta; é forte em cidades pequenas.
  */
-export function computeDemand(s: CityState, labor: LaborStats = laborStats(s)): Demand {
+export function computeDemand(s: CityState, labor: LaborStats = laborStats(s), approval = 0): Demand {
   const workers = s.population;
   const commerceTarget = workers * 0.35;
   const industryTarget = workers * 0.45 + 6;
   return {
-    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers))),
+    // Cidade feliz atrai moradores; cidade triste espanta (aprovação em [−1, 1]).
+    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25)),
     C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget))),
     I: round2(clamp((industryTarget - labor.industrialJobs) / Math.max(8, industryTarget))),
   };
@@ -53,9 +54,9 @@ export interface GrowthResult {
  */
 export function developZones(
   s: CityState,
-  opts: { rank: Rank; rand: () => number; powered: Uint8Array; access: Int32Array },
+  opts: { rank: Rank; rand: () => number; powered: Uint8Array; access: Int32Array; approval?: number },
 ): GrowthResult {
-  const demand = computeDemand(s);
+  const demand = computeDemand(s, undefined, opts.approval ?? 0);
   const slots = BASE_GROWTH_SLOTS + RANK_GROWTH_BONUS[opts.rank];
   let grown = 0;
   let declined = 0;
