@@ -11,7 +11,7 @@ import {
   ZONES,
   buildingAt,
   buildingStatus,
-  cityYear,
+  periodLabel,
   computeDemand,
   computePower,
   effectiveStreak,
@@ -77,7 +77,7 @@ export function Hud() {
       {/* Barra superior */}
       <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-1">
         <strong className="tracking-widest text-amber-300">POMO-CITY</strong>
-        <span title="1 ciclo de foco = 1 ano">📅 {cityYear(city)}</span>
+        <span title="1 ciclo de foco = 1 estação (3 meses)">📅 {periodLabel(city.cyclesCompleted)}</span>
         <span>{BIOMES[city.biome].name}</span>
         <span>💰 ${city.money}</span>
         <span title="População / moradia">

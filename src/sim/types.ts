@@ -98,8 +98,9 @@ export type Command =
 export interface CycleReport {
   rank: Rank;
   streak: number;
-  /** Ano da cidade depois deste ciclo. */
+  /** Ano e trimestre (0..3) da estação que este ciclo de foco viveu. */
   year: number;
+  quarter: number;
   rewarded: boolean;
   produced: Inventory;
   consumed: Inventory;

@@ -10,6 +10,7 @@ import {
   cityYear,
   developZones,
   migrateState,
+  periodLabel,
   plantCapacities,
   resolveCycle,
   rng,
@@ -91,21 +92,33 @@ describe("Fase 0 — utilitários de grade", () => {
 });
 
 describe("Fase 0 — calendário e desbloqueios", () => {
-  it("ano = 1900 + ciclos", () => {
+  it("1 ciclo = 1 estação; 4 ciclos = 1 ano", () => {
     const s = city();
     expect(cityYear(s)).toBe(1900);
-    s.cyclesCompleted = 12;
-    expect(cityYear(s)).toBe(1912);
+    expect(periodLabel(s.cyclesCompleted)).toBe("Jan–Mar 1900");
+    s.cyclesCompleted = 3;
+    expect(periodLabel(s.cyclesCompleted)).toBe("Out–Dez 1900");
+    s.cyclesCompleted = 13;
+    expect(cityYear(s)).toBe(1903);
+    expect(periodLabel(s.cyclesCompleted)).toBe("Abr–Jun 1903");
   });
 
-  it("hidrelétrica só a partir de 1910 e encostada na água", () => {
+  it("relatório indica a estação vivida no ciclo", () => {
+    const s = city();
+    s.cyclesCompleted = 6;
+    const { report, state } = resolveCycle(s, T0);
+    expect([report.year, report.quarter]).toEqual([1901, 2]);
+    expect(periodLabel(state.cyclesCompleted)).toBe("Out–Dez 1901");
+  });
+
+  it("hidrelétrica só a partir de 1902 e encostada na água", () => {
     const s = city();
     s.terrain[at(s, 2, 3)] = 1;
     expect(applyCommand(s, { type: "build", building: "hydro_plant", x: 2, y: 2 })).toMatchObject({
       ok: false,
-      error: "Disponível em 1910",
+      error: "Disponível em 1902",
     });
-    s.cyclesCompleted = 10;
+    s.cyclesCompleted = 8;
     expect(applyCommand(s, { type: "build", building: "hydro_plant", x: 6, y: 6 })).toMatchObject({
       error: "Precisa encostar na água",
     });

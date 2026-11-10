@@ -18,8 +18,9 @@ export const LONG_BREAK_SECONDS = 20 * 60;
 export const LONG_BREAK_EVERY = 4;
 
 // ── Fase 0/1 ──────────────────────────────────────────────────────────────
-/** 1 ciclo concluído = 1 ano da cidade. */
+/** 1 ciclo concluído = 1 estação (3 meses); 4 ciclos = 1 ano da cidade. */
 export const START_YEAR = 1900;
+export const CYCLES_PER_YEAR = 4;
 /** Lotes só se desenvolvem a até N tiles de uma estrada ligada à prefeitura. */
 export const ROAD_ACCESS_DISTANCE = 3;
 /** Lotes que podem crescer por ciclo, por tipo de zona, antes do bônus de foco. */

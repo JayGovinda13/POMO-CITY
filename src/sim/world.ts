@@ -1,5 +1,5 @@
 import { BIOMES } from "./catalog";
-import { MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_MONEY } from "./config";
+import { CYCLES_PER_YEAR, MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_MONEY } from "./config";
 import { bfsDistances } from "./grid";
 import { CURRENT_SCHEMA_VERSION, type BiomeId, type Building, type CityState, type Terrain } from "./types";
 
@@ -21,8 +21,21 @@ export const inBounds = (s: Pick<CityState, "width" | "height">, x: number, y: n
 
 export const utcDayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-/** Calendário: 1 ciclo concluído = 1 ano. */
-export const cityYear = (s: Pick<CityState, "cyclesCompleted">) => START_YEAR + s.cyclesCompleted;
+// ── Calendário: 1 ciclo concluído = 1 estação (trimestre); 4 ciclos = 1 ano ──
+// O nome da estação depende do hemisfério da cidade, definido na escolha de localização
+// (ver docs/ROADMAP.md, Fase 2). Até lá, o calendário mostra os meses do trimestre.
+
+export const QUARTER_MONTHS = ["Jan–Mar", "Abr–Jun", "Jul–Set", "Out–Dez"] as const;
+
+/** Ano em que a cidade está no ciclo de índice `cycle` (0 = primeiro trimestre de 1900). */
+export const yearOfCycle = (cycle: number) => START_YEAR + Math.floor(cycle / CYCLES_PER_YEAR);
+/** Trimestre (0..3) do ciclo de índice `cycle`. */
+export const quarterOfCycle = (cycle: number) => ((cycle % CYCLES_PER_YEAR) + CYCLES_PER_YEAR) % CYCLES_PER_YEAR;
+export const periodLabel = (cycle: number) => `${QUARTER_MONTHS[quarterOfCycle(cycle)]} ${yearOfCycle(cycle)}`;
+
+/** Ano atual da cidade (o trimestre que o próximo ciclo de foco vai viver). */
+export const cityYear = (s: Pick<CityState, "cyclesCompleted">) => yearOfCycle(s.cyclesCompleted);
+export const cityQuarter = (s: Pick<CityState, "cyclesCompleted">) => quarterOfCycle(s.cyclesCompleted);
 
 export function createCity(seed: number, now: number, biome?: BiomeId): CityState {
   const rand = rng(seed);

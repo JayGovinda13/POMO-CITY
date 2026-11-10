@@ -12,7 +12,7 @@ import { addTo, averageRank, minRank, take, totalAtLeast } from "./inventory";
 import { computePower, plantCapacities, type PowerResult } from "./power";
 import { buildingStatus, laborStats } from "./status";
 import { RANKS, type Building, type CityState, type CycleReport, type Rank } from "./types";
-import { cityYear, rng, roadAccess, utcDayKey } from "./world";
+import { quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
@@ -194,7 +194,9 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
   const report: CycleReport = {
     rank,
     streak: next.streak,
-    year: cityYear(next),
+    // A estação vivida é a do ciclo que acabou de ser concluído.
+    year: yearOfCycle(s.cyclesCompleted),
+    quarter: quarterOfCycle(s.cyclesCompleted),
     rewarded,
     produced: {},
     consumed: {},

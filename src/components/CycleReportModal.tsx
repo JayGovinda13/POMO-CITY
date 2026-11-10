@@ -1,6 +1,6 @@
 "use client";
 
-import { RESOURCES, type Inventory, type ResourceId, type Rank } from "@/sim";
+import { QUARTER_MONTHS, RESOURCES, type Inventory, type ResourceId, type Rank } from "@/sim";
 import { useGame } from "@/store/game";
 import { RankBadge } from "./ranks";
 
@@ -29,7 +29,7 @@ export function CycleReportModal() {
   return (
     <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-black/50 p-4">
       <section className="retro-panel w-full max-w-sm">
-        <header className="retro-title">Relatório do ciclo{report.year ? ` — ano ${report.year}` : ""}</header>
+        <header className="retro-title">Relatório do ciclo{report.year ? ` — ${QUARTER_MONTHS[report.quarter ?? 0]} ${report.year}` : ""}</header>
         <div className="space-y-2 p-3">
           <p className="flex items-center gap-2 text-sm">
             Pureza do lote: <RankBadge rank={report.rank} /> <span className="text-zinc-400">(sequência {report.streak})</span>

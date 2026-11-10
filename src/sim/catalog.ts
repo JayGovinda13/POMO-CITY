@@ -210,10 +210,10 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   },
   hydro_plant: {
     name: "Hidrelétrica",
-    description: "30 MW sem combustível. Precisa encostar na água.",
+    description: "30 MW sem combustível. Precisa encostar na água. Disponível em 1902.",
     buildable: true,
     category: "energy",
-    requires: { year: 1910 },
+    requires: { year: 1902 },
     cost: 900,
     upkeep: 4,
     workers: 2,

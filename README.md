@@ -36,10 +36,10 @@ Para rodar o Supabase local com Docker: `npx supabase start` (o `supabase/config
 1. Na **pausa**, planeje a cidade:
    - **Estradas** ligadas à prefeitura.
    - **Zonas** Residencial, Comercial e Industrial: arraste para zonear uma área. Zonas densas liberam com 40 habitantes.
-   - **Linhas de transmissão** e **usinas**. A prefeitura gera 12 MW; depois vêm a termelétrica (a madeira de Rank alto rende mais), a eólica e a hidrelétrica (a partir de 1910).
+   - **Linhas de transmissão** e **usinas**. A prefeitura gera 12 MW; depois vêm a termelétrica (a madeira de Rank alto rende mais), a eólica e a hidrelétrica (a partir de 1902).
    - **Produção:** fazenda, madeireira, mina, serraria e fundição.
 2. Clique em **Iniciar foco**. As obras feitas offline são enviadas e revalidadas pelo servidor; durante o foco a cidade fica só para leitura.
-3. Ao fim do ciclo, **1 ano se passa**:
+3. Ao fim do ciclo, **uma estação (3 meses) se passa**; 4 ciclos = 1 ano:
    - os lotes com estrada (a até 3 tiles), energia e demanda crescem sozinhos;
    - a extração usa o Rank do foco;
    - impostos e manutenção são cobrados.
