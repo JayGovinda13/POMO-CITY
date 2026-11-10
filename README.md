@@ -82,6 +82,13 @@ projeção exata do próximo ciclo.
 Arraste com o **botão direito** (ou use **✋ Mover**) para mover o mapa; roda do mouse = zoom. Na
 primeira vez, o jogo oferece um **tutorial** (também em ☰ Menu).
 
+## Jornal, anúncios e doações
+
+A cada ciclo concluído sai uma edição do **jornal da cidade** (manchete, notícias, a fala de um
+morador e o resumo da estação). O jogo está pronto para **Google AdSense** (tela inicial e jornal)
+e tem um botão **💝 Apoiar** com **Pix** (QR Code gerado no navegador) e link de doação por cartão.
+Tudo é ativado por variáveis de ambiente: veja [`docs/MONETIZACAO.md`](docs/MONETIZACAO.md).
+
 ## Cidadãos
 
 Cada morador é um indivíduo com nome, retrato, casa, emprego e humor (😊 feliz, 😐 ok, ☹️ triste).

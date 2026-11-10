@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { QUARTER_MONTHS, RESOURCES, type Inventory, type ResourceId, type Rank } from "@/sim";
 import { useGame } from "@/store/game";
 import { RankBadge } from "./ranks";
+import { NewspaperView } from "./Newspaper";
 
 function InvList({ inv, empty }: { inv: Inventory; empty: string }) {
   const entries = Object.entries(inv).filter(([, q]) => (q ?? 0) > 0);
@@ -21,15 +23,27 @@ function InvList({ inv, empty }: { inv: Inventory; empty: string }) {
   );
 }
 
+/** Fim de ciclo: abre o jornal da cidade; o balanço completo fica a um clique. */
 export function CycleReportModal() {
   const report = useGame((s) => s.report);
+  const state = useGame((s) => s.serverState);
   const dismiss = useGame((s) => s.dismissReport);
+  const [details, setDetails] = useState(false);
+  useEffect(() => setDetails(false), [report]);
   if (!report) return null;
+  if (!details && state) return <NewspaperView state={state} report={report} onDetails={() => setDetails(true)} onClose={dismiss} />;
 
   return (
     <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-black/50 p-4">
       <section className="retro-panel max-h-[92dvh] w-full max-w-lg overflow-y-auto">
-        <header className="retro-title">Relatório do ciclo{report.year ? ` — ${QUARTER_MONTHS[report.quarter ?? 0]} ${report.year}` : ""}</header>
+        <header className="retro-title flex">
+          Balanço do ciclo{report.year ? ` — ${QUARTER_MONTHS[report.quarter ?? 0]} ${report.year}` : ""}
+          {state && (
+            <button type="button" className="ml-auto" onClick={() => setDetails(false)}>
+              ◀ Jornal
+            </button>
+          )}
+        </header>
         <div className="space-y-2 p-3">
           <p className="flex items-center gap-2 text-sm">
             Pureza do lote: <RankBadge rank={report.rank} /> <span className="text-zinc-400">(sequência {report.streak})</span>

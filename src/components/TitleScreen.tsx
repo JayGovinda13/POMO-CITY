@@ -3,6 +3,8 @@
 import { BIOMES, REGION_BY_ID, cityPeriodLabel, isPristine, weatherAt } from "@/sim";
 import { useGame } from "@/store/game";
 import { DisasterModal } from "./DisasterModal";
+import { AdSlot } from "./AdSlot";
+import { DonateButton } from "./DonateButton";
 
 /** Tela inicial: Continuar a cidade salva ou começar um novo jogo. */
 export function TitleScreen() {
@@ -70,7 +72,15 @@ export function TitleScreen() {
             durante o foco quebra o ciclo e causa um desastre; fechar sem o menu depois de concluir um foco causa um
             desastre leve.
           </p>
+          <DonateButton variant="full" />
           {toast && <p className="text-amber-300">{toast}</p>}
+          {/* Anúncio na tela inicial, abaixo dos botões. */}
+          <AdSlot placement="title" className="pt-2" />
+          <p className="text-center text-[10px] text-zinc-500">
+            <a className="underline" href="/privacidade">
+              Privacidade e cookies
+            </a>
+          </p>
         </div>
       </section>
       <DisasterModal />
