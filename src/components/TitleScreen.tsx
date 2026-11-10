@@ -1,6 +1,6 @@
 "use client";
 
-import { BIOMES, REGION_BY_ID, cityPeriodLabel, isPristine, weatherAt } from "@/sim";
+import { BIOMES, REGION_BY_ID, cityDisplayName, cityPeriodLabel, isPristine, weatherAt } from "@/sim";
 import { useGame } from "@/store/game";
 import { DisasterModal } from "./DisasterModal";
 import { AdSlot } from "./AdSlot";
@@ -32,6 +32,7 @@ export function TitleScreen() {
           {!fresh && (
             <div className="space-y-1 border-2 border-zinc-700 bg-zinc-900/60 p-3">
               <p className="text-zinc-400">Cidade salva</p>
+              <p className="text-base text-amber-300">🏙 {cityDisplayName(city)}</p>
               <p>
                 {region ? `${region.name} · ${BIOMES[city.biome].name}` : BIOMES[city.biome].name} — {cityPeriodLabel(city)}
                 {weather && ` (${weather.season})`}

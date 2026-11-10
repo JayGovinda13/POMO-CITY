@@ -3,6 +3,7 @@
 
 import { citizensView, moodSummary, type CitizenView } from "./citizens";
 import { REGION_BY_ID } from "./climate";
+import { cityDisplayName } from "./founding";
 import { RESOURCES } from "./catalog";
 import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
 import { RANKS, type CityState, type CycleReport, type ResourceId } from "./types";
@@ -65,7 +66,7 @@ const sum = (inv: Partial<Record<string, number>>) => Object.values(inv).reduce<
 export function generateNewspaper(state: CityState, report: CycleReport): Newspaper {
   const r = rng((state.seed ^ Math.imul(state.cyclesCompleted + 3, 0x7feb352d)) >>> 0);
   const region = state.regionId ? REGION_BY_ID[state.regionId] : null;
-  const name = region ? `Gazeta ${region.name.replace(/\s*\(.*\)$/, "")}` : "Gazeta da Cidade";
+  const name = state.name || region ? `Gazeta ${cityDisplayName(state)}` : "Gazeta da Cidade";
   const season = report.weather?.season ? `${report.weather.season} · ` : "";
   const date = `${season}${QUARTER_MONTHS[report.quarter]} de ${report.year}`;
   const growth = report.populationAfter - report.populationBefore;
@@ -110,7 +111,7 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
   if (report.netMoney < 0) {
     candidates.push({ priority: 35, tone: "bad", title: `Contas no vermelho: déficit de ${money(report.netMoney)}`, body: "Analistas sugerem rever impostos, verbas e decretos no Orçamento." });
   }
-  candidates.push({ priority: 1, tone: "neutral", title: `Estação tranquila${region ? ` em ${region.name.replace(/\s*\(.*\)$/, "")}` : ""}`, body: "Sem grandes novidades: a cidade segue seu ritmo." });
+  candidates.push({ priority: 1, tone: "neutral", title: `Estação tranquila${state.name || region ? ` em ${cityDisplayName(state)}` : ""}`, body: "Sem grandes novidades: a cidade segue seu ritmo." });
   candidates.sort((a, b) => b.priority - a.priority);
   const { priority: _p, ...headline } = candidates[0];
 

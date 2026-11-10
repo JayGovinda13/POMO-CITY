@@ -35,6 +35,8 @@ Para rodar o Supabase local com Docker: `npx supabase start` (o `supabase/config
 
 0. Na tela inicial, **Continuar** ou **Novo jogo**. Ao fundar, escolha **sua região** (mesmo clima e
    estações que você vive) ou **outra parte do mundo**. Só o clima é usado; o mapa é fictício.
+   Dê um **nome à sua cidade** (dá para renomear depois em ☰ Menu → Renomear a cidade). O nome
+   aparece na barra superior, na tela inicial e no jornal.
 
 1. Na **pausa**, planeje a cidade:
    - **Estradas** ligadas à prefeitura.

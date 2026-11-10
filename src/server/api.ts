@@ -77,6 +77,11 @@ export function parseCommands(raw: unknown): Command[] | null {
       out.push({ type: "budget", taxes, funding });
       continue;
     }
+    if (r.type === "rename") {
+      if (typeof r.name !== "string" || r.name.length > 200) return null;
+      out.push({ type: "rename", name: r.name });
+      continue;
+    }
     if (r.type === "ordinance") {
       if (typeof r.id !== "string" || !Object.hasOwn(ORDINANCES, r.id) || typeof r.active !== "boolean") return null;
       out.push({ type: "ordinance", id: r.id as OrdinanceId, active: r.active });

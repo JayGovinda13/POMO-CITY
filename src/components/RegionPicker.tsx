@@ -12,6 +12,8 @@ import {
   searchRegions,
   seasonName,
   DIFFICULTY,
+  CITY_NAME_MAX,
+  sanitizeCityName,
   type Continent,
   type Difficulty,
   type Region,
@@ -33,6 +35,7 @@ export function RegionPicker() {
   const [selected, setSelected] = useState<Region | null>(null);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("medio");
+  const [name, setName] = useState("");
 
   const results = useMemo(() => searchRegions(query), [query]);
   const byContinent = useMemo(() => {
@@ -124,13 +127,25 @@ export function RegionPicker() {
                 ))}
               </fieldset>
             )}
+            <label className="block">
+              <span className="text-zinc-400">Nome da cidade</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={CITY_NAME_MAX}
+                placeholder={selected ? `ex.: Nova ${selected.name.replace(/\s*\(.*\)$/, "")}` : "ex.: Pomópolis"}
+                aria-label="Nome da cidade"
+                className="mt-1 w-full border-2 border-zinc-600 bg-zinc-900 px-2 py-1 text-sm"
+              />
+              <span className="text-[11px] text-zinc-500">Pode mudar depois em ☰ Menu. Em branco, a cidade usa o nome da região.</span>
+            </label>
             <button
               type="button"
               className="retro-button retro-button-primary w-full py-2"
               disabled={!selected || busy}
-              onClick={() => selected && useGame.getState().chooseRegion(selected.id, difficulty)}
+              onClick={() => selected && useGame.getState().chooseRegion(selected.id, difficulty, sanitizeCityName(name) ?? undefined)}
             >
-              Fundar em {selected?.name ?? "…"}
+              Fundar {sanitizeCityName(name) ?? "a cidade"} em {selected?.name ?? "…"}
             </button>
           </div>
         </div>

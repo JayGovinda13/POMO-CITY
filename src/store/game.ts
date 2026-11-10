@@ -88,7 +88,7 @@ interface GameStore {
   /** "Novo jogo": cidade nova, mesma sequência de foco. */
   newGame(): Promise<void>;
   /** Fundação: escolhe a região climática da cidade. */
-  chooseRegion(regionId: string, difficulty?: "facil" | "medio" | "dificil"): Promise<boolean>;
+  chooseRegion(regionId: string, difficulty?: "facil" | "medio" | "dificil", name?: string): Promise<boolean>;
   dismissDisaster(): void;
   /** Troca de conta: descarta a fila local e recarrega a cidade do novo usuário. */
   reset(): Promise<void>;
@@ -214,10 +214,10 @@ export const useGame = create<GameStore>()(
           }
         },
 
-        async chooseRegion(regionId, difficulty = "medio") {
+        async chooseRegion(regionId, difficulty = "medio", name) {
           set({ busy: true });
           try {
-            const snap = await call("/api/city/region", { regionId, difficulty });
+            const snap = await call("/api/city/region", { regionId, difficulty, name });
             if (snap.error) {
               get().showToast(snap.error);
               return false;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CITY_NAME_MAX, cityDisplayName, sanitizeCityName } from "@/sim";
 import { useGame } from "@/store/game";
 import { AccountButton } from "./AccountButton";
 
@@ -60,6 +61,22 @@ export function GameMenu() {
                 }}
               >
                 📖 Tutorial
+              </button>
+              <button
+                type="button"
+                className="retro-button w-full"
+                disabled={locked}
+                title={locked ? "Disponível com o foco encerrado" : undefined}
+                onClick={() => {
+                  const city = useGame.getState().city;
+                  const name = prompt(`Novo nome da cidade (até ${CITY_NAME_MAX} letras):`, city ? cityDisplayName(city) : "");
+                  if (name === null) return;
+                  if (!sanitizeCityName(name)) return useGame.getState().showToast("Digite um nome para a cidade");
+                  useGame.getState().queue({ type: "rename", name });
+                  setOpen(false);
+                }}
+              >
+                ✏️ Renomear a cidade
               </button>
               <div className="flex justify-center">
                 <AccountButton />

@@ -6,6 +6,7 @@ import { PLANS, repairCost } from "./insurance";
 import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
 import { lockReason } from "./unlocks";
+import { sanitizeCityName } from "./founding";
 import { buildingAt, idx, inBounds } from "./world";
 
 export type CommandResult = { ok: true; state: CityState } | { ok: false; error: string };
@@ -62,6 +63,11 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
   if (cmd.type === "policy") {
     if (!RESOURCE_IDS.includes(cmd.resource)) return "Recurso inválido";
     return validatePolicy({ mode: cmd.mode, value: cmd.value });
+  }
+
+  if (cmd.type === "rename") {
+    if (!sanitizeCityName(cmd.name)) return "Digite um nome para a cidade";
+    return null;
   }
 
   if (cmd.type === "budget") {
@@ -180,6 +186,8 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     const b = next.buildings.find((x) => x.x === cmd.x && x.y === cmd.y)!;
     next.money -= repairCost(b.type);
     delete b.damaged;
+  } else if (cmd.type === "rename") {
+    next.name = sanitizeCityName(cmd.name)!;
   } else if (cmd.type === "budget") {
     if (cmd.taxes) next.taxes = { R: cmd.taxes.R, C: cmd.taxes.C, I: cmd.taxes.I };
     if (cmd.funding) next.funding = { ...next.funding, ...cmd.funding };

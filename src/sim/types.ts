@@ -84,6 +84,8 @@ export interface CityState {
   biome: BiomeId;
   /** Região climática escolhida na fundação (id da tabela em climate.ts); null = ainda não escolhida. */
   regionId: string | null;
+  /** Nome da cidade escolhido pelo jogador (ausente = cidade sem nome: usa o da região). */
+  name?: string;
   /**
    * Trimestre real em que a cidade foi fundada (0..3). O calendário da cidade começa
    * nessa estação: índice do calendário = ciclos concluídos + calendarOffset.
@@ -156,6 +158,7 @@ export type Command =
   | { type: "wire"; x: number; y: number }
   | { type: "pipe"; x: number; y: number }
   | { type: "policy"; resource: ResourceId; mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }
+  | { type: "rename"; name: string }
   | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: Partial<CityState["funding"]> }
   | { type: "ordinance"; id: keyof CityState["ordinances"]; active: boolean }
   | { type: "bond"; action: "issue" | "repay" }
