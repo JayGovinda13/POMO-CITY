@@ -6,6 +6,7 @@ import { DisasterModal } from "./DisasterModal";
 import { AdSlot } from "./AdSlot";
 import { DonateButton } from "./DonateButton";
 import { MusicButton } from "./Music";
+import { Logo } from "./Logo";
 import { City, Coins, FireFlame, Group } from "./icons";
 
 /** Tela inicial: Continuar a cidade salva ou começar um novo jogo. */
@@ -26,7 +27,13 @@ export function TitleScreen() {
   return (
     <main className="grid min-h-dvh place-items-center p-4">
       <section className="retro-panel w-full max-w-md">
-        <header className="retro-title text-center text-lg tracking-[0.3em] text-amber-300">POMO-CITY</header>
+        <header className="retro-title flex items-center justify-center gap-3 text-lg tracking-[0.3em] text-amber-300">
+          <Logo size={34} />
+          POMO-CITY
+        </header>
+        <div className="flex justify-center pt-4">
+          <Logo size={136} />
+        </div>
         <div className="space-y-4 p-4 text-sm">
           <p className="text-center text-zinc-400">Sua cidade cresce enquanto você foca.</p>
 

@@ -51,6 +51,7 @@ import { MarketButton } from "./MarketPanel";
 import { BudgetButton } from "./BudgetPanel";
 import { CitizensButton } from "./CitizensPanel";
 import { DonateButton } from "./DonateButton";
+import { Logo } from "./Logo";
 import { ResourcesButton } from "./ResourcesButton";
 import { MusicButton } from "./Music";
 import { MOOD_ICON, Portrait } from "./Portrait";
@@ -132,8 +133,8 @@ export function Hud() {
     <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-2 text-xs">
       {/* Barra superior: só o essencial; o resto fica nos ícones à direita. */}
       <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1">
-        <strong className="tracking-widest text-amber-300" title="POMO-CITY">
-          <City /> {cityDisplayName(city)}
+        <strong className="flex items-center gap-1 tracking-widest text-amber-300" title="POMO-CITY">
+          <Logo size={20} /> {cityDisplayName(city)}
         </strong>
         <span title={`${region ? `${region.name} · ` : ""}${BIOMES[city.biome].name} · 1 ciclo de foco = 1 estação`}>
           <Calendar /> {weather ? `${weather.season} · ` : ""}

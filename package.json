@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "art": "node scripts/build-art.mjs",
-    "balance": "vitest run --config vitest.balance.config.ts"
+    "balance": "vitest run --config vitest.balance.config.ts",
+    "logo": "bash scripts/build-logo.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
