@@ -100,23 +100,41 @@ quem mora ou trabalha ali.
 
 ## Trilha sonora 16 bits
 
-Quatro músicas originais, sintetizadas na hora com Web Audio, sem nenhum arquivo de áudio.
-O som imita o chip dos consoles dos anos 90: ondas de pulso, piano elétrico em FM, percussão
-de ruído filtrado e eco.
+São 32 músicas originais, 8 de cada gênero, sintetizadas na hora com Web Audio, sem nenhum
+arquivo de áudio. O som imita o chip dos consoles dos anos 90: ondas de pulso, piano elétrico
+em FM, percussão de ruído filtrado e eco.
 
-| Gênero | Faixa | Andamento |
-| --- | --- | --- |
-| Jazz | "Café da Prefeitura" (swing) | 132 bpm |
-| Bossa Nova | "Garoa de Setembro" | 136 bpm |
-| Tango | "Bandoneón do Porto" | 116 bpm |
-| Salsa | "Noite no Mercado" (clave 2-3) | 188 bpm |
+| Gênero | Faixas |
+| --- | --- |
+| Jazz | Café da Prefeitura · Blues do Pedágio · Hora do Rush · Neblina no Viaduto · Prefeito Distraído · Bonde das Seis · Lâmpadas de Gás · Ponte Levadiça |
+| Bossa Nova | Garoa de Setembro · Varanda ao Entardecer · Mar de Prédios · Café com Chuva · Feira de Domingo · Sombra do Coqueiro · Bonde Azul · Luz de Poste |
+| Tango | Bandoneón do Porto · Calle del Reloj · Último Bonde · Garoa Portenha · Milonga da Fábrica · Esquina Escura · Lua no Cais · Fole e Ferrugem |
+| Salsa | Noite no Mercado · Mercado de Peixe · Ladeira do Sol · Calor de Janeiro · Rumba da Obra · Prefeitura en Clave · Noche de Feria · Guaguancó do Porto |
 
-- O botão 🎵 (barra superior e tela inicial) escolhe uma faixa ou o **Rádio**, que alterna os
-  gêneros a cada duas voltas.
+**Como as faixas são feitas**
+
+- Cada faixa tem harmonia própria (16 compassos), andamento e tonalidade.
+- A 1ª faixa de cada gênero tem melodia escrita à mão. As outras são compostas de forma
+  determinística, então soam sempre iguais:
+  - forma A–A'–B–A'';
+  - notas do acorde nos tempos fortes;
+  - movimento por grau;
+  - cadência na tônica.
+- O acompanhamento segue o ritmo de cada gênero: baixo caminhante e condução no prato no jazz,
+  batida de violão na bossa, marcato e síncopa 3-3-2 no tango, tumbao, montuno e clave 2-3 na
+  salsa. Algumas faixas usam outro solista ou uma variação da batida.
+
+**Botão 🎵** (barra superior e tela inicial)
+
+- **📻 Rádio**: todas as faixas.
+- **Gênero**: as 8 faixas daquele gênero, em sequência.
+- **Faixa da lista**: repete só aquela faixa.
+- Nos modos Rádio e Gênero, a faixa muda a cada duas voltas.
 - Também ajusta o volume e pode silenciar a música durante o foco.
 - A música começa no primeiro clique, por causa da política de autoplay do navegador.
-- Código em `src/audio/`: `synth.ts` (instrumentos), `tracks.ts` (composições) e `player.ts`
-  (agendador).
+
+Código em `src/audio/`: `synth.ts` (instrumentos), `tracks.ts` (catálogo, compositor e
+acompanhamentos) e `player.ts` (agendador).
 
 ## Sprites (pxl)
 

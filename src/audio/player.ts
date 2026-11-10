@@ -1,11 +1,20 @@
 // Tocador das trilhas: agenda os compassos com antecedência no relógio do Web Audio (preciso,
-// sem depender do setTimeout), troca de faixa com fade e, no modo "Rádio", alterna os gêneros
-// a cada duas voltas da música.
+// sem depender do setTimeout) e troca de faixa com fade. Modos: "Rádio" (qualquer faixa),
+// um gênero (as 8 faixas dele em sequência) ou uma faixa específica (repete). No rádio e no
+// gênero, a faixa muda a cada duas voltas da música.
 
 import { Synth } from "./synth";
-import { TRACKS, TRACK_IDS, type TrackId } from "./tracks";
+import { GENRE_IDS, TRACKS, TRACK_IDS, tracksOf, type GenreId, type TrackId } from "./tracks";
 
-export type MusicChoice = TrackId | "radio" | "off";
+export type MusicChoice = TrackId | GenreId | "radio" | "off";
+
+/** Escolha salva válida (versões antigas e ids removidos voltam ao rádio). */
+export function validChoice(c: unknown): MusicChoice {
+  if (c === "radio" || c === "off") return c;
+  if (typeof c === "string" && (GENRE_IDS.includes(c as GenreId) || c in TRACKS)) return c as MusicChoice;
+  return "radio";
+}
+const isGenre = (c: MusicChoice): c is GenreId => GENRE_IDS.includes(c as GenreId);
 
 export interface MusicSettings {
   choice: MusicChoice;
@@ -72,6 +81,8 @@ class MusicPlayer {
     if (choice === "off") this.stop();
     else if (choice === "radio") {
       if (!this.track) this.start(this.pick());
+    } else if (isGenre(choice)) {
+      if (!this.track || TRACKS[this.track].genre !== choice) this.start(this.pick());
     } else if (choice !== this.track) this.start(choice);
   }
 
@@ -94,7 +105,14 @@ class MusicPlayer {
   }
 
   private pick(): TrackId {
-    if (this.choice !== "radio" && this.choice !== "off") return this.choice;
+    const c = this.choice;
+    if (isGenre(c)) {
+      // Gênero: segue a ordem das faixas; ao entrar no gênero, começa numa faixa aleatória.
+      const list = tracksOf(c);
+      const at = this.track ? list.indexOf(this.track) : -1;
+      return at >= 0 ? list[(at + 1) % list.length] : list[Math.floor(Math.random() * list.length)];
+    }
+    if (c !== "radio" && c !== "off") return c;
     const others = TRACK_IDS.filter((t) => t !== this.track);
     return others[Math.floor(Math.random() * others.length)];
   }
@@ -149,7 +167,7 @@ class MusicPlayer {
       if (this.bar >= tr.bars) {
         this.bar = 0;
         this.loops++;
-        if (this.choice === "radio" && this.loops >= LOOPS_PER_TRACK) {
+        if ((this.choice === "radio" || isGenre(this.choice)) && this.loops >= LOOPS_PER_TRACK) {
           const startAt = this.barTime;
           this.start(this.pick());
           this.barTime = startAt;
@@ -167,7 +185,10 @@ const KEY = "pomo-city:music";
 export function loadMusicSettings(): MusicSettings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULT_MUSIC, ...(JSON.parse(raw) as Partial<MusicSettings>) };
+    if (raw) {
+      const saved = { ...DEFAULT_MUSIC, ...(JSON.parse(raw) as Partial<MusicSettings>) };
+      return { ...saved, choice: validChoice(saved.choice) };
+    }
   } catch {
     /* sem armazenamento: usa o padrão */
   }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DEFAULT_MUSIC, loadMusicSettings, music, saveMusicSettings, type MusicChoice, type MusicSettings } from "@/audio/player";
-import { TRACKS, TRACK_IDS } from "@/audio/tracks";
+import { GENRES, TRACKS, tracksOf, type GenreId, type TrackId } from "@/audio/tracks";
 import { useGame } from "@/store/game";
 
 // Configurações da música compartilhadas entre o controlador e o botão.
@@ -66,10 +66,17 @@ export function MusicController() {
 }
 
 const CHOICES: { id: MusicChoice; label: string; hint: string }[] = [
-  { id: "radio", label: "📻 Rádio", hint: "Alterna os gêneros" },
-  ...TRACK_IDS.map((id) => ({ id, label: TRACKS[id].name, hint: `“${TRACKS[id].title}”` })),
+  { id: "radio", label: "📻 Rádio", hint: "Todas as 32 faixas, alternando os gêneros" },
+  ...GENRES.map((g) => ({ id: g.id as MusicChoice, label: g.name, hint: `As 8 faixas de ${g.name} em sequência` })),
   { id: "off", label: "🔇 Desligada", hint: "Sem música" },
 ];
+
+/** Gênero a mostrar na lista de faixas: o escolhido, o da faixa escolhida ou o que está tocando. */
+function genreShown(choice: MusicChoice, current: TrackId | null): GenreId | null {
+  if (choice in TRACKS) return TRACKS[choice as TrackId].genre;
+  if (GENRES.some((g) => g.id === choice)) return choice as GenreId;
+  return current ? TRACKS[current].genre : null;
+}
 
 /** Botão 🎵 com a escolha da trilha, volume e silêncio durante o foco. */
 export function MusicButton({ variant = "icon" }: { variant?: "icon" | "full" }) {
@@ -101,7 +108,7 @@ export function MusicButton({ variant = "icon" }: { variant?: "icon" | "full" })
         {variant === "full" && ` ${playing}`}
       </button>
       {open && (
-        <div className="retro-panel absolute right-0 top-full z-50 mt-1 w-60 space-y-2 p-2 text-xs">
+        <div className="retro-panel absolute right-0 top-full z-50 mt-1 w-64 space-y-2 p-2 text-xs">
           <h3 className="text-[10px] uppercase tracking-wider text-zinc-400">Trilha sonora 16 bits</h3>
           <div className="grid grid-cols-2 gap-1">
             {CHOICES.map((c) => (
@@ -109,7 +116,7 @@ export function MusicButton({ variant = "icon" }: { variant?: "icon" | "full" })
                 key={c.id}
                 type="button"
                 title={c.hint}
-                className={`retro-button ${s.choice === c.id ? "retro-button-active" : ""}`}
+                className={`retro-button ${s.choice === c.id || (c.id !== "radio" && c.id !== "off" && s.choice in TRACKS && TRACKS[s.choice as TrackId].genre === c.id) ? "retro-button-active" : ""}`}
                 onClick={() => {
                   setSettings({ choice: c.id });
                   music.unlock();
@@ -124,6 +131,35 @@ export function MusicButton({ variant = "icon" }: { variant?: "icon" | "full" })
               ♪ {TRACKS[current].title} <span className="text-zinc-400">({TRACKS[current].name})</span>
             </p>
           )}
+          {(() => {
+            const g = genreShown(s.choice, current);
+            if (!g) return null;
+            return (
+              <div>
+                <h4 className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">
+                  Faixas · {GENRES.find((x) => x.id === g)!.name}
+                </h4>
+                <ol className="max-h-44 space-y-0.5 overflow-y-auto">
+                  {tracksOf(g).map((id, k) => (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        className={`w-full px-1 text-left hover:bg-zinc-700 ${s.choice === id ? "bg-zinc-700 text-amber-300" : current === id ? "text-amber-300" : ""}`}
+                        title={s.choice === id ? "Repetindo esta faixa" : "Tocar e repetir esta faixa"}
+                        onClick={() => {
+                          setSettings({ choice: id });
+                          music.unlock();
+                        }}
+                      >
+                        {k + 1}. {TRACKS[id].title}
+                        {s.choice === id && " 🔁"}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            );
+          })()}
           <label className="flex items-center gap-2">
             Volume
             <input
