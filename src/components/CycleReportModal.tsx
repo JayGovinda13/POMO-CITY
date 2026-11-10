@@ -29,7 +29,7 @@ export function CycleReportModal() {
   return (
     <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-black/50 p-4">
       <section className="retro-panel w-full max-w-sm">
-        <header className="retro-title">Relatório do ciclo</header>
+        <header className="retro-title">Relatório do ciclo{report.year ? ` — ano ${report.year}` : ""}</header>
         <div className="space-y-2 p-3">
           <p className="flex items-center gap-2 text-sm">
             Pureza do lote: <RankBadge rank={report.rank} /> <span className="text-zinc-400">(sequência {report.streak})</span>
@@ -62,6 +62,24 @@ export function CycleReportModal() {
                 População {report.populationBefore} → {report.populationAfter}
                 {report.starving && <span className="text-red-300"> · faltou comida!</span>}
               </p>
+              {report.zones && (
+                <p>
+                  Lotes: <span className="text-emerald-300">+{report.zones.grown} cresceram</span>
+                  {report.zones.declined > 0 && <span className="text-red-300"> · −{report.zones.declined} declinaram</span>}
+                </p>
+              )}
+              {report.jobs && (
+                <p>
+                  Empregos {report.jobs.filled}/{report.jobs.total}
+                  {report.jobs.unemployed > 0 && <span className="text-amber-300"> · {report.jobs.unemployed} sem emprego</span>}
+                </p>
+              )}
+              {report.power && (
+                <p className={report.power.brownout ? "text-red-300" : ""}>
+                  ⚡ Consumo {report.power.demand} MW / capacidade {report.power.capacity} MW
+                  {report.power.brownout && " — apagão! Construa usinas ou linhas."}
+                </p>
+              )}
             </>
           )}
           <button type="button" className="retro-button retro-button-primary w-full" onClick={dismiss}>

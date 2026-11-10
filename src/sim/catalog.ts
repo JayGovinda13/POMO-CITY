@@ -1,4 +1,13 @@
-import type { BiomeId, BuildingType, Rank, ResourceId } from "./types";
+import type { BiomeId, BuildingType, Rank, ResourceId, ZoneKind } from "./types";
+
+export type BuildCategory = "infra" | "energy" | "production" | "special";
+
+/** Requisitos de desbloqueio (ver unlocks.ts). */
+export interface Requirement {
+  /** Ano mínimo da cidade (1900 + ciclos concluídos). */
+  year?: number;
+  population?: number;
+}
 
 export interface MaterialCost {
   resource: ResourceId;
@@ -11,6 +20,18 @@ export interface BuildingDef {
   name: string;
   description: string;
   buildable: boolean;
+  category: BuildCategory;
+  requires?: Requirement;
+  /** Consumo de energia em MW quando operando. */
+  powerUse?: number;
+  /** Geração de energia. */
+  generates?: {
+    capacity: number;
+    /** Combustível por ciclo; a eficiência depende do Rank (FUEL_EFFICIENCY). */
+    fuel?: { resource: ResourceId; qty: number };
+  };
+  /** Precisa estar encostado em água (ex.: hidrelétrica). */
+  needsWaterAdjacent?: boolean;
   cost: number;
   materials?: MaterialCost[];
   /** Custo de manutenção cobrado a cada ciclo concluído. */
@@ -36,6 +57,7 @@ export interface BuildingDef {
 
 export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   road: {
+    category: "infra",
     name: "Estrada",
     description: "Asfalto. Conecta construções à prefeitura.",
     buildable: true,
@@ -47,8 +69,10 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 0,
   },
   cityhall: {
+    category: "special",
+    generates: { capacity: 12 },
     name: "Prefeitura",
-    description: "Coração da cidade. A malha viária parte daqui.",
+    description: "Coração da cidade. A malha viária parte daqui e um gerador de 12 MW dá a partida.",
     buildable: false,
     cost: 0,
     upkeep: 0,
@@ -58,9 +82,10 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 30,
   },
   house: {
+    category: "special",
     name: "Casa",
-    description: "Abriga 8 moradores que trabalham e pagam impostos.",
-    buildable: true,
+    description: "Legado: casas antigas viraram zonas residenciais.",
+    buildable: false,
     cost: 50,
     upkeep: 0,
     workers: 0,
@@ -70,6 +95,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 14,
   },
   farm: {
+    category: "production",
+    powerUse: 1,
     name: "Fazenda",
     description: "Produz comida. Rendimento alto em planícies.",
     buildable: true,
@@ -82,6 +109,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 6,
   },
   lumberyard: {
+    category: "production",
+    powerUse: 2,
     name: "Madeireira",
     description: "Extrai madeira. Rendimento alto em florestas.",
     buildable: true,
@@ -94,6 +123,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 12,
   },
   mine: {
+    category: "production",
+    powerUse: 3,
     name: "Mina",
     description: "Extrai minério. Rendimento alto em montanhas.",
     buildable: true,
@@ -106,6 +137,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 10,
   },
   sawmill: {
+    category: "production",
+    powerUse: 3,
     name: "Serraria",
     description: "Madeira → tábuas. Tech Tier limita o rank a B.",
     buildable: true,
@@ -118,6 +151,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 18,
   },
   smelter: {
+    category: "production",
+    powerUse: 6,
     name: "Fundição",
     description: "Minério → metal. Tech Tier alto: entrega até rank S.",
     buildable: true,
@@ -130,6 +165,8 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     height: 24,
   },
   monument: {
+    category: "special",
+    powerUse: 2,
     name: "Monumento",
     description: "Exige metal rank S. Aumenta os impostos em 25%.",
     buildable: true,
@@ -145,7 +182,74 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     color: 0xe8e0ff,
     height: 44,
   },
+  thermal_plant: {
+    name: "Termelétrica",
+    description: "Queima 4 madeiras por ciclo. Madeira de Rank alto rende mais energia.",
+    buildable: true,
+    category: "energy",
+    cost: 600,
+    upkeep: 8,
+    workers: 3,
+    needsRoad: true,
+    generates: { capacity: 40, fuel: { resource: "wood", qty: 4 } },
+    color: 0x5a4a4a,
+    height: 26,
+  },
+  wind_turbine: {
+    name: "Eólica",
+    description: "Energia limpa e barata, mas pouca: 6 MW.",
+    buildable: true,
+    category: "energy",
+    cost: 150,
+    upkeep: 1,
+    workers: 0,
+    needsRoad: false,
+    generates: { capacity: 6 },
+    color: 0xdfe8f0,
+    height: 34,
+  },
+  hydro_plant: {
+    name: "Hidrelétrica",
+    description: "30 MW sem combustível. Precisa encostar na água.",
+    buildable: true,
+    category: "energy",
+    requires: { year: 1910 },
+    cost: 900,
+    upkeep: 4,
+    workers: 2,
+    needsRoad: false,
+    needsWaterAdjacent: true,
+    generates: { capacity: 30 },
+    color: 0x4a7aa0,
+    height: 16,
+  },
 };
+
+/** Eficiência da termelétrica conforme a pureza do combustível. */
+export const FUEL_EFFICIENCY: Record<Rank, number> = { D: 0.6, C: 0.7, B: 0.8, A: 0.9, S: 1 };
+
+export interface ZoneDef {
+  name: string;
+  short: string;
+  /** Custo por tile: [leve, densa]. */
+  cost: [number, number];
+  /** Nível máximo: [leve, densa]. */
+  maxLevel: [number, number];
+  /** Moradores (R) ou empregos (C/I) por nível. */
+  perLevel: number;
+  /** MW por nível desenvolvido. */
+  powerPerLevel: number;
+  color: number;
+  denseRequires: Requirement;
+}
+
+export const ZONES: Record<ZoneKind, ZoneDef> = {
+  R: { name: "Residencial", short: "R", cost: [5, 10], maxLevel: [2, 4], perLevel: 4, powerPerLevel: 0.5, color: 0x5fbf5a, denseRequires: { population: 40 } },
+  C: { name: "Comercial", short: "C", cost: [5, 10], maxLevel: [2, 4], perLevel: 3, powerPerLevel: 0.75, color: 0x4a8fd8, denseRequires: { population: 40 } },
+  I: { name: "Industrial", short: "I", cost: [5, 10], maxLevel: [2, 4], perLevel: 4, powerPerLevel: 1, color: 0xd8b84a, denseRequires: { population: 40 } },
+};
+
+export const WIRE_COST = 2;
 
 export const RESOURCES: Record<ResourceId, { name: string; color: number }> = {
   food: { name: "Comida", color: 0xc9a94a },

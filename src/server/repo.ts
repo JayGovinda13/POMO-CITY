@@ -1,7 +1,7 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { createCity, type CityState, type Rank } from "@/sim";
+import { createCity, migrateState, type CityState, type Rank } from "@/sim";
 import { supabaseEnabled } from "@/lib/supabase/env";
 import { adminClient } from "@/lib/supabase/server";
 
@@ -158,6 +158,8 @@ export async function withPlayer<T>(
         activeCycle: null,
       };
       const before = loaded ? JSON.stringify(rec) : "";
+      // Cidades salvas em formatos antigos são atualizadas na leitura (e gravadas se mudarem).
+      rec.state = migrateState(rec.state);
       const hooks: (() => Promise<void>)[] = [];
       const result = await fn(rec, { afterCommit: (h) => hooks.push(h) });
       if (JSON.stringify(rec) === before) return result;

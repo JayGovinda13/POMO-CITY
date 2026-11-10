@@ -1,6 +1,15 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { BREAK_SECONDS, BUILDINGS, LONG_BREAK_EVERY, LONG_BREAK_SECONDS, type BuildingType, type Command } from "@/sim";
+import {
+  BREAK_SECONDS,
+  BUILDINGS,
+  LONG_BREAK_EVERY,
+  LONG_BREAK_SECONDS,
+  ZONES,
+  type BuildingType,
+  type Command,
+  type ZoneKind,
+} from "@/sim";
 import type { PlayerRecord } from "./repo";
 import { ConflictError } from "./repo";
 import { focusMs, getPlayerId, UnauthorizedError } from "./session";
@@ -30,13 +39,29 @@ export function parseCommands(raw: unknown): Command[] | null {
   if (raw === undefined) return [];
   if (!Array.isArray(raw) || raw.length > MAX_COMMANDS) return null;
   const out: Command[] = [];
+  const num = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
   for (const c of raw) {
     if (!c || typeof c !== "object") return null;
-    const { type, x, y, building } = c as Record<string, unknown>;
-    if (typeof x !== "number" || typeof y !== "number") return null;
-    if (type === "demolish") out.push({ type, x, y });
-    else if (type === "build" && typeof building === "string" && Object.hasOwn(BUILDINGS, building)) {
-      out.push({ type, building: building as BuildingType, x, y });
+    const r = c as Record<string, unknown>;
+    if (r.type === "zone") {
+      const zone = r.zone;
+      if (![r.x0, r.y0, r.x1, r.y1].every(num)) return null;
+      if (zone !== "none" && !(typeof zone === "string" && Object.hasOwn(ZONES, zone))) return null;
+      out.push({
+        type: "zone",
+        zone: zone as ZoneKind | "none",
+        dense: r.dense === true,
+        x0: r.x0 as number,
+        y0: r.y0 as number,
+        x1: r.x1 as number,
+        y1: r.y1 as number,
+      });
+      continue;
+    }
+    if (!num(r.x) || !num(r.y)) return null;
+    if (r.type === "demolish" || r.type === "wire") out.push({ type: r.type, x: r.x, y: r.y });
+    else if (r.type === "build" && typeof r.building === "string" && Object.hasOwn(BUILDINGS, r.building)) {
+      out.push({ type: "build", building: r.building as BuildingType, x: r.x, y: r.y });
     } else return null;
   }
   return out;

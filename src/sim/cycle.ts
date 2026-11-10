@@ -4,12 +4,16 @@ import {
   FOOD_PER_RESIDENT,
   SESSION_GAP_MS,
   STREAK_PENALTY,
+  TAX_PER_JOB,
   TAX_PER_RESIDENT,
 } from "./config";
 import { cloneState } from "./commands";
 import { addTo, averageRank, minRank, take, totalAtLeast } from "./inventory";
-import { RANKS, type Building, type CityState, type CycleReport, type Inventory, type Rank } from "./types";
-import { connectedRoads, isRoadConnected, utcDayKey } from "./world";
+import { computePower, plantCapacities, type PowerResult } from "./power";
+import { buildingStatus, laborStats } from "./status";
+import { RANKS, type Building, type CityState, type CycleReport, type Rank } from "./types";
+import { cityYear, rng, roadAccess, utcDayKey } from "./world";
+import { developZones } from "./zones";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
 export function rankForStreak(streak: number): Rank {
@@ -24,46 +28,148 @@ export function effectiveStreak(s: CityState, now: number): number {
   return s.streak;
 }
 
-export interface BuildingStatus {
-  connected: boolean;
-  staffed: number;
-  required: number;
-  /** 0..1 — fração de operação (precisa de estrada e trabalhadores). */
-  efficiency: number;
-}
+/** Capacidade de moradia. */
+export const housingCapacity = (s: CityState) => laborStats(s).housing;
 
-/** Status de cada construção: conexão viária e alocação de trabalhadores (por ordem de id). */
-export function buildingStatus(s: CityState): Map<number, BuildingStatus> {
-  const network = connectedRoads(s);
-  const out = new Map<number, BuildingStatus>();
-  let freeWorkers = s.population;
-  const ordered = [...s.buildings].sort((a, b) => a.id - b.id);
-  for (const b of ordered) {
-    const def = BUILDINGS[b.type];
-    const connected = !def.needsRoad || isRoadConnected(s, b, network);
-    let staffed = 0;
-    if (connected && def.workers > 0) {
-      staffed = Math.min(def.workers, freeWorkers);
-      freeWorkers -= staffed;
-    }
-    const efficiency = !connected ? 0 : def.workers === 0 ? 1 : staffed / def.workers;
-    out.set(b.id, { connected, staffed, required: def.workers, efficiency });
-  }
-  return out;
-}
-
-export function housingCapacity(s: CityState, status = buildingStatus(s)): number {
-  let cap = 0;
-  for (const b of s.buildings) {
-    const h = BUILDINGS[b.type].housing;
-    if (h && status.get(b.id)?.connected) cap += h;
-  }
-  return cap;
-}
-
-const addInv = (inv: Inventory, res: Parameters<typeof addTo>[1], taken: Partial<Record<Rank, number>>) => {
+const addTaken = (inv: CycleReport["consumed"], res: Parameters<typeof addTo>[1], taken: Partial<Record<Rank, number>>) => {
   for (const r of RANKS) addTo(inv, res, r, taken[r] ?? 0);
 };
+
+const byId = (bs: Building[]) => [...bs].sort((a, b) => a.id - b.id);
+
+// ───────────────────────── Pipeline de sistemas ─────────────────────────
+// Cada fase do roadmap acrescenta sistemas aqui. A ordem importa e é documentada.
+
+interface CycleContext {
+  s: CityState;
+  report: CycleReport;
+  rank: Rank;
+  rand: () => number;
+  power?: PowerResult;
+  status?: ReturnType<typeof buildingStatus>;
+}
+
+type CycleSystem = (ctx: CycleContext) => void;
+
+/** 1) Lotes crescem/declinam com base em energia, acesso viário e demanda (estimativa pré-ciclo). */
+const zoneGrowthSystem: CycleSystem = (ctx) => {
+  const power = computePower(ctx.s);
+  const r = developZones(ctx.s, { rank: ctx.rank, rand: ctx.rand, powered: power.powered, access: roadAccess(ctx.s) });
+  ctx.report.zones = { grown: r.grown, declined: r.declined };
+};
+
+/** 2) Mudança: com comida no armazém (ou cidade vazia), moradores chegam antes do turno de trabalho. */
+const moveInSystem: CycleSystem = ({ s }) => {
+  const cap = laborStats(s).housing;
+  const hasFood = totalAtLeast(s.inventory, "food") >= Math.ceil(s.population * FOOD_PER_RESIDENT) + 1;
+  if (s.population === 0 || hasFood) {
+    s.population = Math.min(cap, s.population + Math.max(8, Math.ceil(cap * 0.5)));
+  }
+  s.population = Math.min(s.population, cap);
+};
+
+/** 3) Usinas queimam combustível (o Rank define a eficiência) e a rede é distribuída. */
+const powerSystem: CycleSystem = (ctx) => {
+  const { s, report } = ctx;
+  const status = buildingStatus(s);
+  const fuelRanks = new Map<number, Rank | null>();
+  for (const b of byId(s.buildings)) {
+    const fuel = BUILDINGS[b.type].generates?.fuel;
+    if (!fuel) continue;
+    if ((status.get(b.id)?.efficiency ?? 0) <= 0) {
+      fuelRanks.set(b.id, null);
+      continue;
+    }
+    const taken = take(s.inventory, fuel.resource, fuel.qty, { prefer: "high" });
+    fuelRanks.set(b.id, taken ? averageRank(taken) : null);
+    if (taken) addTaken(report.consumed, fuel.resource, taken);
+  }
+  ctx.power = computePower(s, plantCapacities(s, fuelRanks));
+  ctx.status = buildingStatus(s, ctx.power.powered);
+  report.power = { capacity: ctx.power.capacity, demand: ctx.power.demand, brownout: ctx.power.brownout };
+};
+
+/** 4) Extração: a pureza do lote vem da qualidade do foco. */
+const extractionSystem: CycleSystem = ({ s, report, rank, status }) => {
+  const biome = BIOMES[s.biome];
+  for (const b of byId(s.buildings)) {
+    const def = BUILDINGS[b.type];
+    const eff = status!.get(b.id)!.efficiency;
+    if (!def.produces || eff <= 0) continue;
+    const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff);
+    addTo(s.inventory, def.produces.resource, rank, qty);
+    addTo(report.produced, def.produces.resource, rank, qty);
+  }
+};
+
+/** 5) Refino: rank de saída = min(rank médio do insumo, Tech Tier); insumo ruim gera perda. */
+const refiningSystem: CycleSystem = ({ s, report, status }) => {
+  for (const b of byId(s.buildings)) {
+    const p = BUILDINGS[b.type].processes;
+    const eff = status!.get(b.id)!.efficiency;
+    if (!p || eff <= 0) continue;
+    const inputQty = Math.max(1, Math.floor(p.inputQty * eff));
+    const taken = take(s.inventory, p.input, inputQty, { prefer: "high" });
+    if (!taken) continue;
+    addTaken(report.consumed, p.input, taken);
+    const inRank = averageRank(taken);
+    const gross = Math.round((p.outputQty * inputQty) / p.inputQty);
+    const out = Math.round(gross * (1 - WASTE_BY_RANK[inRank]));
+    const outRank = minRank(inRank, p.tierCap);
+    addTo(s.inventory, p.output, outRank, out);
+    addTo(report.produced, p.output, outRank, out);
+    addTo(report.wasted, p.output, outRank, gross - out);
+  }
+};
+
+/** 6) População come (ranks baixos primeiro); moradores e empregos de C/I pagam impostos. */
+const economySystem: CycleSystem = ({ s, report, status }) => {
+  const foodNeeded = Math.ceil(s.population * FOOD_PER_RESIDENT);
+  const available = totalAtLeast(s.inventory, "food");
+  const fed = foodNeeded === 0 || available >= foodNeeded;
+  if (foodNeeded > 0) {
+    const eaten = take(s.inventory, "food", Math.min(foodNeeded, available), { prefer: "low" });
+    if (eaten) addTaken(report.consumed, "food", eaten);
+  }
+  report.starving = !fed;
+
+  const labor = laborStats(s, status);
+  report.jobs = {
+    total: labor.totalJobs,
+    filled: labor.publicFilled + labor.zoneFilled,
+    unemployed: labor.unemployed,
+  };
+  const taxBonus = s.buildings.reduce((acc, b) => {
+    const bonus = BUILDINGS[b.type].taxBonus ?? 0;
+    return acc + (status!.get(b.id)!.connected ? bonus : 0);
+  }, 0);
+  const base = s.population * TAX_PER_RESIDENT * (fed ? 1 : 0.5) + labor.zoneFilled * TAX_PER_JOB;
+  report.taxes = Math.floor(base * (1 + taxBonus));
+};
+
+/** 7) Manutenção: estradas e construções custam a cada ciclo concluído. */
+const upkeepSystem: CycleSystem = ({ s, report }) => {
+  report.upkeep = s.buildings.reduce((acc, b) => acc + BUILDINGS[b.type].upkeep, 0);
+  report.netMoney = report.taxes - report.upkeep;
+  s.money += report.netMoney;
+};
+
+/** 8) Fome: parte dos moradores vai embora. */
+const starvationSystem: CycleSystem = ({ s, report }) => {
+  if (report.starving) s.population = Math.floor(s.population * 0.9);
+  report.populationAfter = s.population;
+};
+
+export const CYCLE_SYSTEMS: CycleSystem[] = [
+  zoneGrowthSystem,
+  moveInSystem,
+  powerSystem,
+  extractionSystem,
+  refiningSystem,
+  economySystem,
+  upkeepSystem,
+  starvationSystem,
+];
 
 /**
  * Resolve um ciclo de foco concluído. Função pura: (estado, agora) → novo estado + relatório.
@@ -88,6 +194,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
   const report: CycleReport = {
     rank,
     streak: next.streak,
+    year: cityYear(next),
     rewarded,
     produced: {},
     consumed: {},
@@ -98,76 +205,17 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
     populationAfter: s.population,
     starving: false,
     netMoney: 0,
+    power: { capacity: 0, demand: 0, brownout: false },
+    zones: { grown: 0, declined: 0 },
+    jobs: { total: 0, filled: 0, unemployed: 0 },
   };
   // Acima do limite diário: o ciclo conta, mas a cidade não roda (nem cobra manutenção).
   if (!rewarded) return { state: next, report };
 
-  // 0) Mudança: com comida no armazém (ou cidade vazia), novos moradores chegam
-  //    ANTES do turno de trabalho — assim o primeiro ciclo já produz.
-  const cap = housingCapacity(next);
-  const hasFood = totalAtLeast(next.inventory, "food") >= Math.ceil(next.population * FOOD_PER_RESIDENT) + 1;
-  if (next.population === 0 || hasFood) {
-    next.population = Math.min(cap, next.population + Math.max(8, Math.ceil(cap * 0.5)));
-  }
-  next.population = Math.min(next.population, cap);
-
-  const status = buildingStatus(next);
-  const ordered: Building[] = [...next.buildings].sort((a, b) => a.id - b.id);
-  const biome = BIOMES[next.biome];
-
-  // 1) Extração: a pureza do lote vem da qualidade do foco.
-  for (const b of ordered) {
-    const def = BUILDINGS[b.type];
-    const eff = status.get(b.id)!.efficiency;
-    if (!def.produces || eff <= 0) continue;
-    const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff);
-    addTo(next.inventory, def.produces.resource, rank, qty);
-    addTo(report.produced, def.produces.resource, rank, qty);
-  }
-
-  // 2) Refino: rank de saída = min(rank médio do insumo, Tech Tier); insumo ruim gera perda.
-  for (const b of ordered) {
-    const p = BUILDINGS[b.type].processes;
-    const eff = status.get(b.id)!.efficiency;
-    if (!p || eff <= 0) continue;
-    const inputQty = Math.max(1, Math.floor(p.inputQty * eff));
-    const taken = take(next.inventory, p.input, inputQty, { prefer: "high" });
-    if (!taken) continue;
-    addInv(report.consumed, p.input, taken);
-    const inRank = averageRank(taken);
-    const gross = Math.round((p.outputQty * inputQty) / p.inputQty);
-    const out = Math.round(gross * (1 - WASTE_BY_RANK[inRank]));
-    const outRank = minRank(inRank, p.tierCap);
-    addTo(next.inventory, p.output, outRank, out);
-    addTo(report.produced, p.output, outRank, out);
-    addTo(report.wasted, p.output, outRank, gross - out);
-  }
-
-  // 3) População consome comida (ranks baixos primeiro) e paga impostos.
-  const foodNeeded = Math.ceil(next.population * FOOD_PER_RESIDENT);
-  const fed = foodNeeded === 0 || totalAtLeast(next.inventory, "food") >= foodNeeded;
-  if (foodNeeded > 0) {
-    const eaten = take(next.inventory, "food", Math.min(foodNeeded, totalAtLeast(next.inventory, "food")), {
-      prefer: "low",
-    });
-    if (eaten) addInv(report.consumed, "food", eaten);
-  }
-  report.starving = !fed;
-  const taxBonus = ordered.reduce((acc, b) => {
-    const bonus = BUILDINGS[b.type].taxBonus ?? 0;
-    return acc + (status.get(b.id)!.connected ? bonus : 0);
-  }, 0);
-  report.taxes = Math.floor(next.population * TAX_PER_RESIDENT * (fed ? 1 : 0.5) * (1 + taxBonus));
-
-  // 4) Manutenção: estradas e construções custam a cada ciclo concluído.
-  report.upkeep = ordered.reduce((acc, b) => acc + BUILDINGS[b.type].upkeep, 0);
-  next.money += report.taxes - report.upkeep;
-  report.netMoney = report.taxes - report.upkeep;
-
-  // 5) Fome: parte dos moradores vai embora.
-  if (!fed) next.population = Math.floor(next.population * 0.9);
-  report.populationAfter = next.population;
-
+  // Seed por cidade + ciclo: o mesmo ciclo sempre gera o mesmo resultado (cliente = servidor).
+  const rand = rng((next.seed ^ Math.imul(next.cyclesCompleted, 0x9e3779b1)) >>> 0);
+  const ctx: CycleContext = { s: next, report, rank, rand };
+  for (const system of CYCLE_SYSTEMS) system(ctx);
   return { state: next, report };
 }
 

@@ -1,22 +1,92 @@
-import { BUILDINGS } from "./catalog";
+import { BUILDINGS, WIRE_COST, ZONES } from "./catalog";
+import { MAX_ZONE_AREA } from "./config";
 import { take, totalAtLeast } from "./inventory";
-import type { CityState, Command } from "./types";
+import { DIRS4 } from "./grid";
+import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
+import { lockReason } from "./unlocks";
 import { buildingAt, idx, inBounds } from "./world";
 
 export type CommandResult = { ok: true; state: CityState } | { ok: false; error: string };
 
 export const cloneState = (s: CityState): CityState => structuredClone(s);
 
+const isInt = (v: unknown): v is number => Number.isInteger(v);
+
+export interface ZoneArea {
+  tiles: number[];
+  cost: number;
+}
+
+/** Tiles que um comando de zoneamento realmente altera, e quanto custa. */
+export function zoneArea(s: CityState, cmd: Extract<Command, { type: "zone" }>): ZoneArea | string {
+  const { x0, y0, x1, y1 } = cmd;
+  if (![x0, y0, x1, y1].every(isInt) || !inBounds(s, x0, y0) || !inBounds(s, x1, y1)) return "Fora do mapa";
+  const [ax, bx] = [Math.min(x0, x1), Math.max(x0, x1)];
+  const [ay, by] = [Math.min(y0, y1), Math.max(y0, y1)];
+  if ((bx - ax + 1) * (by - ay + 1) > MAX_ZONE_AREA) return `Área máxima: ${MAX_ZONE_AREA} tiles`;
+
+  const occupied = new Set(s.buildings.map((b) => idx(s, b.x, b.y)));
+  const code: ZoneCode = cmd.zone === "none" ? ZONE.NONE : ZONE[cmd.zone];
+  const density = cmd.dense ? 1 : 0;
+  const tiles: number[] = [];
+  let cost = 0;
+  for (let y = ay; y <= by; y++)
+    for (let x = ax; x <= bx; x++) {
+      const i = idx(s, x, y);
+      // Água, construções, linhas e lotes já desenvolvidos ficam de fora.
+      if (s.terrain[i] !== 0 || occupied.has(i) || s.wires[i] || s.zoneLevel[i] > 0) continue;
+      if (s.zoneType[i] === code && (code === ZONE.NONE || s.zoneDensity[i] === density)) continue;
+      tiles.push(i);
+      if (cmd.zone !== "none") cost += ZONES[cmd.zone].cost[density];
+    }
+  return { tiles, cost };
+}
+
 /** Verifica se um comando é válido sem alterar o estado. */
 export function validateCommand(s: CityState, cmd: Command): string | null {
-  if (!Number.isInteger(cmd.x) || !Number.isInteger(cmd.y) || !inBounds(s, cmd.x, cmd.y)) {
-    return "Fora do mapa";
+  if (cmd.type === "zone") {
+    if (cmd.zone !== "none" && !(cmd.zone in ZONES)) return "Zona inválida";
+    if (cmd.dense && cmd.zone !== "none") {
+      const lock = lockReason(ZONES[cmd.zone].denseRequires, s);
+      if (lock) return `Zona densa: ${lock.toLowerCase()}`;
+    }
+    const area = zoneArea(s, cmd);
+    if (typeof area === "string") return area;
+    if (area.tiles.length === 0) return "Nada a zonear nessa área";
+    if (s.money < area.cost) return "Dinheiro insuficiente";
+    return null;
   }
+
+  if (!isInt(cmd.x) || !isInt(cmd.y) || !inBounds(s, cmd.x, cmd.y)) return "Fora do mapa";
+  const i = idx(s, cmd.x, cmd.y);
+  const here = buildingAt(s, cmd.x, cmd.y);
+
+  if (cmd.type === "wire") {
+    if (s.terrain[i] !== 0) return "Linhas não passam sobre a água";
+    if (s.wires[i]) return "Já existe uma linha aqui";
+    if (here && here.type !== "road") return "Linhas só cruzam estradas ou terreno livre";
+    if (s.zoneLevel[i] > 0) return "Lote ocupado";
+    if (s.money < WIRE_COST) return "Dinheiro insuficiente";
+    return null;
+  }
+
   if (cmd.type === "build") {
     const def = BUILDINGS[cmd.building];
     if (!def || !def.buildable) return "Construção inválida";
-    if (s.terrain[idx(s, cmd.x, cmd.y)] !== 0) return "Não dá para construir na água";
-    if (buildingAt(s, cmd.x, cmd.y)) return "Tile ocupado";
+    const lock = lockReason(def.requires, s);
+    if (lock) return lock;
+    if (s.terrain[i] !== 0) return "Não dá para construir na água";
+    if (here) return "Tile ocupado";
+    if (s.zoneLevel[i] > 0) return "Lote já desenvolvido — demolir primeiro";
+    if (s.wires[i] && cmd.building !== "road") return "Há uma linha de transmissão aqui";
+    if (def.needsWaterAdjacent) {
+      const touchesWater = DIRS4.some(([dx, dy]) => {
+        const x = cmd.x + dx;
+        const y = cmd.y + dy;
+        return inBounds(s, x, y) && s.terrain[idx(s, x, y)] === 1;
+      });
+      if (!touchesWater) return "Precisa encostar na água";
+    }
     if (s.money < def.cost) return "Dinheiro insuficiente";
     for (const m of def.materials ?? []) {
       if (totalAtLeast(s.inventory, m.resource, m.minRank) < m.qty) {
@@ -25,10 +95,10 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     }
     return null;
   }
+
   if (cmd.type === "demolish") {
-    const b = buildingAt(s, cmd.x, cmd.y);
-    if (!b) return "Nada para demolir";
-    if (b.type === "cityhall") return "A prefeitura não pode ser demolida";
+    if (here?.type === "cityhall") return "A prefeitura não pode ser demolida";
+    if (!here && !s.wires[i] && !s.zoneType[i]) return "Nada para demolir";
     return null;
   }
   return "Comando desconhecido";
@@ -39,16 +109,42 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
   const error = validateCommand(s, cmd);
   if (error) return { ok: false, error };
   const next = cloneState(s);
-  if (cmd.type === "build") {
+
+  if (cmd.type === "zone") {
+    const area = zoneArea(next, cmd) as ZoneArea;
+    const code: ZoneCode = cmd.zone === "none" ? ZONE.NONE : ZONE[cmd.zone];
+    for (const i of area.tiles) {
+      next.zoneType[i] = code;
+      next.zoneDensity[i] = code === ZONE.NONE ? 0 : cmd.dense ? 1 : 0;
+      next.zoneLevel[i] = 0;
+    }
+    next.money -= area.cost;
+  } else if (cmd.type === "wire") {
+    next.wires[idx(next, cmd.x, cmd.y)] = 1;
+    next.money -= WIRE_COST;
+  } else if (cmd.type === "build") {
     const def = BUILDINGS[cmd.building];
+    const i = idx(next, cmd.x, cmd.y);
     next.money -= def.cost;
     for (const m of def.materials ?? []) {
       // Gasta o mínimo de qualidade necessário, preservando o excedente premium.
       take(next.inventory, m.resource, m.qty, { minRank: m.minRank, prefer: "low" });
     }
+    // Obras públicas desfazem o zoneamento do tile (como no modelo clássico).
+    next.zoneType[i] = ZONE.NONE;
+    next.zoneDensity[i] = 0;
     next.buildings.push({ id: next.nextId++, type: cmd.building, x: cmd.x, y: cmd.y });
   } else {
-    next.buildings = next.buildings.filter((b) => !(b.x === cmd.x && b.y === cmd.y));
+    // Demolição em camadas: construção → prédio do lote → linha → zoneamento.
+    const i = idx(next, cmd.x, cmd.y);
+    const here = buildingAt(next, cmd.x, cmd.y);
+    if (here) next.buildings = next.buildings.filter((b) => b !== here && !(b.x === cmd.x && b.y === cmd.y));
+    else if (next.zoneLevel[i] > 0) next.zoneLevel[i] = 0;
+    else if (next.wires[i]) next.wires[i] = 0;
+    else {
+      next.zoneType[i] = ZONE.NONE;
+      next.zoneDensity[i] = 0;
+    }
   }
   next.version++;
   return { ok: true, state: next };

@@ -31,11 +31,23 @@ Para rodar o Supabase local com Docker: `npx supabase start` (o `supabase/config
 
 **Modelo de segurança:** o navegador só consegue **ler** a própria cidade (RLS). Toda escrita passa pelas rotas da API, que usam a chave secreta depois de validar os comandos e o tempo do ciclo. Assim, nem o console nem a chave pública permitem forjar dinheiro ou Rank S. Cada ciclo concluído ou abandonado também é registrado em `cycle_log` para auditoria.
 
-## Como jogar (MVP)
+## Como jogar
 
-1. Na **pausa**, construa: estradas ligadas à prefeitura, casas, fazendas, madeireiras, minas, serraria, fundição.
+1. Na **pausa**, planeje a cidade:
+   - **Estradas** ligadas à prefeitura.
+   - **Zonas** Residencial, Comercial e Industrial: arraste para zonear uma área. Zonas densas liberam com 40 habitantes.
+   - **Linhas de transmissão** e **usinas**. A prefeitura gera 12 MW; depois vêm a termelétrica (a madeira de Rank alto rende mais), a eólica e a hidrelétrica (a partir de 1910).
+   - **Produção:** fazenda, madeireira, mina, serraria e fundição.
 2. Clique em **Iniciar foco**. As obras feitas offline são enviadas e revalidadas pelo servidor; durante o foco a cidade fica só para leitura.
-3. Ao fim do ciclo, o servidor resolve a produção e mostra o relatório: rank do lote, desperdício, impostos e manutenção.
+3. Ao fim do ciclo, **1 ano se passa**:
+   - os lotes com estrada (a até 3 tiles), energia e demanda crescem sozinhos;
+   - a extração usa o Rank do foco;
+   - impostos e manutenção são cobrados.
+
+O **foco acelera a cidade**: um Rank mais alto desenvolve mais lotes por ciclo.
+O indicador **R/C/I** mostra que tipo de zona a cidade pede.
+
+O roadmap completo de funcionalidades está em [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 | Sequência | 1 | 2 | 3 | 4 | 5+ |
 |-----------|---|---|---|---|----|
@@ -66,6 +78,7 @@ src/components/ HUD retrô em React + Tailwind
 
 - [x] Supabase: auth anônima + e-mail, `PlayerRepo` em Postgres com RLS
 - [ ] Mercado multiplayer com livro de ofertas por tipo/Rank e comerciante NPC
-- [ ] Energia, Tech Tree e mais biomas/recursos
+- [x] Fase 0 (preparação técnica) e Fase 1 (zoneamento + energia) do [roadmap](docs/ROADMAP.md)
+- [ ] Fases 2–10 do roadmap (orçamento, água, serviços, transporte, eras…)
 - [ ] Sprites pixel art no lugar das formas procedurais
 - [ ] Galeria de arte e páginas públicas da cidade (SSR)

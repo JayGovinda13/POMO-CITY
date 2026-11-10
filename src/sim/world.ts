@@ -1,6 +1,7 @@
 import { BIOMES } from "./catalog";
-import { MAP_SIZE, STARTING_MONEY } from "./config";
-import type { BiomeId, Building, CityState, Terrain } from "./types";
+import { MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_MONEY } from "./config";
+import { bfsDistances } from "./grid";
+import { CURRENT_SCHEMA_VERSION, type BiomeId, type Building, type CityState, type Terrain } from "./types";
 
 /** PRNG determinístico (mulberry32). */
 export function rng(seed: number) {
@@ -19,6 +20,9 @@ export const inBounds = (s: Pick<CityState, "width" | "height">, x: number, y: n
   x >= 0 && y >= 0 && x < s.width && y < s.height;
 
 export const utcDayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+/** Calendário: 1 ciclo concluído = 1 ano. */
+export const cityYear = (s: Pick<CityState, "cyclesCompleted">) => START_YEAR + s.cyclesCompleted;
 
 export function createCity(seed: number, now: number, biome?: BiomeId): CityState {
   const rand = rng(seed);
@@ -45,7 +49,9 @@ export function createCity(seed: number, now: number, biome?: BiomeId): CityStat
   }
 
   const cityhall: Building = { id: 1, type: "cityhall", x: cx, y: cy };
+  const n = width * height;
   return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     version: 1,
     seed,
     biome: chosen,
@@ -54,6 +60,10 @@ export function createCity(seed: number, now: number, biome?: BiomeId): CityStat
     terrain,
     buildings: [cityhall],
     nextId: 2,
+    zoneType: new Array(n).fill(0),
+    zoneDensity: new Array(n).fill(0),
+    zoneLevel: new Array(n).fill(0),
+    wires: new Array(n).fill(0),
     money: STARTING_MONEY,
     population: 0,
     inventory: { "food:C": 40 },
@@ -116,4 +126,12 @@ export function isRoadConnected(s: CityState, b: Building, network = connectedRo
     if (inBounds(s, x, y) && network.has(idx(s, x, y))) return true;
   }
   return false;
+}
+
+/**
+ * Distância de cada tile até a malha viária ligada à prefeitura (por terra), limitada a
+ * ROAD_ACCESS_DISTANCE. Regra clássica: só se constrói perto de um sistema de transporte.
+ */
+export function roadAccess(s: CityState, network = connectedRoads(s)): Int32Array {
+  return bfsDistances(s, network, (i) => s.terrain[i] === 0, ROAD_ACCESS_DISTANCE).dist;
 }

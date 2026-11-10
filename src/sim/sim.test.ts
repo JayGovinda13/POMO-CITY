@@ -28,9 +28,9 @@ const road = (x: number, y: number): Command => ({ type: "build", building: "roa
 describe("commands", () => {
   it("cria construções e debita o custo", () => {
     const s = city();
-    const { state, rejected } = applyCommands(s, [road(13, 12), { type: "build", building: "house", x: 14, y: 12 }]);
+    const { state, rejected } = applyCommands(s, [road(13, 12), { type: "build", building: "farm", x: 14, y: 12 }]);
     expect(rejected).toEqual([]);
-    expect(state.money).toBe(s.money - 10 - 50);
+    expect(state.money).toBe(s.money - 10 - 80);
     expect(state.buildings).toHaveLength(3);
     expect(s.buildings).toHaveLength(1); // original intacto
   });
@@ -67,9 +67,9 @@ describe("adjacência de estradas", () => {
     const s = city();
     const { state } = applyCommands(s, [
       road(13, 12),
-      { type: "build", building: "house", x: 14, y: 12 }, // ligada
+      { type: "build", building: "farm", x: 14, y: 12 }, // ligada
       road(2, 2),
-      { type: "build", building: "house", x: 3, y: 2 }, // estrada isolada
+      { type: "build", building: "farm", x: 3, y: 2 }, // estrada isolada
     ]);
     const st = buildingStatus(state);
     const [, , h1, , h2] = state.buildings;
@@ -109,8 +109,9 @@ describe("economia do ciclo", () => {
     s.money = 10_000;
     const cmds: Command[] = [];
     for (let x = 13; x <= 20; x++) cmds.push(road(x, 12));
-    cmds.push({ type: "build", building: "house", x: 13, y: 11 });
-    cmds.push({ type: "build", building: "house", x: 14, y: 11 });
+    // Linha liga a prefeitura (12,12) à fileira de lotes/construções em y = 11.
+    cmds.push({ type: "wire", x: 12, y: 11 });
+    cmds.push({ type: "zone", zone: "R", dense: false, x0: 13, y0: 11, x1: 14, y1: 11 });
     cmds.push({ type: "build", building: "lumberyard", x: 15, y: 11 });
     cmds.push({ type: "build", building: "sawmill", x: 16, y: 11 });
     cmds.push({ type: "build", building: "farm", x: 17, y: 11 });
@@ -119,9 +120,17 @@ describe("economia do ciclo", () => {
     return st.state;
   }
 
-  it("extrai com o rank do foco, aplica bioma e cobra manutenção", () => {
-    let s = productiveCity();
+  /** Lotes residenciais já desenvolvidos (2 × nível 2 = 16 moradores). */
+  function developed() {
+    const s = productiveCity();
+    s.zoneLevel[11 * s.width + 13] = 2;
+    s.zoneLevel[11 * s.width + 14] = 2;
     s.population = 16;
+    return s;
+  }
+
+  it("extrai com o rank do foco, aplica bioma e cobra manutenção", () => {
+    let s = developed();
     s.streak = 4; // próximo ciclo = S
     const { state, report } = resolveCycle(s, T0);
     expect(report.rank).toBe("S");
@@ -136,12 +145,12 @@ describe("economia do ciclo", () => {
   });
 
   it("insumo de baixa pureza gera desperdício", () => {
-    let s = productiveCity();
-    s.population = 16;
+    let s = developed();
     s.inventory = { "food:C": 100, "wood:D": 50 };
     s.biome = "plains";
     // Sem a madeireira operando, só a madeira D estocada chega à serraria.
     s.buildings = s.buildings.filter((b) => b.type !== "lumberyard");
+    s.wires[11 * s.width + 15] = 1; // mantém a rede elétrica contínua
     const { report } = resolveCycle(s, T0);
     expect(report.consumed["wood:D"]).toBe(4);
     expect(report.produced["planks:D"]).toBe(2); // 4 × (1 - 0.4) = 2.4 → 2

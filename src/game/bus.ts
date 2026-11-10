@@ -4,6 +4,7 @@
 type Events = {
   "tile:click": { x: number; y: number };
   "tile:hover": { x: number; y: number } | null;
+  "area:select": { x0: number; y0: number; x1: number; y1: number };
 };
 
 type Handler<K extends keyof Events> = (payload: Events[K]) => void;

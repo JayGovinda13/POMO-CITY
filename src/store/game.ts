@@ -3,9 +3,30 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { ensureSession } from "@/lib/supabase/client";
-import { applyCommand, applyCommands, type BuildingType, type CityState, type Command, type CycleReport } from "@/sim";
+import {
+  applyCommand,
+  applyCommands,
+  migrateState,
+  type BuildingType,
+  type CityState,
+  type Command,
+  type CycleReport,
+  type ZoneKind,
+} from "@/sim";
 
-export type Tool = BuildingType | "demolish" | null;
+/** Ferramentas de zona: "zone-R-light", "zone-I-dense", "zone-none-light" (remover zona). */
+export type ZoneTool = `zone-${ZoneKind | "none"}-${"light" | "dense"}`;
+export type Tool = BuildingType | "demolish" | "wire" | ZoneTool | null;
+export type Overlay = "none" | "power" | "zones";
+
+export function parseZoneTool(tool: Tool): { zone: ZoneKind | "none"; dense: boolean } | null {
+  if (!tool || !tool.startsWith("zone-")) return null;
+  const [, zone, density] = tool.split("-");
+  return { zone: zone as ZoneKind | "none", dense: density === "dense" };
+}
+
+/** Ferramentas que funcionam arrastando um retângulo (as demais "pintam" tile a tile). */
+export const isAreaTool = (tool: Tool) => parseZoneTool(tool) !== null;
 export type Phase = "loading" | "idle" | "focus" | "break";
 
 interface ServerConfig {
@@ -39,6 +60,7 @@ interface GameStore {
   clockSkew: number;
   config: ServerConfig | null;
   tool: Tool;
+  overlay: Overlay;
   report: CycleReport | null;
   toast: string | null;
   busy: boolean;
@@ -47,7 +69,11 @@ interface GameStore {
   /** Troca de conta: descarta a fila local e recarrega a cidade do novo usuário. */
   reset(): Promise<void>;
   setTool(tool: Tool): void;
+  setOverlay(overlay: Overlay): void;
   clickTile(x: number, y: number): void;
+  selectArea(x0: number, y0: number, x1: number, y1: number): void;
+  /** Aplica um comando localmente e o enfileira para o servidor. */
+  queue(cmd: Command): boolean;
   startFocus(): Promise<void>;
   completeFocus(): Promise<void>;
   abandonFocus(): Promise<void>;
@@ -83,6 +109,7 @@ export const useGame = create<GameStore>()(
       const accept = (snap: ServerSnapshot, pending: Command[] = get().pending) => {
         const clockSkew = snap.serverNow - Date.now();
         const phase: Phase = snap.activeCycle ? "focus" : get().phase === "focus" ? "idle" : get().phase;
+        snap.state = migrateState(snap.state);
         set({
           serverState: snap.state,
           config: snap.config,
@@ -102,6 +129,7 @@ export const useGame = create<GameStore>()(
         clockSkew: 0,
         config: null,
         tool: "road",
+        overlay: "none",
         report: null,
         toast: null,
         busy: false,
@@ -126,29 +154,47 @@ export const useGame = create<GameStore>()(
           set({ tool });
         },
 
-        clickTile(x, y) {
-          const { tool, city, phase, pending, serverState } = get();
-          if (!city || !tool) return;
+        setOverlay(overlay) {
+          set({ overlay });
+        },
+
+        queue(cmd) {
+          const { city, phase } = get();
+          if (!city) return false;
           if (phase === "focus") {
             get().showToast("Foco! A cidade só aceita obras na pausa.");
-            return;
+            return false;
           }
-          const cmd: Command = tool === "demolish" ? { type: "demolish", x, y } : { type: "build", building: tool, x, y };
           const r = applyCommand(city, cmd);
           if (!r.ok) {
             get().showToast(r.error);
-            return;
+            return false;
           }
-          // Desfazer obra ainda não sincronizada: remove o comando da fila em vez de enfileirar demolição.
-          if (cmd.type === "demolish") {
+          set({ pending: [...get().pending, cmd], city: r.state });
+          return true;
+        },
+
+        clickTile(x, y) {
+          const { tool, pending, serverState, city } = get();
+          if (!tool || isAreaTool(tool)) return;
+          if (tool === "demolish") {
+            // Desfazer obra ainda não sincronizada: remove o comando da fila em vez de enfileirar demolição.
             const i = pending.findLastIndex((c) => c.type === "build" && c.x === x && c.y === y);
-            if (i >= 0) {
-              const next = pending.filter((_, j) => j !== i);
-              set(derive(serverState, next));
+            const stillThere = city?.buildings.some((b) => b.x === x && b.y === y);
+            if (i >= 0 && stillThere) {
+              set(derive(serverState, pending.filter((_, j) => j !== i)));
               return;
             }
+            get().queue({ type: "demolish", x, y });
+            return;
           }
-          set({ pending: [...pending, cmd], city: r.state });
+          if (tool === "wire") get().queue({ type: "wire", x, y });
+          else get().queue({ type: "build", building: tool as BuildingType, x, y });
+        },
+
+        selectArea(x0, y0, x1, y1) {
+          const z = parseZoneTool(get().tool);
+          if (z) get().queue({ type: "zone", zone: z.zone, dense: z.dense, x0, y0, x1, y1 });
         },
 
         async startFocus() {
@@ -230,9 +276,20 @@ export const useGame = create<GameStore>()(
     },
     {
       name: "pomo-city",
-      version: 1,
+      version: 2,
+      // v1 → v2: a ferramenta "casa" deixou de existir (agora é zona residencial).
+      migrate: (persisted) => {
+        const p = (persisted ?? {}) as Record<string, unknown>;
+        return { ...p, tool: p.tool === "house" ? "zone-R-light" : p.tool } as never;
+      },
       // Offline-first: só a fila da pausa e a fase ficam no navegador; o estado oficial vem do servidor.
-      partialize: (s) => ({ pending: s.pending, phase: s.phase === "break" ? "break" : "idle", endsAt: s.phase === "break" ? s.endsAt : null, tool: s.tool }),
+      partialize: (s) => ({
+        pending: s.pending,
+        phase: s.phase === "break" ? "break" : "idle",
+        endsAt: s.phase === "break" ? s.endsAt : null,
+        tool: s.tool,
+        overlay: s.overlay,
+      }),
     },
   ),
 );
