@@ -32,6 +32,11 @@ function useCurrentTrack() {
   );
 }
 
+/** Toca o sino do fim do ciclo (se o jogador não desligou). */
+export function ringBell(kind: "focus" | "break") {
+  if (settings.bell) music.bell(kind);
+}
+
 /**
  * Liga a música no primeiro clique/tecla (o navegador só deixa tocar som depois de um gesto)
  * e abaixa durante o foco, se o jogador pediu.
@@ -177,6 +182,17 @@ export function MusicButton({ variant = "icon" }: { variant?: "icon" | "full" })
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={s.muteInFocus} onChange={(e) => setSettings({ muteInFocus: e.target.checked })} />
             Silenciar durante o foco
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={s.bell}
+              onChange={(e) => {
+                setSettings({ bell: e.target.checked });
+                if (e.target.checked) music.bell("break"); // prévia do som
+              }}
+            />
+            Sino ao fim do foco e da pausa
           </label>
         </div>
       )}

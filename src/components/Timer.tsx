@@ -5,6 +5,7 @@ import { useGame } from "@/store/game";
 import { effectiveStreak, rankForStreak } from "@/sim";
 import { RankBadge } from "./ranks";
 import { FireFlame } from "./icons";
+import { ringBell } from "./Music";
 
 function beep() {
   try {
@@ -56,6 +57,16 @@ export function Timer() {
   }, []);
 
   const remaining = endsAt ? endsAt - now : 0;
+
+  // Sino: uma vez por fim de foco/pausa (o efeito abaixo pode repetir enquanto o servidor responde).
+  const rung = useRef<number | null>(null);
+  useEffect(() => {
+    if (!endsAt || remaining > 0 || rung.current === endsAt) return;
+    if (phase === "focus" || phase === "break") {
+      rung.current = endsAt;
+      ringBell(phase);
+    }
+  }, [phase, endsAt, remaining]);
 
   useEffect(() => {
     if (!endsAt || remaining > 0) return;

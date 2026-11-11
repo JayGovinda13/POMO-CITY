@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeServices, computeTraffic, computeWater, type CityState } from "@/sim";
 import { isAreaTool, useGame } from "@/store/game";
 import { bus } from "./bus";
+import { CityLife } from "./CityLife";
 
 const TW = 32; // largura do tile isométrico
 const TH = 16; // altura do tile isométrico
@@ -85,6 +86,8 @@ export class CityScene extends Phaser.Scene {
   private areaFrom: Tile | null = null;
   private panFrom: { x: number; y: number; sx: number; sy: number } | null = null;
   private unsubscribe?: () => void;
+  /** Carros, pedestres, trens e fumaça durante o foco. */
+  private life?: CityLife;
 
   constructor() {
     super("city");
@@ -105,6 +108,7 @@ export class CityScene extends Phaser.Scene {
     this.fxG = this.add.graphics().setDepth(6);
     this.overlayG = this.add.graphics().setDepth(7);
     this.hoverG = this.add.graphics().setDepth(8);
+    this.life = new CityLife(this, iso);
     this.cameras.main.setBackgroundColor("#1b1f3a");
     this.cameras.main.setZoom(ZOOMS[this.zoomIdx]);
     this.input.mouse?.disableContextMenu();
@@ -167,6 +171,13 @@ export class CityScene extends Phaser.Scene {
       this.cameras.main.setZoom(ZOOMS[this.zoomIdx]); // zoom inteiro mantém o pixel art nítido
     });
     // Câmera só pelo mouse (sem teclado): arrastar com o botão direito/do meio ou com a ferramenta Mover.
+  }
+
+  /** Quadro a quadro: a cidade só se mexe durante o foco (e não na visão subterrânea). */
+  update(_time: number, delta: number) {
+    const s = useGame.getState();
+    const active = s.phase === "focus" && !!s.city && s.overlay !== "water";
+    this.life?.update(delta, active);
   }
 
   private centerOn(city: CityState) {
@@ -257,6 +268,7 @@ export class CityScene extends Phaser.Scene {
     const { city } = useGame.getState();
     if (!city) return;
     setElevation(city);
+    this.life?.rebuild(city);
     if (!this.textures.exists("city")) return this.redrawShapes();
     this.terrainG.clear();
     this.buildG.clear();

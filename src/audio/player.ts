@@ -22,9 +22,11 @@ export interface MusicSettings {
   volume: number;
   /** Silenciar durante o foco (só toca no intervalo e no planejamento). */
   muteInFocus: boolean;
+  /** Sino ao terminar o foco e a pausa. */
+  bell: boolean;
 }
 
-export const DEFAULT_MUSIC: MusicSettings = { choice: "radio", volume: 0.5, muteInFocus: false };
+export const DEFAULT_MUSIC: MusicSettings = { choice: "radio", volume: 0.5, muteInFocus: false, bell: true };
 
 const LOOKAHEAD = 0.35;
 const LOOPS_PER_TRACK = 2;
@@ -67,6 +69,35 @@ class MusicPlayer {
 
   private emit() {
     for (const fn of this.listeners) fn(this.track);
+  }
+
+  private bellBus: GainNode | null = null;
+
+  /**
+   * Sino do fim do ciclo: três badaladas no fim do foco, uma suave no fim da pausa. Sai por um canal
+   * próprio, então toca mesmo com a música desligada ou silenciada durante o foco.
+   */
+  bell(kind: "focus" | "break") {
+    if (typeof window === "undefined") return;
+    if (!this.synth) {
+      try {
+        this.synth = new Synth();
+      } catch {
+        return;
+      }
+      this.applyVolume();
+    }
+    const ctx = this.synth.ctx as AudioContext;
+    if (ctx.state === "suspended") void ctx.resume();
+    if (!this.bellBus) {
+      this.bellBus = ctx.createGain();
+      this.bellBus.gain.value = 0.7;
+      this.bellBus.connect(ctx.destination);
+    }
+    const t = ctx.currentTime + 0.05;
+    // Mi6–Si5–Mi6 (fim do foco) ou um Sol5 suave (fim da pausa).
+    const notes = kind === "focus" ? [[0, 88, 1], [0.45, 83, 0.85], [0.9, 88, 1]] : [[0, 79, 0.6]];
+    for (const [dt, m, v] of notes) this.synth.play(this.bellBus, "bell", t + dt, m, 1, v);
   }
 
   /** Precisa ser chamado a partir de um gesto do usuário (política de autoplay). */

@@ -33,7 +33,9 @@ export type InstId =
   | "tanpura"
   | "tablaGe"
   | "tablaNa"
-  | "tablaTin";
+  | "tablaTin"
+  // Sino do fim do ciclo
+  | "bell";
 
 export const midiFreq = (m: number) => 440 * 2 ** ((m - 69) / 12);
 
@@ -428,6 +430,28 @@ export class Synth {
         }
         g.connect(dest);
         this.hit(dest, t, 0.015, 5000, "bandpass", 0.08 * v, 2);
+        break;
+      }
+      case "bell": {
+        // Sino em FM (razão inarmônica 3,5) com decaimento longo e um parcial de "metal".
+        const end = t + 3.2;
+        const car = this.osc("sine", f, t, end);
+        const mod = this.osc("sine", f * 3.5, t, end);
+        const idx = ctx.createGain();
+        idx.gain.setValueAtTime(f * 2.2, t);
+        idx.gain.exponentialRampToValueAtTime(f * 0.05, t + 1.6);
+        mod.connect(idx).connect(car.frequency);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.32 * v, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + 3);
+        car.connect(g);
+        const partial = this.osc("sine", f * 2.76, t, end);
+        const pg = ctx.createGain();
+        pg.gain.setValueAtTime(0.08 * v, t);
+        pg.gain.exponentialRampToValueAtTime(0.0005, t + 1.2);
+        partial.connect(pg).connect(g);
+        g.connect(dest);
         break;
       }
       case "kick": {
