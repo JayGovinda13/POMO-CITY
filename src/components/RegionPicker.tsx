@@ -74,7 +74,7 @@ export function RegionPicker() {
   };
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-10 grid place-items-center bg-black/60 p-3">
+    <div className="pointer-events-auto fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-3">
       <section className="retro-panel flex max-h-[92dvh] w-full max-w-2xl flex-col">
         <header className="retro-title">Fundar a cidade: onde ela vai viver?</header>
         <div className="flex gap-1 p-2 text-xs">
@@ -119,7 +119,8 @@ export function RegionPicker() {
             )}
           </div>
 
-          <div className="space-y-2 md:sticky md:top-0 md:self-start">
+          {/* No celular, a região escolhida, o mapa e o botão Fundar vêm antes da lista. */}
+          <div className={`space-y-2 md:sticky md:top-0 md:order-none md:self-start ${selected ? "order-first" : ""}`}>
             {selected ? <RegionPreview region={selected} /> : <p className="text-zinc-500">Escolha uma região para ver o clima.</p>}
             <p className="text-[11px] text-zinc-500">
               Só o clima é usado: o mapa da cidade é fictício. Não guardamos sua localização, apenas a região escolhida.

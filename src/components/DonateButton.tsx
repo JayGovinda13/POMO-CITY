@@ -60,7 +60,7 @@ function DonateModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-30 grid place-items-center bg-black/60 p-3">
+    <div className="pointer-events-auto fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-3">
       <section className="retro-panel max-h-[92dvh] w-full max-w-sm overflow-y-auto text-xs" role="dialog" aria-labelledby="donate-title">
         <header id="donate-title" className="retro-title flex">
           <Donate /> Apoie o POMO-CITY

@@ -92,9 +92,9 @@ export function Timer() {
   const nextRank = city ? rankForStreak(effectiveStreak(city, now) + 1) : null;
 
   return (
-    <div className="retro-panel pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 px-3 py-2">
+    <div className="retro-panel pointer-events-auto mx-auto flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
       <span className="text-zinc-300">{phase === "focus" ? "🍅 Foco" : phase === "break" ? "☕ Pausa" : "Pronto"}</span>
-      <span className="font-mono text-2xl tabular-nums text-amber-300">
+      <span className="font-mono text-xl tabular-nums text-amber-300 sm:text-2xl">
         {phase === "idle" || phase === "loading" ? fmt((config?.focusSeconds ?? 1500) * 1000) : fmt(remaining)}
       </span>
       {phase === "focus" ? (

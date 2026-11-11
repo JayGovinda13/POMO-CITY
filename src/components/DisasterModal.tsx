@@ -13,7 +13,7 @@ export function DisasterModal() {
   const lost = Object.entries(d.resourcesLost).filter(([, q]) => (q ?? 0) > 0);
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-20 grid place-items-center bg-black/60 p-4">
+    <div className="pointer-events-auto fixed inset-0 z-20 flex items-center justify-center bg-black/60 p-4">
       <section className="retro-panel w-full max-w-sm" role="alertdialog" aria-labelledby="disaster-title">
         <header id="disaster-title" className="retro-title" style={{ background: "linear-gradient(90deg, #7a1d1d, #a8402a)" }}>
           {ICON[d.kind]} {d.name}

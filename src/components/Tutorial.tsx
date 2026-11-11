@@ -156,7 +156,7 @@ export function Tutorial() {
 
   if (ask && !open) {
     return (
-      <div className="pointer-events-auto fixed inset-0 z-20 grid place-items-center bg-black/60 p-4">
+      <div className="pointer-events-auto fixed inset-0 z-20 flex items-center justify-center bg-black/60 p-4">
         <section className="retro-panel w-full max-w-sm text-xs" role="dialog" aria-labelledby="tutorial-ask">
           <header id="tutorial-ask" className="retro-title">
             Primeira vez por aqui?
@@ -197,7 +197,7 @@ export function Tutorial() {
   const s = STEPS[step];
   const last = step === STEPS.length - 1;
   return (
-    <div className="pointer-events-auto fixed inset-0 z-20 grid place-items-center bg-black/60 p-4">
+    <div className="pointer-events-auto fixed inset-0 z-20 flex items-center justify-center bg-black/60 p-4">
       <section className="retro-panel w-full max-w-md text-xs" role="dialog" aria-labelledby="tutorial-title">
         <header id="tutorial-title" className="retro-title flex">
           {s.title}

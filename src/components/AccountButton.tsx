@@ -79,7 +79,7 @@ export function AccountButton() {
         {anonymous ? "👤 Convidado" : `👤 ${user?.email}`}
       </button>
       {open && (
-        <div className="pointer-events-auto fixed inset-0 z-10 grid place-items-center bg-black/50 p-4">
+        <div className="pointer-events-auto fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4">
           <section className="retro-panel w-full max-w-sm">
             <header className="retro-title flex">
               Conta

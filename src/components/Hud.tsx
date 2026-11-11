@@ -123,20 +123,20 @@ export function Hud() {
   }, [city]);
 
   if (!city || !derived) {
-    return <div className="absolute inset-0 grid place-items-center text-sm">Carregando a cidade…</div>;
+    return <div className="absolute inset-0 flex items-center justify-center text-sm">Carregando a cidade…</div>;
   }
 
   const { power, status, labor, demand, access, weather, people, water, services, traffic } = derived;
   const region = city.regionId ? REGION_BY_ID[city.regionId] : null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col gap-2 p-2 text-xs">
+    <div className="pointer-events-none absolute inset-0 flex flex-col gap-1 p-1 pb-[calc(env(safe-area-inset-bottom)+4.5rem)] text-[11px] sm:gap-2 sm:p-2 sm:pb-2 sm:text-xs">
       {/* Barra superior: só o essencial; o resto fica nos ícones à direita. */}
-      <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1">
-        <strong className="flex items-center gap-1 tracking-widest text-amber-300" title="POMO-CITY">
-          <Logo size={20} /> {cityDisplayName(city)}
+      <div className="retro-panel pointer-events-auto flex flex-wrap items-center gap-x-2 gap-y-1 px-1.5 py-1 sm:gap-x-3 sm:px-2">
+        <strong className="flex min-w-0 max-w-[10rem] items-center gap-1 tracking-widest text-amber-300 sm:max-w-none" title="POMO-CITY">
+          <Logo size={20} /> <span className="truncate">{cityDisplayName(city)}</span>
         </strong>
-        <span title={`${region ? `${region.name} · ` : ""}${BIOMES[city.biome].name} · 1 ciclo de foco = 1 estação`}>
+        <span className="hidden sm:inline" title={`${region ? `${region.name} · ` : ""}${BIOMES[city.biome].name} · 1 ciclo de foco = 1 estação`}>
           <Calendar /> {weather ? `${weather.season} · ` : ""}
           {cityPeriodLabel(city)}
         </span>
@@ -158,25 +158,31 @@ export function Hud() {
           {water.shortage && " — falta!"}
         </span>
         <span
+          className="hidden sm:inline"
           title={`Educação (QE ${Math.round(city.eq)}/150): escolas levam até 90, faculdades até 140.\nExpectativa de vida: ${Math.round(city.lifeExpectancy)} anos (hospitais).\nCrime médio ${Math.round(services.avg.crime)} · poluição ${Math.round(services.avg.pollution)} · valor do solo ${Math.round(services.avg.landValue)}`}
         >
           <GraduationCap /> {Math.round(city.eq)} · <Heart /> {Math.round(city.lifeExpectancy)}a
         </span>
-        <DemandIndicator demand={demand} />
-        <span className="ml-auto flex items-center gap-1">
+        <span className="hidden sm:inline-flex">
+          <DemandIndicator demand={demand} />
+        </span>
+        {/* No celular, os botões ficam numa linha própria (sem cortar na direita). */}
+        <span className="ml-auto flex w-full items-center justify-end gap-1 sm:w-auto">
           <CitizensButton />
           <MarketButton />
           <BudgetButton />
           <MusicButton />
-          <DonateButton />
+          <span className="hidden sm:inline-flex">
+            <DonateButton />
+          </span>
           <GameMenu />
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 items-start justify-between gap-2">
+      <div className="flex min-h-0 flex-1 flex-col items-stretch justify-between gap-1 sm:flex-row sm:items-start sm:gap-2">
         <Toolbar locked={phase === "focus"} />
         {hover && (
-          <div className="retro-panel pointer-events-auto w-56 p-2">
+          <div className="retro-panel pointer-events-auto max-h-40 w-full self-end overflow-y-auto p-2 sm:max-h-none sm:w-56 sm:self-auto">
             <TileInfo x={hover.x} y={hover.y} status={status} powered={power.powered} access={access} people={people} watered={water.watered} services={services} traffic={traffic} />
           </div>
         )}
@@ -582,15 +588,15 @@ function Toolbar({ locked }: { locked: boolean }) {
       aria-label={title}
       disabled={disabled}
       onClick={onClick}
-      className={`retro-button grid h-9 w-9 place-items-center p-0 text-base ${active ? "retro-button-active" : ""}`}
+      className={`retro-button grid h-9 w-9 shrink-0 place-items-center p-0 text-base ${active ? "retro-button-active" : ""}`}
     >
       {icon}
     </button>
   );
 
   return (
-    <div className="pointer-events-auto relative flex items-start gap-1">
-      <nav className="retro-panel flex flex-col gap-1 p-1" aria-label="Ferramentas">
+    <div className="pointer-events-auto relative flex min-w-0 flex-col items-start gap-1 sm:flex-row">
+      <nav className="retro-panel flex max-w-full flex-row gap-1 overflow-x-auto p-1 sm:flex-col sm:overflow-visible" aria-label="Ferramentas">
         {iconBtn("pan", <DragHandGesture />, "Mover a câmera (arrastar)", tool === "pan", () => setTool("pan"))}
         {CATEGORIES.map((c) =>
           iconBtn(c.id, c.icon, c.title, open === c.id || (c.id !== "view" && activeCat === c.id), () => setOpen(open === c.id ? null : c.id), locked && c.id !== "view"),
@@ -598,14 +604,14 @@ function Toolbar({ locked }: { locked: boolean }) {
         {iconBtn("demolish", <Trash />, "Demolir", tool === "demolish", () => setTool("demolish"), locked)}
       </nav>
       {open && (
-        <section className="retro-panel w-56">
+        <section className="retro-panel w-full max-w-sm sm:w-56">
           <header className="retro-title flex">
             {CATEGORIES.find((c) => c.id === open)!.title}
             <button type="button" className="ml-auto" aria-label="Fechar" onClick={close}>
               <Xmark />
             </button>
           </header>
-          <div className="max-h-[60dvh] space-y-1 overflow-y-auto p-2">
+          <div className="max-h-[45dvh] space-y-1 overflow-y-auto p-2 sm:max-h-[60dvh]">
             {open === "vias" && (
               <>
                 <ToolButton tool="road" disabled={locked} label={BUILDINGS.road.name} cost={BUILDINGS.road.cost} color={BUILDINGS.road.color} onPicked={close} />

@@ -110,7 +110,11 @@ export class CityScene extends Phaser.Scene {
     this.hoverG = this.add.graphics().setDepth(8);
     this.life = new CityLife(this, iso);
     this.cameras.main.setBackgroundColor("#1b1f3a");
+    // Celular: começa mais afastado (cabe mais cidade na tela pequena).
+    if (this.scale.width < 640) this.zoomIdx = 0;
     this.cameras.main.setZoom(ZOOMS[this.zoomIdx]);
+    // Dois dedos: pinça dá zoom (e não pinta nem move a ferramenta).
+    this.input.addPointer(1);
     this.input.mouse?.disableContextMenu();
 
     const city = useGame.getState().city;
@@ -141,6 +145,7 @@ export class CityScene extends Phaser.Scene {
       this.paintAt(p);
     });
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
+      if (this.pinch()) return;
       if (this.panFrom) {
         const cam = this.cameras.main;
         cam.scrollX = this.panFrom.sx - (p.x - this.panFrom.x) / cam.zoom;
@@ -178,6 +183,30 @@ export class CityScene extends Phaser.Scene {
     const s = useGame.getState();
     const active = s.phase === "focus" && !!s.city && s.overlay !== "water";
     this.life?.update(delta, active);
+  }
+
+  private pinchStart: number | null = null;
+  /** Pinça com dois dedos: aproxima/afasta em degraus inteiros (pixel art nítido). */
+  private pinch(): boolean {
+    const a = this.input.pointer1;
+    const b = this.input.pointer2;
+    if (!a?.isDown || !b?.isDown) {
+      this.pinchStart = null;
+      return false;
+    }
+    // Pinça cancela pintura/arrasto em andamento.
+    this.painting = false;
+    this.areaFrom = null;
+    this.panFrom = null;
+    const d = Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y);
+    if (this.pinchStart === null) this.pinchStart = d;
+    const ratio = d / this.pinchStart;
+    if (ratio > 1.35 || ratio < 0.74) {
+      this.zoomIdx = Phaser.Math.Clamp(this.zoomIdx + (ratio > 1 ? 1 : -1), 0, ZOOMS.length - 1);
+      this.cameras.main.setZoom(ZOOMS[this.zoomIdx]);
+      this.pinchStart = d;
+    }
+    return true;
   }
 
   private centerOn(city: CityState) {

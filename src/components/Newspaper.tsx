@@ -24,7 +24,7 @@ export function NewspaperView({
   const paper = useMemo(() => generateNewspaper(state, report), [state, report]);
 
   return (
-    <div className="pointer-events-auto absolute inset-0 z-10 grid place-items-center bg-black/60 p-3">
+    <div className="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center bg-black/60 p-3">
       <article
         className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto border-4 border-stone-800 bg-[#f1e8d2] p-4 text-stone-900 shadow-[4px_4px_0_#000]"
         aria-label={`${paper.name}, ${paper.date}`}

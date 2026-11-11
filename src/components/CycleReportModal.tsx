@@ -34,7 +34,7 @@ export function CycleReportModal() {
   if (!details && state) return <NewspaperView state={state} report={report} onDetails={() => setDetails(true)} onClose={dismiss} />;
 
   return (
-    <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-black/50 p-4">
+    <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-black/50 p-4">
       <section className="retro-panel max-h-[92dvh] w-full max-w-lg overflow-y-auto">
         <header className="retro-title flex">
           Balanço do ciclo{report.year ? ` — ${QUARTER_MONTHS[report.quarter ?? 0]} ${report.year}` : ""}

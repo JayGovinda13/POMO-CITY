@@ -43,7 +43,7 @@ function CitizensModal({ views, onClose }: { views: CitizenView[]; onClose: () =
   });
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-10 grid place-items-center bg-black/60 p-3">
+    <div className="pointer-events-auto fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-3">
       <section className="retro-panel flex max-h-[90dvh] w-full max-w-3xl flex-col text-xs">
         <header className="retro-title flex">
           Moradores — {views.length}

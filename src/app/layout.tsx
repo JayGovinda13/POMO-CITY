@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   ...(adsEnabled ? { other: { "google-adsense-account": ADSENSE_CLIENT } } : {}),
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#1b1f3a" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#1b1f3a" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

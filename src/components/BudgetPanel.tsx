@@ -56,7 +56,7 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
     { id: "caixa", label: "Livro-caixa" },
   ];
   return (
-    <div className="pointer-events-auto fixed inset-0 z-10 grid place-items-center bg-black/60 p-3">
+    <div className="pointer-events-auto fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-3">
       <section className="retro-panel flex max-h-[90dvh] w-full max-w-2xl flex-col text-xs">
         <header className="retro-title flex">
           Orçamento da prefeitura — caixa ${city.money}
