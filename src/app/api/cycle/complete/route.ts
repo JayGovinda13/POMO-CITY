@@ -7,8 +7,10 @@ import { CLOCK_TOLERANCE_MS } from "@/server/session";
 /** Conclusão do ciclo: só é aceita se o tempo medido PELO SERVIDOR realmente passou. */
 export const POST = route((id) =>
   withPlayer(id, (rec, tx) => {
-    const disaster = settlePresence(id, rec, Date.now(), tx);
-    if (disaster) return snapshot(rec, { disaster });
+    const settled = settlePresence(id, rec, Date.now(), tx);
+    if (settled.disaster) return snapshot(rec, { disaster: settled.disaster });
+    // O servidor já concluiu o ciclo (o jogador voltou depois do fim do foco): devolve o relatório.
+    if (settled.report) return snapshot(rec, { report: settled.report });
     const cycle = rec.activeCycle;
     if (!cycle) return fail(400, "Nenhum ciclo em andamento");
     const now = Date.now();

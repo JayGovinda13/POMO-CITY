@@ -109,6 +109,8 @@ interface GameStore {
   completeFocus(): Promise<void>;
   abandonFocus(): Promise<void>;
   skipBreak(): void;
+  /** Abre a pausa de planejamento (o foco começa sozinho quando ela acaba). */
+  enterBreak(): void;
   dismissReport(): void;
   showToast(msg: string): void;
 }
@@ -137,6 +139,13 @@ function derive(serverState: CityState | null, pending: Command[]) {
 export const useGame = create<GameStore>()(
   persist(
     (set, get) => {
+      /** Pausa (planejamento): o próximo foco começa sozinho quando ela acaba. */
+      const beginBreak = (cfg: ServerConfig | null, state: CityState | null, long = false) => {
+        const secs = cfg ? (long ? cfg.longBreakSeconds : cfg.breakSeconds) : 300;
+        set({ phase: "break", endsAt: Date.now() + secs * 1000 });
+        void state;
+      };
+
       const accept = (snap: ServerSnapshot, pending: Command[] = get().pending) => {
         const clockSkew = snap.serverNow - Date.now();
         const phase: Phase = snap.activeCycle ? "focus" : get().phase === "focus" ? "idle" : get().phase;
@@ -151,6 +160,12 @@ export const useGame = create<GameStore>()(
           endsAt: snap.activeCycle ? snap.activeCycle.endsAt - clockSkew : phase === "break" ? get().endsAt : null,
           ...derive(snap.state, pending),
         });
+        // O servidor concluiu um ciclo por conta própria (celular bloqueado até o fim do foco):
+        // mostra o jornal e começa a pausa, como se o app tivesse visto o fim do foco.
+        if (snap.report && !snap.activeCycle) {
+          set({ report: snap.report, lastReport: snap.report });
+          beginBreak(snap.config, snap.state, snap.state.cyclesCompleted % snap.config.longBreakEvery === 0);
+        }
       };
 
       return {
@@ -181,8 +196,10 @@ export const useGame = create<GameStore>()(
             accept(snap);
             // Recarregou a página no meio de uma sessão: volta direto para a cidade.
             if (snap.presence === "playing" && !snap.disaster) set({ screen: "game" });
-            const { phase, endsAt } = get();
-            if (phase === "break" && endsAt && Date.now() > endsAt) set({ phase: "idle", endsAt: null });
+            const { phase, endsAt, screen } = get();
+            if (screen === "game" && (phase === "idle" || (phase === "break" && endsAt && Date.now() > endsAt))) {
+              beginBreak(snap.config, snap.state);
+            }
           } catch (e) {
             get().showToast((e as Error).message || "Sem conexão — jogando offline");
           }
@@ -193,6 +210,8 @@ export const useGame = create<GameStore>()(
           if (snap.error) return get().showToast(snap.error);
           accept(snap);
           set({ screen: "game" });
+          // Sessão nova: pausa de planejamento; o foco começa sozinho no fim dela.
+          if (!snap.activeCycle && get().phase !== "break") beginBreak(snap.config, snap.state);
         },
 
         async exit() {
@@ -215,7 +234,8 @@ export const useGame = create<GameStore>()(
             const snap = await call("/api/game/new");
             if (snap.error) return get().showToast(snap.error);
             accept(snap, []);
-            set({ screen: "game", phase: "idle", endsAt: null, report: null });
+            set({ screen: "game", report: null });
+            beginBreak(snap.config, snap.state);
           } finally {
             set({ busy: false });
           }
@@ -336,16 +356,19 @@ export const useGame = create<GameStore>()(
           try {
             const snap = await call("/api/cycle/complete");
             if (snap.status === 425) return; // relógio local adiantado; tenta de novo no próximo tick
-            if (snap.error) throw new Error(snap.error);
+            if (snap.error) {
+              // O servidor não tem mais esse ciclo (ex.: já foi resolvido): sincroniza em vez de travar.
+              const fresh = await call("/api/city");
+              if (fresh.error) throw new Error(fresh.error);
+              accept(fresh);
+              if (!fresh.activeCycle && get().phase !== "break") beginBreak(fresh.config, fresh.state);
+              return;
+            }
             const cfg = snap.config;
             const long = snap.state.cyclesCompleted % cfg.longBreakEvery === 0;
             accept(snap);
-            set({
-              phase: "break",
-              endsAt: Date.now() + (long ? cfg.longBreakSeconds : cfg.breakSeconds) * 1000,
-              report: snap.report ?? null,
-              lastReport: snap.report ?? get().lastReport,
-            });
+            set({ report: snap.report ?? null, lastReport: snap.report ?? get().lastReport });
+            beginBreak(cfg, snap.state, long);
           } catch (e) {
             get().showToast((e as Error).message || "Falha ao concluir o ciclo");
           } finally {
@@ -360,7 +383,7 @@ export const useGame = create<GameStore>()(
             const snap = await call("/api/cycle/abandon");
             if (snap.error) throw new Error(snap.error);
             accept(snap);
-            set({ phase: "idle", endsAt: null });
+            beginBreak(snap.config, snap.state);
             get().showToast("Ciclo abandonado: a sequência caiu.");
           } catch (e) {
             get().showToast((e as Error).message);
@@ -370,7 +393,11 @@ export const useGame = create<GameStore>()(
         },
 
         skipBreak() {
-          set({ phase: "idle", endsAt: null });
+          void get().startFocus();
+        },
+
+        enterBreak() {
+          beginBreak(get().config, get().serverState);
         },
 
         dismissReport() {

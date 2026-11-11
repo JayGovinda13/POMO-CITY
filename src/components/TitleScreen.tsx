@@ -49,7 +49,7 @@ export function TitleScreen() {
               </p>
               <p>
                 <Group /> {city.population} · <Coins /> ${city.money} · <FireFlame /> sequência {city.streak}
-                {city.streakFrozen && <span className="text-emerald-300"> (guardada)</span>}
+
               </p>
             </div>
           )}
@@ -80,9 +80,9 @@ export function TitleScreen() {
           </div>
 
           <p className="text-[11px] leading-relaxed text-zinc-500">
-            Para sair, use <strong>Menu → Sair</strong> com o foco encerrado: a sequência fica guardada. Fechar o jogo
-            durante o foco quebra o ciclo e causa um desastre; fechar sem o menu depois de concluir um foco causa um
-            desastre leve.
+            Foco e pausa se alternam sozinhos. Na <strong>pausa</strong> você pode sair quando quiser, sem prejuízo; sair
+            no meio do <strong>foco</strong> quebra o ciclo e causa um desastre (bloquear o celular e voltar até 15 min depois
+            do fim do foco não conta). Ao voltar a um jogo salvo, a sequência recomeça do primeiro ciclo (Rank D).
           </p>
           <MusicButton variant="full" />
           <DonateButton variant="full" />

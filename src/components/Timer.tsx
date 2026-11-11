@@ -75,11 +75,18 @@ export function Timer() {
       completeFocus().then(() => {
         if (useGame.getState().phase === "break") notify("Ciclo concluído!", "Hora da pausa: gerencie sua cidade.");
       });
-    } else if (phase === "break") {
-      notify("Pausa encerrada", "Pronto para mais um ciclo de foco?");
-      skipBreak();
+    } else if (phase === "break" && !busy && now - lastAttempt.current > 3000) {
+      // Fim da pausa: o próximo foco começa sozinho (as obras da pausa vão junto).
+      lastAttempt.current = now;
+      notify("Foco!", "A pausa acabou: o próximo ciclo de foco começou.");
+      void startFocus();
     }
-  }, [phase, endsAt, remaining, busy, now, completeFocus, skipBreak]);
+  }, [phase, endsAt, remaining, busy, now, completeFocus, startFocus]);
+
+  // Sem foco nem pausa (estado de transição): abre a pausa de planejamento.
+  useEffect(() => {
+    if (phase === "idle" && useGame.getState().screen === "game") void useGame.getState().enterBreak();
+  }, [phase]);
 
   useEffect(() => {
     const label = phase === "focus" ? "🍅 Foco" : phase === "break" ? "☕ Pausa" : null;
@@ -93,7 +100,9 @@ export function Timer() {
 
   return (
     <div className="retro-panel pointer-events-auto mx-auto flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
-      <span className="text-zinc-300">{phase === "focus" ? "🍅 Foco" : phase === "break" ? "☕ Pausa" : "Pronto"}</span>
+      <span className="text-zinc-300" title={phase === "break" ? "Planeje a cidade: o foco começa sozinho quando o tempo acabar. Na pausa você pode sair sem prejuízo." : undefined}>
+        {phase === "focus" ? "🍅 Foco" : phase === "break" ? "☕ Pausa · foco em" : "Pronto"}
+      </span>
       <span className="font-mono text-xl tabular-nums text-amber-300 sm:text-2xl">
         {phase === "idle" || phase === "loading" ? fmt((config?.focusSeconds ?? 1500) * 1000) : fmt(remaining)}
       </span>
@@ -110,14 +119,16 @@ export function Timer() {
         </button>
       ) : (
         <>
-          <button type="button" className="retro-button retro-button-primary" disabled={busy} onClick={startFocus}>
-            Iniciar foco ({focusMin} min)
+          <button
+            type="button"
+            className="retro-button retro-button-primary"
+            disabled={busy}
+            onClick={startFocus}
+            title="O foco começa sozinho quando a pausa acaba; este botão começa agora."
+          >
+            {phase === "break" ? `Focar agora (${focusMin} min)` : `Iniciar foco (${focusMin} min)`}
           </button>
-          {phase === "break" && (
-            <button type="button" className="retro-button" onClick={skipBreak}>
-              Encerrar pausa
-            </button>
-          )}
+
         </>
       )}
       {city && nextRank && (

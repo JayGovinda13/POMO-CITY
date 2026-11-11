@@ -41,7 +41,7 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Clique em <strong>Iniciar foco</strong> e vá trabalhar. Durante o foco a cidade fica só para olhar — obras ficam bloqueadas.
+          Quando a pausa acaba, o <strong>foco começa sozinho</strong> (ou clique em <strong>Focar agora</strong>) — vá trabalhar. Durante o foco a cidade fica só para olhar — obras ficam bloqueadas.
         </p>
         <p>
           Ao terminar, aparece o <strong>relatório do ciclo</strong> e começa a <strong>pausa</strong> (5 min, ou 20 min a cada 4 ciclos):
@@ -59,8 +59,9 @@ const STEPS: Step[] = [
           até <strong>S</strong>. Recursos de Rank alto rendem mais (A = 1,3×, S = 1,4×) e algumas construções exigem Rank S.
         </p>
         <p>
-          Para sair, use <strong>Menu → Sair</strong> com o foco encerrado: a sequência fica guardada. Abandonar o foco ou fechar o jogo
-          durante ele causa um <strong>desastre</strong>; fechar sem o menu depois de focar causa um desastre leve.
+          Foco e pausa se alternam <strong>sozinhos</strong>. Na pausa você pode sair quando quiser, sem prejuízo. Abandonar o foco ou
+          fechar o jogo no meio dele causa um <strong>desastre</strong> (bloquear o celular e voltar até 15 min depois do fim do foco
+          não conta). Ao voltar a um jogo salvo, a sequência recomeça do primeiro ciclo: recursos Rank D.
         </p>
       </>
     ),

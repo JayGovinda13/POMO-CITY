@@ -14,8 +14,8 @@ export const POST = route(async (id, req) => {
   if (!commands) return fail(400, "Fila de comandos inválida");
 
   return withPlayer(id, (rec, tx) => {
-    const disaster = settlePresence(id, rec, Date.now(), tx);
-    if (disaster) return snapshot(rec, { disaster });
+    const { disaster, report } = settlePresence(id, rec, Date.now(), tx);
+    if (disaster || report) return snapshot(rec, { disaster, report });
     if (rec.presence.status !== "playing") rec.presence = { status: "playing", leftAt: null, cyclesThisSession: 0 };
     if (rec.activeCycle) return fail(409, "Já existe um ciclo em andamento", { activeCycle: rec.activeCycle });
     const { state, rejected } = applyCommands(rec.state, commands);

@@ -43,17 +43,22 @@ Para rodar o Supabase local com Docker: `npx supabase start` (o `supabase/config
 1. Na **pausa**, planeje a cidade:
    - **Estradas** ligadas à prefeitura.
    - **Zonas** Residencial, Comercial e Industrial: arraste para zonear uma área. Zonas densas liberam com 40 habitantes.
-   - **Linhas de transmissão** e **usinas**. A prefeitura gera 12 MW; depois vêm a termelétrica (a madeira de Rank alto rende mais), a eólica e a hidrelétrica (a partir de 1902).
+   - **Linhas de transmissão** e **usinas**. A prefeitura gera 20 MW; depois vêm a termelétrica (a madeira de Rank alto rende mais), a eólica e a hidrelétrica (a partir de 1902).
    - **Produção:** fazenda, madeireira, mina, serraria e fundição.
-2. Clique em **Iniciar foco**. As obras feitas offline são enviadas e revalidadas pelo servidor; durante o foco a cidade fica só para leitura.
+2. Quando a pausa acaba, o **foco começa sozinho** (ou clique em **Focar agora**). As obras da pausa são enviadas e revalidadas pelo servidor; durante o foco a cidade fica só para leitura.
 3. Ao fim do ciclo, **uma estação (3 meses) se passa**; 4 ciclos = 1 ano:
    - os lotes com estrada (a até 3 tiles), energia e demanda crescem sozinhos;
    - a extração usa o Rank do foco;
    - impostos e manutenção são cobrados.
 
-Para sair, use **Menu → Sair** com o foco encerrado: a sequência fica guardada. Fechar o jogo
-durante o foco (ou abandonar o foco) causa um **desastre**; fechar sem o menu depois de concluir
-um foco causa um **desastre leve**.
+**Foco e pausa se alternam sozinhos.**
+
+- Na **pausa** você pode sair quando quiser, sem prejuízo.
+- **Abandonar o foco**, ou fechar o jogo no meio dele, causa um **desastre** e a sequência cai.
+- **Bloquear o celular** durante o foco não conta como sair, desde que você volte até 15 minutos
+  depois do fim do foco. O servidor conclui o ciclo normalmente.
+- **Ao voltar a um jogo salvo** (Continuar), a sequência recomeça do primeiro ciclo: os recursos
+  saem com Rank D.
 
 O **foco acelera a cidade**: um Rank mais alto desenvolve mais lotes por ciclo.
 O indicador **R/C/I** mostra que tipo de zona a cidade pede.

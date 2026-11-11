@@ -4,8 +4,8 @@ import { DEFAULT_PRESENCE, withPlayer } from "@/server/repo";
 import { settlePresence } from "@/server/presence";
 
 /**
- * "Sair" pelo menu: só com o foco encerrado. As obras da pausa são sincronizadas
- * e a sequência fica guardada (não decai) até o próximo ciclo.
+ * "Sair" pelo menu: só com o foco encerrado (na pausa). As obras da pausa são sincronizadas.
+ * Ao voltar (Continuar), a sequência recomeça do primeiro ciclo.
  */
 export const POST = route(async (id, req) => {
   const body = await req.json().catch(() => ({}));
@@ -15,7 +15,7 @@ export const POST = route(async (id, req) => {
     settlePresence(id, rec, Date.now(), tx);
     if (rec.activeCycle) return fail(409, "Só é possível sair com o foco encerrado");
     const { state, rejected } = applyCommands(rec.state, commands);
-    rec.state = { ...state, streakFrozen: true, version: state.version + 1 };
+    rec.state = { ...state, version: state.version + 1 };
     rec.presence = { ...DEFAULT_PRESENCE };
     return snapshot(rec, { rejected });
   });
