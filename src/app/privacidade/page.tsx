@@ -45,6 +45,7 @@ export default function PrivacyPage() {
         nem armazena dados de pagamento. Doações não dão vantagem no jogo.
       </p>
       <h2 className="font-bold">Créditos</h2>
+      <p>Criado por Juliano Amaral, Juba ou Jay Govinda. Jay Jay Sri Radhe!</p>
       <p>
         Ícones de{" "}
         <a className="underline" href="https://game-icons.net" target="_blank" rel="noopener noreferrer">

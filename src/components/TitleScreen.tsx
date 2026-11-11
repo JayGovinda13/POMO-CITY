@@ -99,6 +99,7 @@ export function TitleScreen() {
             </a>{" "}
             (CC BY 3.0)
           </p>
+          <p className="text-center text-[11px] text-amber-200/80">Criado por Juliano Amaral, Juba ou Jay Govinda. Jay Jay Sri Radhe!</p>
         </div>
       </section>
       <DisasterModal />

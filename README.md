@@ -4,6 +4,8 @@ City-builder isométrico em pixel art (estética anos 90) movido a ciclos Pomodo
 O foco no mundo real gera o combustível da cidade: cada ciclo de 25 min concluído
 extrai recursos, e a **sequência de ciclos sem abandono** define a pureza do lote (Ranks D → S).
 
+Criado por Juliano Amaral, Juba ou Jay Govinda. Jay Jay Sri Radhe!
+
 ## Rodando
 
 ```bash

@@ -82,6 +82,7 @@ export function GameMenu() {
               <div className="flex justify-center">
                 <AccountButton />
               </div>
+              <p className="text-center text-[10px] text-zinc-500">Criado por Juliano Amaral, Juba ou Jay Govinda. Jay Jay Sri Radhe!</p>
               <button type="button" className="retro-button w-full" onClick={() => setOpen(false)}>
                 Voltar à cidade
               </button>
