@@ -47,7 +47,11 @@ export type BuildingType =
   | "seaport"
   | "tunnel"
   | "desalination"
-  | "marina";
+  | "marina"
+  | "solar_plant"
+  | "nuclear_plant"
+  | "recycling_center"
+  | "fusion_plant";
 
 /** 0 = terra, 1 = água doce (rio, lago), 2 = mar (água salgada, Fase 9). */
 export type Terrain = 0 | 1 | 2;
@@ -83,7 +87,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -108,6 +112,12 @@ export interface CityState {
   elevation: number[];
   /** 1 = árvore no tile (Fase 9). */
   trees: number[];
+  /** Tecnologias pesquisadas (ver tech.ts). */
+  techs: string[];
+  /** Pesquisa em andamento: alvo escolhido e pontos acumulados (sem alvo, ficam guardados). */
+  research: { target: string | null; progress: number };
+  /** Eventos aleatórios em andamento (ver events.ts). */
+  events: import("./events").ActiveEvent[];
   buildings: Building[];
   nextId: number;
 
@@ -178,6 +188,7 @@ export type Command =
   | { type: "bond"; action: "issue" | "repay" }
   | { type: "insurance"; plan: "none" | "basico" | "completo" }
   | { type: "repair"; x: number; y: number }
+  | { type: "research"; tech: string | null }
   | { type: "terraform"; action: "raise" | "lower" | "water" | "land" | "tree"; x: number; y: number }
   | {
       type: "zone";
@@ -230,6 +241,10 @@ export interface CycleReport {
   services?: { crime: number; pollution: number; landValue: number; eq: number; lifeExpectancy: number };
   /** Seguro: a apólice foi cancelada por falta de dinheiro para o prêmio. */
   insuranceLapsed?: boolean;
+  /** Pesquisa: pontos do ciclo e tecnologias concluídas. */
+  research?: { points: number; done: string[] };
+  /** Eventos aleatórios do ciclo (e desafios cumpridos ou vencidos). */
+  events?: import("./events").EventNews[];
   /** Humor dos moradores ao fim do ciclo, e quem chegou/saiu. */
   citizens?: { feliz: number; ok: number; triste: number; arrived: number; left: number };
   jobs: { total: number; filled: number; unemployed: number };
@@ -272,6 +287,8 @@ export interface FinanceBreakdown {
   upkeepOther: number;
   /** Administração municipal: cresce com a população (balanceamento). */
   upkeepAdmin: number;
+  /** Dinheiro de eventos aleatórios (mecenas, festival, prêmios de desafios). */
+  events: number;
   interest: number;
   insurance: number;
 }

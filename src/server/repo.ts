@@ -38,6 +38,17 @@ export interface CycleLogEntry {
   rewarded?: boolean;
 }
 
+/** Linha do ranking online (só dados do jogo, nada pessoal). */
+export interface LeaderboardEntry {
+  cityName: string;
+  region: string | null;
+  score: number;
+  techs: number;
+  population: number;
+  year: number;
+  era: string;
+}
+
 interface Loaded {
   record: PlayerRecord;
   revision: number;
@@ -53,6 +64,10 @@ export interface PlayerRepo {
   /** revision 0 = registro novo. Retorna false em caso de conflito. */
   save(playerId: string, record: PlayerRecord, revision: number): Promise<boolean>;
   logCycle(playerId: string, entry: CycleLogEntry): Promise<void>;
+  /** Atualiza a linha da cidade no ranking. */
+  publishScore(playerId: string, entry: LeaderboardEntry): Promise<void>;
+  /** As melhores cidades e a posição de um jogador (1 = primeiro; null = fora do ranking). */
+  leaderboard(limit: number, playerId?: string): Promise<{ top: (LeaderboardEntry & { mine: boolean })[]; myRank: number | null; total: number }>;
 }
 
 // ───────────────────────── Supabase / Postgres ─────────────────────────
@@ -110,6 +125,59 @@ class SupabaseRepo implements PlayerRepo {
     // O log é auditoria: uma falha aqui não deve desfazer um ciclo já gravado.
     if (error) console.error("cycle_log.insert", error.message);
   }
+
+  async publishScore(id: string, e: LeaderboardEntry): Promise<void> {
+    const { error } = await adminClient()
+      .from("leaderboard")
+      .upsert({
+        player_id: id,
+        city_name: e.cityName,
+        region: e.region,
+        score: e.score,
+        techs: e.techs,
+        population: e.population,
+        year: e.year,
+        era: e.era,
+        updated_at: new Date().toISOString(),
+      });
+    // Ranking é vitrine: uma falha (ex.: tabela ainda não criada) não pode desfazer o ciclo.
+    if (error) console.error("leaderboard.upsert", error.message);
+  }
+
+  async leaderboard(limit: number, playerId?: string) {
+    const db = adminClient().from("leaderboard");
+    const { data, error, count } = await db
+      .select("player_id, city_name, region, score, techs, population, year, era", { count: "exact" })
+      .order("score", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(`leaderboard.select: ${error.message}`);
+    const rows = (data ?? []).map((r) => ({
+      cityName: r.city_name,
+      region: r.region,
+      score: Number(r.score),
+      techs: r.techs,
+      population: r.population,
+      year: r.year,
+      era: r.era,
+      mine: r.player_id === playerId,
+    }));
+    let myRank: number | null = null;
+    if (playerId) {
+      const idx = rows.findIndex((r) => r.mine);
+      if (idx >= 0) myRank = idx + 1;
+      else {
+        const { data: me } = await adminClient().from("leaderboard").select("score").eq("player_id", playerId).maybeSingle();
+        if (me) {
+          const { count: above } = await adminClient()
+            .from("leaderboard")
+            .select("player_id", { count: "exact", head: true })
+            .gt("score", me.score);
+          myRank = (above ?? 0) + 1;
+        }
+      }
+    }
+    return { top: rows, myRank, total: count ?? rows.length };
+  }
 }
 
 // ──────────────── Arquivos locais (desenvolvimento sem Supabase) ────────────────
@@ -144,6 +212,31 @@ class FileRepo implements PlayerRepo {
     return true;
   }
   async logCycle() {}
+
+  private get boardFile() {
+    return path.join(process.cwd(), ".data", "leaderboard.json");
+  }
+  private async readBoard(): Promise<Record<string, LeaderboardEntry>> {
+    try {
+      return JSON.parse(await fs.readFile(this.boardFile, "utf8"));
+    } catch {
+      return {};
+    }
+  }
+  async publishScore(id: string, e: LeaderboardEntry) {
+    const board = await this.readBoard();
+    board[id] = e;
+    await fs.mkdir(path.dirname(this.boardFile), { recursive: true });
+    await fs.writeFile(this.boardFile, JSON.stringify(board));
+  }
+  async leaderboard(limit: number, playerId?: string) {
+    const board = await this.readBoard();
+    const all = Object.entries(board)
+      .map(([id, e]) => ({ ...e, mine: id === playerId }))
+      .sort((a, b) => b.score - a.score);
+    const idx = all.findIndex((r) => r.mine);
+    return { top: all.slice(0, limit), myRank: idx >= 0 ? idx + 1 : null, total: all.length };
+  }
 }
 
 let repoInstance: PlayerRepo | null = null;

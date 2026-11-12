@@ -2,6 +2,7 @@ import { BUILDINGS, ZONES } from "./catalog";
 import { RANK_YIELD } from "./config";
 import { conservationFactor, energyFundingFactor } from "./finance";
 import { bfsDistances, components } from "./grid";
+import { techMods } from "./tech";
 import { averageRank, getQty } from "./inventory";
 import { effectsOf, weatherAt } from "./climate";
 import { RANKS, ZONE, ZONE_KINDS, type Building, type CityState, type ClimateEffects, type Rank } from "./types";
@@ -83,6 +84,8 @@ export function plantCapacities(
     // Verba de energia (prefeitura não depende dela) e conservação de energia (Fase 4).
     if (b.type !== "cityhall") cap *= energyFundingFactor(s.funding?.energy ?? 100);
     cap *= conservationFactor(s);
+    // Tecnologia (eletrificação, baterias…): todas as usinas geram mais (a prefeitura também).
+    cap *= 1 + techMods(s).power;
     out.set(b.id, Math.round(cap * 10) / 10);
   }
   return out;

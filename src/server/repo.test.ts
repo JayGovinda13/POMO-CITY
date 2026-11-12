@@ -27,6 +27,10 @@ class MemoryRepo implements PlayerRepo {
   async logCycle(_id: string, e: unknown) {
     this.logs.push(e);
   }
+  async publishScore() {}
+  async leaderboard() {
+    return { top: [], myRank: null, total: 0 };
+  }
 }
 
 describe("withPlayer", () => {

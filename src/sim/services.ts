@@ -9,6 +9,7 @@ import { BUILDINGS } from "./catalog";
 import { buildingStatus, laborStats, type BuildingStatus } from "./status";
 import { computeTraffic, type TrafficResult } from "./traffic";
 import { isWater } from "./terrain";
+import { techMods } from "./tech";
 import { START_EQ, START_LIFE } from "./config";
 import { ZONE, type CityState } from "./types";
 
@@ -142,7 +143,7 @@ export function computeServices(
         prisons++;
         break;
       case "hospital":
-        healthCap += (sv.capacity ?? 0) * op;
+        healthCap += (sv.capacity ?? 0) * op * (1 + techMods(s).health);
         spread(s, health, b.x, b.y, sv.radius ?? 5, 1, "max");
         break;
       case "school":
@@ -184,7 +185,9 @@ export function computeServices(
       spread(s, treeValue, x, y, 2, 2, "add");
     }
   }
-  for (let i = 0; i < n; i++) pollution[i] = clamp(pollution[i] - cleaning[i]);
+  // Tecnologia (reciclagem, carros elétricos…) reduz a poluição na fonte.
+  const pollutionK = Math.max(0.1, 1 + techMods(s).pollution);
+  for (let i = 0; i < n; i++) pollution[i] = clamp(pollution[i] * pollutionK - cleaning[i]);
 
   // ── Crime: densidade e desemprego aumentam; polícia derruba. Prisão reforça com crime alto. ──
   const labor = laborStats(s, status);
@@ -203,7 +206,8 @@ export function computeServices(
   }
   const prisonBoost = prisons > 0 && occupied > 0 && rawSum / occupied > CRIME_HIGH * 0.6;
   const policePower = prisonBoost ? 1.3 : 1;
-  for (let i = 0; i < n; i++) crime[i] = clamp(raw[i] * (1 - Math.min(0.95, police[i] * 0.75 * policePower)));
+  const crimeK = Math.max(0.2, 1 + techMods(s).crime);
+  for (let i = 0; i < n; i++) crime[i] = clamp(raw[i] * crimeK * (1 - Math.min(0.95, police[i] * 0.75 * policePower)));
 
   // ── Valor do solo: centro, água perto, serviços e lazer; poluição e crime desvalorizam. ──
   const hall = s.buildings.find((b) => b.type === "cityhall");

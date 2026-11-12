@@ -3,6 +3,7 @@ import { fail, route, snapshot } from "@/server/api";
 import { repo, withPlayer } from "@/server/repo";
 import { settlePresence } from "@/server/presence";
 import { CLOCK_TOLERANCE_MS } from "@/server/session";
+import { publishScore } from "@/server/leaderboard";
 
 /** Conclusão do ciclo: só é aceita se o tempo medido PELO SERVIDOR realmente passou. */
 export const POST = route((id) =>
@@ -21,6 +22,7 @@ export const POST = route((id) =>
     rec.state = state;
     rec.activeCycle = null;
     if (rec.presence.status === "playing") rec.presence.cyclesThisSession++;
+    tx.afterCommit(() => publishScore(id, rec.state));
     tx.afterCommit(() =>
       repo().logCycle(id, {
         startedAt: cycle.startedAt,

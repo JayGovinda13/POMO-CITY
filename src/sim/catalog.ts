@@ -7,6 +7,8 @@ export interface Requirement {
   /** Ano mínimo da cidade (1900 + ciclos concluídos). */
   year?: number;
   population?: number;
+  /** Tecnologia necessária (árvore de tecnologia). */
+  tech?: string;
 }
 
 export interface MaterialCost {
@@ -418,6 +420,70 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     water: { kind: "treatment", capacity: 40 },
     color: 0x5a8a9a,
     height: 14,
+  },
+  // ── Árvore de tecnologia: construções do futuro ──
+  solar_plant: {
+    name: "Usina solar",
+    description: "25 MW limpos, sem combustível; rende mais nas estações de sol. Requer Energia solar.",
+    buildable: true,
+    category: "energy",
+    requires: { tech: "energia_solar" },
+    cost: 1400,
+    materials: [{ resource: "metal", qty: 8 }, { resource: "goods", qty: 4 }],
+    upkeep: 4,
+    workers: 2,
+    needsRoad: true,
+    generates: { capacity: 25 },
+    color: 0x3a5a9a,
+    height: 6,
+  },
+  nuclear_plant: {
+    name: "Usina nuclear",
+    description: "120 MW queimando 3 de minério por estação. Requer Energia nuclear.",
+    buildable: true,
+    category: "energy",
+    requires: { tech: "energia_nuclear" },
+    cost: 4000,
+    materials: [{ resource: "metal", qty: 30 }, { resource: "planks", qty: 10 }],
+    upkeep: 30,
+    workers: 10,
+    needsRoad: true,
+    generates: { capacity: 120, fuel: { resource: "ore", qty: 3 } },
+    pollution: 3,
+    color: 0xd0d0c0,
+    height: 24,
+  },
+  recycling_center: {
+    name: "Centro de reciclagem",
+    description: "Limpa o ar ao redor e transforma lixo em 3 de metal por estação. Requer Reciclagem.",
+    buildable: true,
+    category: "production",
+    requires: { tech: "reciclagem" },
+    cost: 900,
+    materials: [{ resource: "metal", qty: 6 }, { resource: "planks", qty: 6 }],
+    upkeep: 8,
+    workers: 4,
+    powerUse: 3,
+    needsRoad: true,
+    produces: { resource: "metal", base: 3 },
+    service: { kind: "leisure", radius: 6, cleans: 12 },
+    color: 0x4a9a5a,
+    height: 14,
+  },
+  fusion_plant: {
+    name: "Reator de fusão",
+    description: "400 MW sem combustível nem poluição. Requer Fusão nuclear.",
+    buildable: true,
+    category: "energy",
+    requires: { tech: "fusao" },
+    cost: 12000,
+    materials: [{ resource: "metal", qty: 60 }, { resource: "goods", qty: 30 }],
+    upkeep: 60,
+    workers: 12,
+    needsRoad: true,
+    generates: { capacity: 400 },
+    color: 0x8a5ad0,
+    height: 26,
   },
   // ── Fase 9: água salgada e orla ──
   desalination: {

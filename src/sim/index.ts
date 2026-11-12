@@ -23,3 +23,5 @@ export * from "./water";
 export * from "./services";
 export * from "./traffic";
 export * from "./terrain";
+export * from "./tech";
+export * from "./events";

@@ -10,6 +10,7 @@ import { sanitizeCityName } from "./founding";
 import { buildingAt, idx, inBounds } from "./world";
 import { RANK_TERRAFORM, TERRAFORM, isWater, MAX_ELEVATION } from "./terrain";
 import { addTo } from "./inventory";
+import { techLock } from "./tech";
 import { RANKS, type BuildingType, type Rank } from "./types";
 import type { MaterialCost } from "./catalog";
 
@@ -136,6 +137,11 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     if (cmd.plan !== "none" && !(cmd.plan in PLANS)) return "Plano inválido";
     if (cmd.plan === s.insurance.plan) return "Esse já é o plano atual";
     return null;
+  }
+
+  if (cmd.type === "research") {
+    if (cmd.tech === null) return null;
+    return techLock(s, cmd.tech);
   }
 
   if (!isInt(cmd.x) || !isInt(cmd.y) || !inBounds(s, cmd.x, cmd.y)) return "Fora do mapa";
@@ -296,6 +302,9 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     next.money -= PIPE_COST;
   } else if (cmd.type === "demolish" && cmd.underground) {
     next.pipes[idx(next, cmd.x, cmd.y)] = 0;
+  } else if (cmd.type === "research") {
+    // Trocar de alvo não perde pontos: o progresso fica guardado para a próxima tecnologia.
+    next.research = { ...(next.research ?? { target: null, progress: 0 }), target: cmd.tech };
   } else if (cmd.type === "terraform") {
     const i = idx(next, cmd.x, cmd.y);
     next.money -= terraformCost(s, cmd.action);

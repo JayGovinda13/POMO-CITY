@@ -1,6 +1,7 @@
 import "server-only";
 import { abandonCycle, applyDisaster, resolveCycle, type CycleReport, type DisasterReport } from "@/sim";
 import { DEFAULT_PRESENCE, repo, type PlayerRecord, type TxContext } from "./repo";
+import { publishScore } from "./leaderboard";
 
 /**
  * Tolerância para recarregar a página ou perder a conexão: se o jogador volta em até
@@ -62,6 +63,7 @@ export function settlePresence(playerId: string, rec: PlayerRecord, now: number,
     rec.activeCycle = null;
     p.leftAt = null;
     p.cyclesThisSession++;
+    tx.afterCommit(() => publishScore(playerId, rec.state));
     tx.afterCommit(() =>
       repo().logCycle(playerId, {
         startedAt: cycle.startedAt,

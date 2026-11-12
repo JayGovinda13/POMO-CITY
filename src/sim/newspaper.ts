@@ -8,6 +8,7 @@ import { RESOURCES } from "./catalog";
 import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
 import { RANKS, type CityState, type CycleReport, type ResourceId } from "./types";
 import { QUARTER_MONTHS, rng } from "./world";
+import { TECHS, TECH_IDS } from "./tech";
 
 export interface NewsStory {
   title: string;
@@ -114,12 +115,34 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
   if (report.netMoney < 0) {
     candidates.push({ priority: 35, tone: "bad", title: `Contas no vermelho: déficit de ${money(report.netMoney)}`, body: "Analistas sugerem rever impostos, verbas e decretos no Orçamento." });
   }
+  // Eventos aleatórios e pesquisa viram manchete (a mais importante da estação).
+  for (const e of report.events ?? []) candidates.push({ priority: e.tone === "bad" ? 70 : 58, tone: e.tone, title: e.title, body: e.body });
+  for (const id of report.research?.done ?? []) {
+    const t = TECHS[id];
+    if (t) candidates.push({ priority: 65, tone: "good", title: `Cientistas da cidade dominam: ${t.name}!`, body: t.description });
+  }
   candidates.push({ priority: 1, tone: "neutral", title: `Estação tranquila${state.name || region ? ` em ${cityDisplayName(state)}` : ""}`, body: "Sem grandes novidades: a cidade segue seu ritmo." });
   candidates.sort((a, b) => b.priority - a.priority);
   const { priority: _p, ...headline } = candidates[0];
+  // Os outros eventos e descobertas da estação também saem no jornal (logo no começo).
+  const extra: NewsStory[] = candidates
+    .slice(1)
+    .filter((c) => c.priority >= 58 && c.priority <= 70 && (report.events?.some((e) => e.title === c.title) || c.title.startsWith("Cientistas")))
+    .map(({ priority: _x, ...n }) => n);
 
   // ── Notícias ──
-  const stories: NewsStory[] = [];
+  const stories: NewsStory[] = [...extra];
+  // Pesquisa em andamento.
+  const target = state.research?.target ? TECHS[state.research.target] : null;
+  if (target && report.research) {
+    stories.push({
+      title: `Laboratórios pesquisam ${target.name.toLowerCase()}`,
+      body: `${Math.floor(state.research.progress)} de ${target.cost} pontos (+${report.research.points} nesta estação).`,
+      tone: "neutral",
+    });
+  } else if (!target && report.research && (state.techs?.length ?? 0) < TECH_IDS.length) {
+    stories.push({ title: "Cientistas esperam ordens", body: "Escolha uma pesquisa na árvore de tecnologia — os pontos ficam guardados.", tone: "neutral" });
+  }
   const income = report.taxes + f.ordinanceRevenue + report.salesRevenue;
   const spend = report.upkeep + f.ordinanceCost + report.importCost + f.interest;
   stories.push({

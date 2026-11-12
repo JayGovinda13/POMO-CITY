@@ -8,6 +8,7 @@ import {
   ZONES,
   RESOURCE_IDS,
   ORDINANCES,
+  TECHS,
   type OrdinanceId,
   type PolicyMode,
   type ResourceId,
@@ -75,6 +76,11 @@ export function parseCommands(raw: unknown): Command[] | null {
           : undefined;
       if ((t && !taxes) || (f && !funding) || (!taxes && !funding)) return null;
       out.push({ type: "budget", taxes, funding });
+      continue;
+    }
+    if (r.type === "research") {
+      if (r.tech !== null && (typeof r.tech !== "string" || !Object.hasOwn(TECHS, r.tech))) return null;
+      out.push({ type: "research", tech: r.tech as string | null });
       continue;
     }
     if (r.type === "terraform") {

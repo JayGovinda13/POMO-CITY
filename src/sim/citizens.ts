@@ -14,6 +14,7 @@ import { computePower } from "./power";
 import { buildingStatus } from "./status";
 import { computeServices, wealthOf, type WealthClass } from "./services";
 import { TRIP_LIMIT_POPULATION, computeTraffic } from "./traffic";
+import { eventMods } from "./events";
 import { ZONE, type BuildingType, type CityState } from "./types";
 import { rng } from "./world";
 
@@ -181,6 +182,7 @@ export function citizensView(s: CityState): CitizenView[] {
   const slots = jobSlots(s, status);
   const water = computeWater(s, undefined, status);
   const traffic = computeTraffic(s);
+  const moods = eventMods(s).mood;
   const svc = computeServices(s, status, traffic);
   /** Há via congestionada a até 2 tiles da casa? */
   const jammed = (i: number) => {
@@ -242,6 +244,8 @@ export function citizensView(s: CityState): CitizenView[] {
       if (mood && isActive(s, oid)) reasons.push({ text: mood.text, delta: mood.delta });
     }
     if (isActive(s, "premio_produtividade") && s.streak >= 4) reasons.push({ text: "Prêmio de produtividade", delta: 1 });
+    // Eventos em andamento (festival, greve, gripe, calor).
+    for (const m of moods) reasons.push(m);
     if (p.trait) reasons.push({ text: p.trait > 0 ? "Otimista" : "Rabugento(a)", delta: p.trait });
     const score = reasons.reduce((acc, r) => acc + r.delta, 0);
     return {

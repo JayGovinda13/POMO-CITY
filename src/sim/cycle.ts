@@ -47,6 +47,8 @@ import { computeWater, updateTowers, type WaterResult } from "./water";
 import { citizensView, moodSummary, syncCitizens } from "./citizens";
 import { computeServices, landValueTaxFactor, updateQuality, type ServiceFields } from "./services";
 import { computeTraffic, type TrafficResult } from "./traffic";
+import { advanceResearch, researchPerCycle, techMods } from "./tech";
+import { eventMods, rollEvents } from "./events";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
 export function rankForStreak(streak: number): Rank {
@@ -191,7 +193,8 @@ const powerSystem: CycleSystem = (ctx) => {
 /** 3b) Água: bombas (com energia), poço da prefeitura, tratamento e caixas d'água (Fase 6). */
 const waterSystem: CycleSystem = (ctx) => {
   const { s, report, effects, status } = ctx;
-  const w = computeWater(s, effects, status);
+  // Onda de calor (evento) seca os poços.
+  const w = computeWater(s, { ...effects, water: effects.water * eventMods(s).water }, status);
   ctx.water = w;
   report.water = { produced: w.produced, stored: w.stored, demand: w.demand, supplied: w.supplied, shortage: w.shortage };
   updateTowers(s, w);
@@ -236,7 +239,11 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water
     const climate = def.produces.resource === "food" ? (irrigated ? Math.max(effects.farm, 0.85) : effects.farm) : 1;
     // Decreto "Prêmio de produtividade": +15% em ciclos de Rank A ou S (Fase 4).
     const bonus = isActive(s, "premio_produtividade") && (rank === "A" || rank === "S") ? 1.15 : 1;
-    const qty = Math.floor(def.produces.base * biome.yield[def.produces.resource] * eff * climate * bonus);
+    // Tecnologia: +% por recurso (agricultura, mineração, madeira; metal reciclado conta como refino).
+    const tm = techMods(s);
+    const res = def.produces.resource;
+    const tech = 1 + (res === "food" ? tm.farm : res === "wood" ? tm.wood : res === "ore" ? tm.ore : res === "metal" ? tm.refine : 0);
+    const qty = Math.floor(def.produces.base * biome.yield[res] * eff * climate * bonus * tech);
     addTo(s.inventory, def.produces.resource, rank, qty);
     addTo(report.produced, def.produces.resource, rank, qty);
   }
@@ -245,7 +252,8 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water
   const industryFilled = Math.max(0, labor.zoneFilled - labor.commercialJobs);
   // Frete ferroviário (Fase 8): indústria perto de estação produz até 25% mais.
   const freight = 1 + 0.25 * (traffic?.freightShare ?? 0);
-  const goods = Math.floor(industryFilled * GOODS_PER_INDUSTRY_JOB * freight);
+  // Tecnologia (linha de montagem, automação…) e eventos (greve) mexem nos bens.
+  const goods = Math.floor(industryFilled * GOODS_PER_INDUSTRY_JOB * freight * Math.max(0, 1 + techMods(s).goods + eventMods(s).goods));
   addTo(s.inventory, "goods", rank, goods);
   addTo(report.produced, "goods", rank, goods);
 };
@@ -262,7 +270,7 @@ const refiningSystem: CycleSystem = ({ s, report, status }) => {
     addTaken(report.consumed, p.input, taken);
     const inRank = averageRank(taken);
     const gross = Math.round((p.outputQty * inputQty) / p.inputQty);
-    const out = Math.round(gross * (1 - WASTE_BY_RANK[inRank]));
+    const out = Math.round(gross * (1 - WASTE_BY_RANK[inRank]) * (1 + techMods(s).refine));
     const outRank = minRank(inRank, p.tierCap);
     addTo(s.inventory, p.output, outRank, out);
     addTo(report.produced, p.output, outRank, out);
@@ -294,7 +302,8 @@ const economySystem: CycleSystem = (ctx) => {
   }, 0);
   // Impostos por zona (Fase 4): moradores (R), empregos do comércio (C) e da indústria (I).
   const f = report.finance;
-  const m = 1 + taxBonus;
+  // Tecnologia (rádio, internet…) e eventos (feira comercial) aumentam a arrecadação.
+  const m = (1 + taxBonus) * (1 + techMods(s).tax + eventMods(s).tax);
   // Valor do solo define a riqueza dos moradores e o imposto residencial (Fase 7).
   const lv = ctx.services && ctx.services.avg.landValue > 0 ? landValueTaxFactor(ctx.services.avg.landValue) : 1;
   f.taxR = Math.floor(taxRevenue("R", pop * (report.starving ? 0.5 : 1), s.taxes.R) * m * lv);
@@ -340,6 +349,15 @@ const upkeepSystem: CycleSystem = ({ s, report }) => {
     f.upkeepServices = Math.ceil(f.upkeepServices * k);
     f.upkeepOther = Math.ceil(f.upkeepOther * k);
     f.upkeepAdmin = Math.ceil(f.upkeepAdmin * k);
+  }
+  // Tecnologia (computadores, cidade inteligente…) barateia a manutenção.
+  const tu = Math.max(0.4, 1 + techMods(s).upkeep);
+  if (tu !== 1) {
+    f.upkeepTransport = Math.ceil(f.upkeepTransport * tu);
+    f.upkeepEnergy = Math.ceil(f.upkeepEnergy * tu);
+    f.upkeepServices = Math.ceil(f.upkeepServices * tu);
+    f.upkeepOther = Math.ceil(f.upkeepOther * tu);
+    f.upkeepAdmin = Math.ceil(f.upkeepAdmin * tu);
   }
   report.upkeep = f.upkeepTransport + f.upkeepEnergy + f.upkeepServices + f.upkeepOther + f.upkeepAdmin;
   s.money -= report.upkeep;
@@ -414,6 +432,22 @@ const storageSystem: CycleSystem = ({ s, report, effects, weather }) => {
   s.money += report.salesRevenue;
 };
 
+/** 9b) Pesquisa: os pontos do ciclo (educação × Rank do foco) avançam a árvore de tecnologia. */
+const researchSystem: CycleSystem = ({ s, report, rank }) => {
+  const points = researchPerCycle(s, rank);
+  const done = advanceResearch(s, points);
+  report.research = { points, done };
+};
+
+/** 9c) Eventos aleatórios (e desafios com prazo). Antes dos moradores: a gripe pode levar gente. */
+const eventsSystem: CycleSystem = ({ s, report, rand, services }) => {
+  const before = s.money;
+  const news = rollEvents(s, rand, { healthServed: services?.healthServed ?? 0 });
+  report.finance.events = s.money - before;
+  if (news.length) report.events = news;
+  report.populationAfter = s.population;
+};
+
 /** 9) Fome: parte dos moradores vai embora. */
 const starvationSystem: CycleSystem = ({ s, report }) => {
   if (report.starving) s.population = Math.floor(s.population * 0.9);
@@ -462,7 +496,8 @@ const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
     f.interest -
     f.insurance -
     report.importCost +
-    report.salesRevenue;
+    report.salesRevenue +
+    f.events;
 };
 
 /**
@@ -504,6 +539,8 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   insuranceSystem,
   storageSystem,
   starvationSystem,
+  researchSystem,
+  eventsSystem,
   citizensSystem,
   ledgerSystem,
 ];
@@ -562,6 +599,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       upkeepServices: 0,
       upkeepOther: 0,
       upkeepAdmin: 0,
+      events: 0,
       interest: 0,
       insurance: 0,
     },

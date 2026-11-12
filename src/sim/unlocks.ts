@@ -1,11 +1,13 @@
 import type { Requirement } from "./catalog";
 import type { CityState } from "./types";
 import { cityYear } from "./world";
+import { TECHS } from "./tech";
 
 /** null = liberado; caso contrário, o motivo do bloqueio. */
 export function lockReason(req: Requirement | undefined, s: CityState): string | null {
   if (!req) return null;
   if (req.year !== undefined && cityYear(s) < req.year) return `Disponível em ${req.year}`;
+  if (req.tech && !(s.techs ?? []).includes(req.tech)) return `Requer a tecnologia ${TECHS[req.tech]?.name ?? req.tech}`;
   if (req.population !== undefined && s.population < req.population) {
     return `Requer ${req.population} habitantes`;
   }

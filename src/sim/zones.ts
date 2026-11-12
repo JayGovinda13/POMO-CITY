@@ -6,6 +6,8 @@ import { CRIME_HIGH, POLLUTION_HIGH, computeServices, serviceDemand, type Servic
 import { TRIP_LIMIT_POPULATION, computeTraffic, trafficDemand, type TrafficResult } from "./traffic";
 import { ZONE_KINDS, type CityState, type Rank, type ZoneKind } from "./types";
 import { addTo } from "./inventory";
+import { techMods } from "./tech";
+import { eventMods } from "./events";
 
 export type Demand = Record<ZoneKind, number>;
 
@@ -40,7 +42,7 @@ export function computeDemand(
   const tr = trafficDemand(s, traffic);
   return {
     // Cidade feliz atrai moradores; cidade triste espanta (aprovação em [−1, 1]).
-    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25 + mod.R + q.R + tr.R)),
+    R: round2(clamp((labor.totalJobs - workers + 8) / Math.max(16, workers) + approval * 0.25 + mod.R + q.R + tr.R + eventMods(s).demandR)),
     C: round2(clamp((commerceTarget - labor.commercialJobs) / Math.max(8, commerceTarget) + mod.C + q.C + tr.C)),
     I: round2(clamp((industryTarget - labor.industrialJobs) / Math.max(8, industryTarget) + mod.I + tr.I)),
   };
@@ -98,7 +100,7 @@ export function developZones(
   const blocked = (kind: ZoneKind, i: number) =>
     (kind !== "I" && services.crime[i] > CRIME_HIGH + (kind === "C" ? 10 : 0)) ||
     (kind === "R" && (services.pollution[i] > POLLUTION_HIGH || tooFar(i)));
-  const slots = BASE_GROWTH_SLOTS + RANK_GROWTH_BONUS[opts.rank];
+  const slots = BASE_GROWTH_SLOTS + RANK_GROWTH_BONUS[opts.rank] + techMods(s).growth;
   let grown = 0;
   let declined = 0;
   const n = s.zoneType.length;

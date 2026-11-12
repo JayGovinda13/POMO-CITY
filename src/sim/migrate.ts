@@ -88,6 +88,13 @@ export function migrateState(raw: CityState): CityState {
     for (let i = 0; i < s.trees.length; i++) if (s.zoneType[i] || s.wires[i]) s.trees[i] = 0;
   }
 
+  if (from < 11) {
+    // v10 → v11: árvore de tecnologia e eventos aleatórios.
+    s.techs = [];
+    s.research = { target: null, progress: 0 };
+    s.events = [];
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

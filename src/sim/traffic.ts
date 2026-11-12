@@ -13,6 +13,7 @@ import { BUILDINGS } from "./catalog";
 import { ROAD_ACCESS_DISTANCE } from "./config";
 import { ZONE, type Building, type CityState } from "./types";
 import { viaLinks } from "./terrain";
+import { techMods } from "./tech";
 
 /** Tempo-limite da viagem (em "quadras de estrada"). */
 export const MAX_TRIP = 14;
@@ -132,6 +133,8 @@ export function computeTraffic(s: CityState): TrafficResult {
   const W = s.width;
   const n = W * s.height;
   const nodes = transportNodes(s);
+  // Tecnologia (engenharia de tráfego…) aumenta a capacidade das vias.
+  const trafficK = 1 + techMods(s).traffic;
   const tunnelSet = new Set(s.buildings.filter((b) => b.type === "tunnel").map((b) => b.y * W + b.x));
   const isTunnel = (k: number) => tunnelSet.has(k);
   const load = new Float32Array(n);
@@ -141,7 +144,7 @@ export function computeTraffic(s: CityState): TrafficResult {
   const transit = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
     const t = nodes[i];
-    if (t === "road" || t === "onramp" || t === "highway") capacity[i] = CAPACITY[t];
+    if (t === "road" || t === "onramp" || t === "highway") capacity[i] = CAPACITY[t] * trafficK;
   }
 
   // ── Destinos: lotes C/I desenvolvidos e construções com vagas ──

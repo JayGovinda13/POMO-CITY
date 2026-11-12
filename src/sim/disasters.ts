@@ -12,6 +12,7 @@ import { addTo, getQty } from "./inventory";
 import { BONUS_MAX, isCovered, payoutFor, repairCost, waitingLeft } from "./insurance";
 import { RANKS, ZONE, type CityState, type Inventory, type ResourceId } from "./types";
 import { rng } from "./world";
+import { techMods } from "./tech";
 import { computeServices, fireProtection } from "./services";
 
 export type DisasterSeverity = "light" | "normal";
@@ -100,7 +101,8 @@ export function applyDisaster(
   const rand = rng((s.seed ^ Math.imul(s.disasterCount + 1, 0x2c1b3c6d) ^ Math.imul(s.cyclesCompleted + 7, 0x297a2d39)) >>> 0);
   const kind = pickKind(s, rand);
   const cfg = SEVERITY[severity];
-  const intensity = disasterIntensity(s, severity);
+  // Engenharia climática (tecnologia) deixa os desastres mais fracos.
+  const intensity = Math.round(disasterIntensity(s, severity) * Math.max(0.3, 1 + techMods(s).disaster) * 100) / 100;
   const scaled = (v: number) => Math.round(v * intensity);
   // Bombeiros (Fase 7): no incêndio, lotes e prédios cobertos têm chance de escapar.
   const fireField = kind === "incendio" && s.buildings.some((b) => b.type === "fire_station") ? computeServices(s).fire : null;

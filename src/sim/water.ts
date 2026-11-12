@@ -4,6 +4,7 @@
 // passe por baixo. O tempo da estação define quanto as bombas tiram.
 
 import { BUILDINGS } from "./catalog";
+import { techMods } from "./tech";
 import { effectsOf, weatherAt } from "./climate";
 import { bfsDistances, components, DIRS4 } from "./grid";
 import { buildingStatus } from "./status";
@@ -114,7 +115,8 @@ export function computeWater(
       sources.push(i);
       continue;
     }
-    out = Math.round(out * 10) / 10;
+    // Tecnologia (saneamento, água do futuro…): fontes rendem mais.
+    out = Math.round(out * (1 + techMods(s).water) * 10) / 10;
     sources.push(i);
     net(comp[i]).produced += out;
     produced += out;
