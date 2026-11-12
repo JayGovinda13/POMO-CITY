@@ -1,5 +1,5 @@
 import "server-only";
-import { advancementScore, cityDisplayName, cityValue, cityYear, currentEra, type CityState } from "@/sim";
+import { rankEligible, advancementScore, cityDisplayName, cityValue, cityYear, currentEra, type CityState } from "@/sim";
 import { repo, type LeaderboardEntry } from "./repo";
 
 /** Linha do ranking a partir do estado da cidade. */
@@ -15,8 +15,12 @@ export function leaderboardEntry(s: CityState): LeaderboardEntry {
   };
 }
 
-/** Publica a pontuação (só cidades fundadas aparecem no ranking). */
+/**
+ * Publica a pontuação. Só entra no ranking a cidade fundada que nunca sofreu catástrofe
+ * (ciclo quebrado): depois da primeira, ela sai do ranking e não volta mais.
+ */
 export async function publishScore(playerId: string, s: CityState): Promise<void> {
   if (!s.regionId) return;
+  if (!rankEligible(s)) return repo().removeScore(playerId);
   await repo().publishScore(playerId, leaderboardEntry(s));
 }

@@ -100,6 +100,22 @@ ampliam o estoque.
 - Sobre a água, vias viram ponte.
 - Dessalinizadora no litoral e marina à beira d'água.
 
+## Tecnologia, eventos e ranking
+
+- **Árvore tecnológica (1900–2100)**: 36 tecnologias em 6 eras (Industrial, Elétrica, Atômica, Digital,
+  Verde e Futuro). Cada ciclo de foco gera pontos de pesquisa (educação da população, escolas,
+  faculdades, bibliotecas e museus, multiplicados pelo Rank). Cada tecnologia tem ano mínimo e
+  pré-requisitos, dá bônus permanentes (comida, energia, impostos, saúde…) e algumas liberam
+  construções: usina solar, usina nuclear, centro de reciclagem e reator de fusão. Botão ⚛ na barra.
+- **Eventos aleatórios**: a cada ciclo há 15% de chance de um evento (feira, mecenas, jazida,
+  festival, imigração, gripe, greve, onda de calor, ratos) ou de um desafio com prazo e prêmio.
+  São determinísticos (semente da cidade) e saem no jornal.
+- **Ranking online** (🏆): as 50 cidades mais avançadas. Pontos = tecnologias + população + valor da
+  cidade. **Só disputa a cidade que nunca sofreu catástrofe (ciclo quebrado)**: depois da primeira,
+  ela sai do ranking para sempre — dá para continuar jogando, mas o recorde só vale em cidade nova.
+  O ranking mostra apenas o nome da cidade e a região. No Supabase, exige a migration
+  `supabase/migrations/20261112000000_leaderboard.sql`.
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

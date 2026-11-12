@@ -66,6 +66,8 @@ export interface PlayerRepo {
   logCycle(playerId: string, entry: CycleLogEntry): Promise<void>;
   /** Atualiza a linha da cidade no ranking. */
   publishScore(playerId: string, entry: LeaderboardEntry): Promise<void>;
+  /** Tira a cidade do ranking (teve catástrofe). */
+  removeScore(playerId: string): Promise<void>;
   /** As melhores cidades e a posição de um jogador (1 = primeiro; null = fora do ranking). */
   leaderboard(limit: number, playerId?: string): Promise<{ top: (LeaderboardEntry & { mine: boolean })[]; myRank: number | null; total: number }>;
 }
@@ -142,6 +144,11 @@ class SupabaseRepo implements PlayerRepo {
       });
     // Ranking é vitrine: uma falha (ex.: tabela ainda não criada) não pode desfazer o ciclo.
     if (error) console.error("leaderboard.upsert", error.message);
+  }
+
+  async removeScore(id: string): Promise<void> {
+    const { error } = await adminClient().from("leaderboard").delete().eq("player_id", id);
+    if (error) console.error("leaderboard.delete", error.message);
   }
 
   async leaderboard(limit: number, playerId?: string) {
@@ -227,6 +234,12 @@ class FileRepo implements PlayerRepo {
     const board = await this.readBoard();
     board[id] = e;
     await fs.mkdir(path.dirname(this.boardFile), { recursive: true });
+    await fs.writeFile(this.boardFile, JSON.stringify(board));
+  }
+  async removeScore(id: string) {
+    const board = await this.readBoard();
+    if (!(id in board)) return;
+    delete board[id];
     await fs.writeFile(this.boardFile, JSON.stringify(board));
   }
   async leaderboard(limit: number, playerId?: string) {

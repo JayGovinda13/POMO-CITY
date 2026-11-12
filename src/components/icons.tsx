@@ -8,7 +8,12 @@
 import type { ReactNode } from "react";
 import { IconContext } from "react-icons";
 import {
+  GiAtom,
   GiBank,
+  GiTrophyCup,
+  GiPadlock,
+  GiCheckMark,
+  GiPartyPopper,
   GiCalendar,
   GiCardboardBox,
   GiCityCar,
@@ -59,6 +64,11 @@ import type { ResourceId, Weather } from "@/sim";
 
 // Nomes pela função na interface (os componentes não precisam saber de qual biblioteca vêm).
 export {
+  GiAtom as Atom,
+  GiTrophyCup as Trophy,
+  GiPadlock as Lock,
+  GiCheckMark as Check,
+  GiPartyPopper as Party,
   GiBank as Bank,
   GiCalendar as Calendar,
   GiCityCar as Car,

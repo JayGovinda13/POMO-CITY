@@ -541,6 +541,58 @@ building("wind_turbine", 50, (c, oy) => {
   c.line(hubX, hubY, hubX - 10, hubY + 6, "J", 2)
   c.circ(hubX, hubY, 1, "N")
 })
+building("solar_plant", 30, (c, oy) => {
+  c.poly(ground(oy, 2), "G")
+  // Fileiras de painéis inclinados.
+  for (let r = 0; r < 3; r++) {
+    const x = 6 + r * 4, y = oy + 3 + r * 3
+    c.poly([x, y + 3, x + 12, y - 3, x + 14, y - 1, x + 2, y + 5], "u")
+    c.line(x + 1, y + 3, x + 12, y - 2, "q")
+    c.line(x + 4, y + 2, x + 6, y + 3, "c")
+    c.vline(x + 2, y + 5, 2, "J")
+    c.vline(x + 13, y, 2, "J")
+  }
+})
+building("nuclear_plant", 52, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 9, H: 9, top: "J", left: "i", right: "I", dx: -5, dy: 2 })
+  windows(c, b, { floors: 1, fh: 7, col: "Z", lit: "q", every: 2 })
+  // Torre de resfriamento (hiperboloide) soltando vapor.
+  const tx = 21, base = oy + 9
+  for (let k = 0; k < 24; k++) {
+    const w = 5 + Math.round(2.4 * ((k - 14) / 12) ** 2 * 2)
+    c.hline(tx - w, base - k, w, "H")
+    c.hline(tx, base - k, w, "J")
+  }
+  c.hline(tx - 5, base - 24, 10, "Z")
+  c.hline(tx - 6, base - 8, 12, "N")
+  c.circ(tx, base - 28, 3, "Y")
+  c.circ(tx + 3, base - 32, 2, "H")
+})
+building("recycling_center", 36, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 12, H: 10, top: "E", left: "v", right: "F", dx: 1 })
+  windows(c, b, { floors: 1, fh: 8, col: "Z", lit: "l", every: 3 })
+  badge(c, b, "Y", 0.5, 0)
+  // Caçambas coloridas.
+  c.rect(3, oy + 9, 4, 3, "Q")
+  c.rect(8, oy + 11, 4, 3, "N")
+  c.rect(4, oy + 12, 3, 2, "C")
+})
+building("fusion_plant", 50, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 14, H: 8, top: "H", left: "J", right: "i" })
+  windows(c, b, { floors: 1, fh: 6, col: "u", lit: "c", every: 2 })
+  // Reator: domo com anel de plasma.
+  const cx = b.cx, cy = b.cy - b.H - 4
+  c.circ(cx, cy, 8, "Q")
+  c.circ(cx - 1, cy - 1, 6, "q")
+  c.circ(cx - 2, cy - 3, 2, "c")
+  c.hline(cx - 9, cy + 1, 19, "l")
+  c.hline(cx - 8, cy + 2, 17, "L")
+  c.vline(cx, cy - 16, 8, "H")
+  c.px(cx, cy - 17, "N")
+})
 building("hydro_plant", 32, (c, oy) => {
   c.poly(ground(oy, 0), "b")
   const b = block(c, { oy, hw: 14, H: 10, top: "J", left: "i", right: "I" })
@@ -950,4 +1002,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })

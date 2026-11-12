@@ -26,6 +26,11 @@ export default function PrivacyPage() {
         </li>
         <li>Preferências locais (como o tutorial já visto) ficam no armazenamento do seu navegador.</li>
       </ul>
+      <p>
+        O ranking online é público e mostra somente dados do jogo: o nome que você deu à cidade, a região, a era e a pontuação. Nenhum dado
+        pessoal aparece nele.
+      </p>
+
       <h2 className="font-bold">Anúncios e cookies</h2>
       <p>
         {adsEnabled ? "Exibimos" : "Podemos exibir"} anúncios do Google AdSense. O Google e seus parceiros usam cookies para

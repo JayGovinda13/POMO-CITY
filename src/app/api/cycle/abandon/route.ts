@@ -1,6 +1,7 @@
 import { abandonCycle, applyDisaster } from "@/sim";
 import { fail, route, snapshot } from "@/server/api";
 import { repo, withPlayer } from "@/server/repo";
+import { publishScore } from "@/server/leaderboard";
 
 export const POST = route((id) =>
   withPlayer(id, (rec, tx) => {
@@ -12,6 +13,7 @@ export const POST = route((id) =>
     rec.state = abandonCycle(broken.state);
     rec.activeCycle = null;
     const now = Date.now();
+    tx.afterCommit(() => publishScore(id, rec.state));
     tx.afterCommit(() =>
       repo().logCycle(id, { startedAt: cycle.startedAt, endedAt: now, outcome: "abandoned", streak: rec.state.streak }),
     );

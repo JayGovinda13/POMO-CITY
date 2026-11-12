@@ -82,6 +82,7 @@ export function settlePresence(playerId: string, rec: PlayerRecord, now: number,
   rec.state = abandonCycle(broken.state);
   rec.activeCycle = null;
   const leftAt = p.leftAt;
+  tx.afterCommit(() => publishScore(playerId, rec.state));
   tx.afterCommit(() =>
     repo().logCycle(playerId, { startedAt: cycle.startedAt, endedAt: leftAt, outcome: "abandoned", streak: rec.state.streak }),
   );

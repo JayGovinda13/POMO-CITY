@@ -49,6 +49,9 @@ import { CycleReportModal } from "./CycleReportModal";
 import { GameMenu } from "./GameMenu";
 import { MarketButton } from "./MarketPanel";
 import { BudgetButton } from "./BudgetPanel";
+import { TechButton } from "./TechPanel";
+import { LeaderboardButton } from "./LeaderboardPanel";
+import { EventsChip } from "./EventsChip";
 import { CitizensButton } from "./CitizensPanel";
 import { DonateButton } from "./DonateButton";
 import { Logo } from "./Logo";
@@ -145,6 +148,7 @@ export function Hud() {
           <Coins /> ${city.money}
         </span>
         <ResourcesButton />
+        <EventsChip />
         <span title={`Moradores / moradia · ${labor.publicFilled + labor.zoneFilled}/${labor.totalJobs} empregos ocupados${labor.unemployed ? ` · ${labor.unemployed} sem emprego` : ""}`}>
           <Group /> {city.population}/{labor.housing}
           {labor.unemployed > 0 && <span className="text-amber-300"> ({labor.unemployed} s/ emprego)</span>}
@@ -171,6 +175,8 @@ export function Hud() {
           <CitizensButton />
           <MarketButton />
           <BudgetButton />
+          <TechButton />
+          <LeaderboardButton />
           <MusicButton />
           <span className="hidden sm:inline-flex">
             <DonateButton />

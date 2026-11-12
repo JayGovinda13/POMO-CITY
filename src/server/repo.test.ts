@@ -28,6 +28,7 @@ class MemoryRepo implements PlayerRepo {
     this.logs.push(e);
   }
   async publishScore() {}
+  async removeScore() {}
   async leaderboard() {
     return { top: [], myRank: null, total: 0 };
   }

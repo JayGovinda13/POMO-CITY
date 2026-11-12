@@ -189,3 +189,8 @@ export function currentEra(s: CityState): (typeof ERAS)[number] {
   for (const e of ERAS) if (year >= e.from) era = e;
   return era;
 }
+
+/** Só disputa o ranking a cidade que nunca sofreu catástrofe (ciclo quebrado). */
+export function rankEligible(s: Pick<CityState, "disasterCount">): boolean {
+  return (s.disasterCount ?? 0) === 0;
+}
