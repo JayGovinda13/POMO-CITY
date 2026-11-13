@@ -38,6 +38,7 @@ import {
   wealthOf,
   WEALTH_NAMES,
   type BuildCategory,
+  type CityState,
   type BuildingType,
   type ZoneKind,
 } from "@/sim";
@@ -63,19 +64,19 @@ import { RotateLeft, RotateRight, ResourceIcon, Car, HomeSale, Industry, ShieldA
 
 type CategoryId = "vias" | "zonas" | "terreno" | BuildCategory | "view";
 
-const CATEGORIES: { id: CategoryId; icon: ReactNode; title: string }[] = [
-  { id: "vias", icon: <MapsGoStraight />, title: "Vias e energia elétrica" },
-  { id: "zonas", icon: <City />, title: "Zonas" },
-  { id: "transport", icon: <Train />, title: "Transporte (rodovias, trilhos, túneis, ônibus, portos)" },
-  { id: "terreno", icon: <MapIcon />, title: "Terreno (relevo, água, árvores)" },
-  { id: "energy", icon: <Flash />, title: "Usinas" },
-  { id: "water", icon: <Droplet />, title: "Água" },
-  { id: "services", icon: <Shield />, title: "Serviços (polícia, bombeiros, saúde, educação)" },
-  { id: "leisure", icon: <Tree />, title: "Lazer (praças, parques, atrações)" },
-  { id: "production", icon: <Farm />, title: "Produção" },
-  { id: "storage", icon: <Packages />, title: "Armazenagem" },
-  { id: "special", icon: <Tower />, title: "Especial" },
-  { id: "view", icon: <Eye />, title: "Visualizar" },
+const CATEGORIES: { id: CategoryId; icon: ReactNode; title: string; label: string }[] = [
+  { id: "vias", icon: <MapsGoStraight />, title: "Vias e energia elétrica", label: "Vias" },
+  { id: "zonas", icon: <City />, title: "Zonas", label: "Zonas" },
+  { id: "transport", icon: <Train />, title: "Transporte (rodovias, trilhos, túneis, ônibus, portos)", label: "Transporte" },
+  { id: "terreno", icon: <MapIcon />, title: "Terreno (relevo, água, árvores)", label: "Terreno" },
+  { id: "energy", icon: <Flash />, title: "Usinas", label: "Usinas" },
+  { id: "water", icon: <Droplet />, title: "Água", label: "Água" },
+  { id: "services", icon: <Shield />, title: "Serviços (polícia, bombeiros, saúde, educação)", label: "Serviços" },
+  { id: "leisure", icon: <Tree />, title: "Lazer (praças, parques, atrações)", label: "Lazer" },
+  { id: "production", icon: <Farm />, title: "Produção", label: "Produção" },
+  { id: "storage", icon: <Packages />, title: "Armazenagem", label: "Estoque" },
+  { id: "special", icon: <Tower />, title: "Especial", label: "Especial" },
+  { id: "view", icon: <Eye />, title: "Visualizar", label: "Ver" },
 ];
 
 /** Categoria da ferramenta selecionada (para destacar o ícone certo). */
@@ -88,11 +89,41 @@ function categoryOf(tool: Tool): CategoryId | null {
   return BUILDINGS[tool as BuildingType]?.category ?? null;
 }
 
+const GUIDE_KEY = "pomo-city:first-steps-done";
+const FIRST_STEPS = 5;
+
+/**
+ * Guia de quem está começando: olha a cidade e diz qual é o próximo passo (e qual botão usar).
+ * Some sozinho quando o primeiro ciclo de foco é concluído.
+ */
+function nextFirstStep(city: CityState, powered: ArrayLike<number | boolean>): { index: number; title: string; how: string; category: CategoryId | null } | null {
+  if (city.cyclesCompleted > 0) return null;
+  const hasRoad = city.buildings.some((b) => b.type === "road");
+  const zoned = (kinds: number[]) => city.zoneType.some((z) => kinds.includes(z));
+  if (!hasRoad)
+    return { index: 1, title: "Faça uma estrada", how: "Toque em Vias → Estrada e arraste no mapa, começando ao lado da prefeitura.", category: "vias" };
+  if (!zoned([1]))
+    return { index: 2, title: "Crie moradias", how: "Toque em Zonas → Residencial e arraste uma área colada na estrada (até 3 quadrados dela). As casas nascem sozinhas.", category: "zonas" };
+  if (!zoned([2, 3]) && !city.buildings.some((b) => ["farm", "lumberyard", "mine"].includes(b.type)))
+    return { index: 3, title: "Crie empregos", how: "Em Zonas, marque uma área Comercial ou Industrial perto da estrada — ou construa uma Fazenda em Produção.", category: "zonas" };
+  const dark = city.zoneType.some((z, i) => z !== 0 && !powered[i]);
+  if (dark)
+    return { index: 4, title: "Leve energia", how: "Há lotes sem luz. Toque em Vias → Linha de transmissão e ligue a prefeitura aos lotes (lotes vizinhos passam energia entre si).", category: "vias" };
+  return { index: 5, title: "Comece a focar", how: "Tudo pronto! Toque em Focar agora (embaixo) e vá trabalhar ou estudar: a cidade cresce quando o foco termina.", category: null };
+}
+
 export function Hud() {
   const city = useGame((s) => s.city);
   const phase = useGame((s) => s.phase);
   const toast = useGame((s) => s.toast);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+  const [guideOff, setGuideOff] = useState(() => {
+    try {
+      return localStorage.getItem(GUIDE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     const offs = [
@@ -131,6 +162,7 @@ export function Hud() {
   }
 
   const { power, status, labor, demand, access, weather, people, water, services, traffic } = derived;
+  const firstStep = guideOff ? null : nextFirstStep(city, power.powered);
   const region = city.regionId ? REGION_BY_ID[city.regionId] : null;
 
   return (
@@ -186,8 +218,33 @@ export function Hud() {
         </span>
       </div>
 
+      {firstStep && (
+        <div className="retro-panel pointer-events-auto flex items-start gap-2 px-2 py-1 text-amber-100">
+          <span className="shrink-0 font-bold text-amber-300">
+            Primeiros passos {firstStep.index}/{FIRST_STEPS}
+          </span>
+          <span className="min-w-0 flex-1">
+            <strong>{firstStep.title}.</strong> {firstStep.how}
+          </span>
+          <button
+            type="button"
+            className="shrink-0"
+            aria-label="Fechar os primeiros passos"
+            title="Não mostrar mais"
+            onClick={() => {
+              try {
+                localStorage.setItem(GUIDE_KEY, "1");
+              } catch {}
+              setGuideOff(true);
+            }}
+          >
+            <Xmark />
+          </button>
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1 flex-col items-stretch justify-between gap-1 sm:flex-row sm:items-start sm:gap-2">
-        <Toolbar locked={phase === "focus"} />
+        <Toolbar locked={phase === "focus"} hint={phase === "focus" ? null : firstStep?.category} />
         {hover && (
           <div className="retro-panel pointer-events-auto max-h-40 w-full self-end overflow-y-auto p-2 sm:max-h-none sm:w-56 sm:self-auto">
             <TileInfo x={hover.x} y={hover.y} status={status} powered={power.powered} access={access} people={people} watered={water.watered} services={services} traffic={traffic} />
@@ -579,7 +636,7 @@ function PeopleHere({ label, list }: { label: string; list: ReturnType<typeof ci
 }
 
 /** Barra de ícones: cada categoria abre um mini-menu só quando clicada. */
-function Toolbar({ locked }: { locked: boolean }) {
+function Toolbar({ locked, hint }: { locked: boolean; hint?: string | null }) {
   const city = useGame((s) => s.city)!;
   const tool = useGame((s) => s.tool);
   const setTool = useGame((s) => s.setTool);
@@ -587,7 +644,8 @@ function Toolbar({ locked }: { locked: boolean }) {
   const activeCat = categoryOf(tool);
   const close = () => setOpen(null);
 
-  const iconBtn = (key: string, icon: ReactNode, title: string, active: boolean, onClick: () => void, disabled = false) => (
+  // Ícone + nome: no celular o nome fica embaixo do ícone; no computador, ao lado.
+  const iconBtn = (key: string, icon: ReactNode, title: string, active: boolean, onClick: () => void, disabled = false, label = "") => (
     <button
       key={key}
       type="button"
@@ -595,22 +653,23 @@ function Toolbar({ locked }: { locked: boolean }) {
       aria-label={title}
       disabled={disabled}
       onClick={onClick}
-      className={`retro-button grid h-9 w-9 shrink-0 place-items-center p-0 text-base ${active ? "retro-button-active" : ""}`}
+      className={`retro-button flex h-11 w-14 shrink-0 flex-col items-center justify-center gap-0.5 p-0 text-base sm:h-8 sm:w-full sm:flex-row sm:justify-start sm:gap-2 sm:px-2 ${active ? "retro-button-active" : ""} ${hint === key ? "animate-pulse ring-2 ring-amber-300" : ""}`}
     >
       {icon}
+      <span className="text-[9px] leading-none sm:text-[11px]">{label}</span>
     </button>
   );
 
   return (
     <div className="pointer-events-auto relative flex min-w-0 flex-col items-start gap-1 sm:flex-row">
       <nav className="retro-panel flex max-w-full flex-row gap-1 overflow-x-auto p-1 sm:flex-col sm:overflow-visible" aria-label="Ferramentas">
-        {iconBtn("pan", <DragHandGesture />, "Mover a câmera (arrastar)", tool === "pan", () => setTool("pan"))}
+        {iconBtn("pan", <DragHandGesture />, "Mover a câmera (arrastar)", tool === "pan", () => setTool("pan"), false, "Mover")}
         {CATEGORIES.map((c) =>
-          iconBtn(c.id, c.icon, c.title, open === c.id || (c.id !== "view" && activeCat === c.id), () => setOpen(open === c.id ? null : c.id), locked && c.id !== "view"),
+          iconBtn(c.id, c.icon, c.title, open === c.id || (c.id !== "view" && activeCat === c.id), () => setOpen(open === c.id ? null : c.id), locked && c.id !== "view", c.label),
         )}
-        {iconBtn("demolish", <Trash />, "Demolir", tool === "demolish", () => setTool("demolish"), locked)}
-        {iconBtn("rot-l", <RotateLeft />, "Girar a câmera para a esquerda", false, () => bus.emit("camera:rotate", -1))}
-        {iconBtn("rot-r", <RotateRight />, "Girar a câmera para a direita", false, () => bus.emit("camera:rotate", 1))}
+        {iconBtn("demolish", <Trash />, "Demolir", tool === "demolish", () => setTool("demolish"), locked, "Demolir")}
+        {iconBtn("rot-l", <RotateLeft />, "Girar a câmera para a esquerda", false, () => bus.emit("camera:rotate", -1), false, "Girar ↺")}
+        {iconBtn("rot-r", <RotateRight />, "Girar a câmera para a direita", false, () => bus.emit("camera:rotate", 1), false, "Girar ↻")}
       </nav>
       {open && (
         <section className="retro-panel w-full max-w-sm sm:w-56">

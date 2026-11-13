@@ -26,7 +26,8 @@ export interface MusicSettings {
   bell: boolean;
 }
 
-export const DEFAULT_MUSIC: MusicSettings = { choice: "radio", volume: 0.5, muteInFocus: false, bell: true };
+// O jogo começa em silêncio: só o sino do fim do foco/pausa vem ligado. A música é escolhida no botão 🎵.
+export const DEFAULT_MUSIC: MusicSettings = { choice: "off", volume: 0.5, muteInFocus: false, bell: true };
 
 const LOOKAHEAD = 0.35;
 const LOOPS_PER_TRACK = 2;
@@ -74,7 +75,7 @@ class MusicPlayer {
   private bellBus: GainNode | null = null;
 
   /**
-   * Sino do fim do ciclo: três badaladas no fim do foco, uma suave no fim da pausa. Sai por um canal
+   * Sino do fim do ciclo: duas badaladas (mais fortes no fim do foco, mais suaves no fim da pausa). Sai por um canal
    * próprio, então toca mesmo com a música desligada ou silenciada durante o foco.
    */
   bell(kind: "focus" | "break") {
@@ -95,8 +96,8 @@ class MusicPlayer {
       this.bellBus.connect(ctx.destination);
     }
     const t = ctx.currentTime + 0.05;
-    // Mi6–Si5–Mi6 (fim do foco) ou um Sol5 suave (fim da pausa).
-    const notes = kind === "focus" ? [[0, 88, 1], [0.45, 83, 0.85], [0.9, 88, 1]] : [[0, 79, 0.6]];
+    // Sempre duas badaladas: Mi6 duas vezes (fim do foco) ou Sol5 mais suave (fim da pausa).
+    const notes = kind === "focus" ? [[0, 88, 1], [0.7, 88, 1]] : [[0, 79, 0.65], [0.7, 79, 0.65]];
     for (const [dt, m, v] of notes) this.synth.play(this.bellBus, "bell", t + dt, m, 1, v);
   }
 
