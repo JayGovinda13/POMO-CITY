@@ -139,7 +139,9 @@ export function route(handler: (playerId: string, req: Request) => Promise<Respo
       if (e instanceof UnauthorizedError) return fail(401, e.message);
       if (e instanceof ConflictError) return fail(503, e.message);
       console.error(e);
-      return fail(500, "Erro interno");
+      // O motivo vai junto (sem pilha): sem ele não dá para diagnosticar pelo celular.
+      const detail = (e instanceof Error ? `${e.name}: ${e.message}` : String(e)).replace(/\s+/g, " ").slice(0, 240);
+      return fail(500, `Erro interno — ${detail}`);
     }
   };
 }
