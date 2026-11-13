@@ -158,15 +158,44 @@ groundTile("mountains", "m", "M", "j", (c, rng, v, d, l) => {
   }
 })
 
-for (let v = 0; v < 2; v++) {
+// Água em 4 quadros: os reflexos caminham na diagonal (o jogo alterna os quadros → ondas).
+for (let v = 0; v < 4; v++) {
   sprite(`water_${v}`, { w: 32, h: 16 }, (c) => {
     c.poly(ground(0), "b")
-    // Reflexos curtos, deslocados por variante.
-    const marks = v ? [[8, 6], [18, 4], [14, 10], [22, 9]] : [[10, 5], [16, 8], [21, 6], [9, 10]]
-    for (const [x, y] of marks) {
+    const base = [[10, 5], [16, 8], [21, 6], [9, 10], [14, 3], [20, 11]]
+    for (const [x0, y0] of base) {
+      const x = x0 + v * 2, y = y0 + (v >> 1)
+      if (!inDiamond(x, y) || !inDiamond(x + 3, y + 1)) continue
       c.hline(x, y, 3, "c")
       c.hline(x + 1, y + 1, 2, "B")
     }
+  })
+}
+// Espuma na beira do mar, uma por aresta do losango (mesma máscara das estradas:
+// 1 = x−1 cima-esq., 2 = y−1 cima-dir., 4 = x+1 baixo-dir., 8 = y+1 baixo-esq.).
+for (const [mask, x0, y0, x1, y1] of [[1, 1, 7, 15, 0], [2, 16, 0, 30, 7], [4, 30, 8, 16, 15], [8, 15, 15, 1, 8]]) {
+  sprite(`foam_${mask}`, { w: 32, h: 16 }, (c) => {
+    c.line(x0, y0, x1, y1, "Y")
+    // Respingos soltos junto da linha.
+    const mx = Math.round((x0 + x1) / 2), my = Math.round((y0 + y1) / 2)
+    const inx = mx < 16 ? 2 : -2, iny = my < 8 ? 1 : -1
+    c.px(mx + inx, my + iny, "c")
+    c.px(Math.round((x0 * 3 + x1) / 4) + inx, Math.round((y0 * 3 + y1) / 4) + iny, "Y")
+    c.px(Math.round((x0 + x1 * 3) / 4) + inx * 2, Math.round((y0 + y1 * 3) / 4) + iny, "c")
+  })
+}
+// Faixa de areia (praia): areia molhada com conchas.
+for (let v = 0; v < 2; v++) {
+  sprite(`beach_${v}`, { w: 32, h: 16 }, (c) => {
+    c.poly(ground(0), "s")
+    const rng = c.rng(31 + v)
+    for (let i = 0; i < 7; i++) {
+      const x = 4 + Math.floor(rng() * 24), y = 2 + Math.floor(rng() * 12)
+      if (!inDiamond(x, y)) continue
+      c.px(x, y, i % 3 ? "e" : "S")
+      if (i === 2) c.px(x + 1, y, "Y")
+    }
+    c.line(8 + v * 3, 8, 14 + v * 3, 11, "S")
   })
 }
 
@@ -400,6 +429,125 @@ for (const [lvl, H, hw] of [[1, 14, 14], [2, 22, 13], [3, 32, 12], [4, 44, 11]])
   })
 }
 
+/** Torre em andares empilhados (base → topo). Devolve os blocos para os detalhes. */
+function tower(c, oy, segs) {
+  const out = []
+  let lift = 0
+  for (const sg of segs) {
+    const b = block(c, { oy: oy - lift, hw: sg.hw, H: sg.H, top: sg.top, left: sg.left, right: sg.right })
+    if (sg.win) windows(c, b, { floors: Math.floor(sg.H / (sg.win.fh ?? 6)), fh: 6, ...sg.win })
+    if (sg.bands) {
+      for (let f = 0; f < Math.floor(sg.H / 4); f++) {
+        const up = f * 4 + 3
+        c.line(b.L[0] + 1, b.L[1] - up, b.cx - 1, b.B[1] - up, f % 3 === 1 ? sg.bands[1] : sg.bands[0])
+        c.line(b.cx + 1, b.B[1] - up, b.R[0] - 1, b.R[1] - up, sg.bands[0])
+      }
+    }
+    if (sg.parapet) parapet(c, b, sg.parapet)
+    out.push(b)
+    lift += sg.H
+  }
+  return out
+}
+const roofY = (b) => b.cy - b.H - b.hh
+const mast = (c, b, h, col = "J") => { c.vline(b.cx, roofY(b) + b.hh - h, h, col); c.px(b.cx, roofY(b) + b.hh - h - 1, "N") }
+
+// Residencial densa das eras: Elétrica (art déco), Atômica (lâmina modernista), Digital (vidro),
+// Verde (terraços-jardim) e Futuro (torre branca com luz ciano).
+building("zone_R_D5", 66, (c, oy) => {
+  const [, t] = tower(c, oy, [
+    { hw: 12, H: 34, left: "o", right: "O", win: { every: 3 } },
+    { hw: 8, H: 10, top: "x", left: "o", right: "O", win: { every: 2 }, parapet: "W" },
+  ])
+  c.rect(t.cx - 2, roofY(t) + t.hh - 4, 4, 4, "W")
+  mast(c, t, 8, "x")
+})
+building("zone_R_D6", 72, (c, oy) => {
+  const [b] = tower(c, oy, [{ hw: 12, H: 50, top: "Y", left: "w", right: "W", win: { every: 4, step: 3 }, parapet: "x" }])
+  // Varandas corridas.
+  for (let f = 1; f < 8; f++) c.line(b.L[0] + 1, b.L[1] - f * 6, b.cx - 1, b.B[1] - f * 6, "x")
+  c.rect(b.cx - 4, roofY(b) + b.hh - 4, 5, 4, "I")
+})
+building("zone_R_D7", 80, (c, oy) => {
+  const [, t] = tower(c, oy, [
+    { hw: 12, H: 46, left: "q", right: "Q", bands: ["u", "Y"] },
+    { hw: 9, H: 10, top: "i", left: "q", right: "Q", bands: ["u", "Y"], parapet: "J" },
+  ])
+  mast(c, t, 6)
+})
+building("zone_R_D8", 86, (c, oy) => {
+  const bs = tower(c, oy, [
+    { hw: 13, H: 22, top: "E", left: "w", right: "W", win: { every: 3 } },
+    { hw: 11, H: 22, top: "E", left: "w", right: "W", win: { every: 3 } },
+    { hw: 9, H: 18, top: "E", left: "w", right: "W", win: { every: 2 } },
+  ])
+  // Jardins nos terraços e no topo.
+  for (const b of bs) {
+    c.px(b.L[0] + 2, b.L[1] - b.H - 1, "f")
+    c.px(b.R[0] - 2, b.R[1] - b.H - 1, "F")
+    c.px(b.cx - 1, b.B[1] - b.H - 1, "f")
+  }
+  const t = bs[2]
+  c.circ(t.cx - 2, roofY(t) + t.hh - 2, 2, "f")
+  c.circ(t.cx + 3, roofY(t) + t.hh - 1, 1, "v")
+})
+building("zone_R_D9", 98, (c, oy) => {
+  const bs = tower(c, oy, [
+    { hw: 12, H: 30, left: "H", right: "J", bands: ["c", "l"] },
+    { hw: 10, H: 26, left: "H", right: "J", bands: ["c", "l"] },
+    { hw: 7, H: 16, top: "Y", left: "H", right: "J", bands: ["q", "l"] },
+  ])
+  const t = bs[2]
+  c.vline(t.cx, roofY(t) + t.hh - 10, 10, "H")
+  c.px(t.cx, roofY(t) + t.hh - 11, "c")
+  c.hline(t.cx - 2, roofY(t) + t.hh - 5, 5, "c")
+})
+
+// Comercial densa das eras.
+building("zone_C_D5", 78, (c, oy) => {
+  const bs = tower(c, oy, [
+    { hw: 11, H: 34, left: "i", right: "I", win: { col: "u", lit: "Y", every: 3 } },
+    { hw: 8, H: 12, left: "i", right: "I", win: { col: "u", lit: "Y", every: 2 } },
+    { hw: 5, H: 6, top: "L", left: "J", right: "I" },
+  ])
+  mast(c, bs[2], 9, "L")
+})
+building("zone_C_D6", 78, (c, oy) => {
+  const [b] = tower(c, oy, [{ hw: 11, H: 56, top: "I", left: "u", right: "d", bands: ["K", "c"], parapet: "J" }])
+  c.rect(b.cx - 5, roofY(b) + b.hh - 3, 10, 3, "Z")
+})
+building("zone_C_D7", 90, (c, oy) => {
+  const bs = tower(c, oy, [
+    { hw: 12, H: 44, left: "q", right: "Q", bands: ["u", "Y"] },
+    { hw: 9, H: 16, top: "i", left: "q", right: "Q", bands: ["u", "Y"] },
+  ])
+  hipRoof(c, bs[1], 9, "c", "u")
+  c.vline(bs[1].cx, roofY(bs[1]) + bs[1].hh - 15, 6, "J")
+})
+building("zone_C_D8", 92, (c, oy) => {
+  const bs = tower(c, oy, [
+    { hw: 12, H: 36, left: "q", right: "K", bands: ["E", "Y"] },
+    { hw: 10, H: 30, top: "u", left: "q", right: "K", bands: ["E", "Y"], parapet: "E" },
+  ])
+  const t = bs[1]
+  // Painéis solares e uma pequena turbina no topo.
+  c.line(t.cx - 5, roofY(t) + t.hh, t.cx + 3, roofY(t) + t.hh - 3, "c")
+  c.vline(t.cx + 5, roofY(t) + t.hh - 9, 8, "H")
+  c.line(t.cx + 3, roofY(t) + t.hh - 10, t.cx + 7, roofY(t) + t.hh - 8, "H")
+})
+building("zone_C_D9", 108, (c, oy) => {
+  const bs = tower(c, oy, [
+    { hw: 11, H: 30, left: "u", right: "d", bands: ["c", "l"] },
+    { hw: 12, H: 6, left: "H", right: "J" },
+    { hw: 9, H: 28, left: "u", right: "d", bands: ["c", "l"] },
+    { hw: 10, H: 5, left: "H", right: "J" },
+    { hw: 6, H: 14, top: "c", left: "q", right: "Q", bands: ["l", "Y"] },
+  ])
+  const t = bs[4]
+  c.vline(t.cx, roofY(t) + t.hh - 12, 12, "H")
+  c.px(t.cx, roofY(t) + t.hh - 13, "N")
+})
+
 // Zona industrial
 building("zone_I_L1", 30, (c, oy) => {
   c.poly(ground(oy, 2), "p")
@@ -435,28 +583,137 @@ for (const [lvl, H, chimneys] of [[1, 10, 1], [2, 12, 2], [3, 14, 2], [4, 16, 3]
   })
 }
 
-// Prefeitura: prédio clássico com colunas, cúpula e bandeira.
-building("cityhall", 48, (c, oy) => {
+// Industrial densa das eras: mais chaminés e tanques, depois fábrica limpa, verde e automatizada.
+building("zone_I_D5", 60, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 14, H: 12, top: "W", left: "w", right: "W" })
-  // Colunas na fachada esquerda.
-  for (let x = b.L[0] + 2; x < b.cx; x += 3) {
-    const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
-    c.rect(x, y - 10, 1, 9, "Y")
-  }
-  for (let x = b.cx + 3; x < b.R[0] - 1; x += 4) {
-    const y = Math.round(b.B[1] - (x - b.cx) / 2)
-    c.rect(x, y - 9, 1, 3, "d")
-  }
-  parapet(c, b, "x")
-  // Cúpula.
-  const top = b.cy - b.H
-  c.rect(b.cx - 4, top - 6, 9, 5, "w")
-  c.ellipse(b.cx, top - 7, 5, 4, "K")
-  c.px(b.cx - 2, top - 9, "q")
-  c.vline(b.cx, top - 17, 7, "D")
-  c.rect(b.cx + 1, top - 17, 4, 3, "N")
+  const b = block(c, { oy, hw: 14, H: 18, top: "J", left: "o", right: "O" })
+  windows(c, b, { floors: 3, fh: 6, col: "Z", lit: "L", every: 3 })
+  for (let k = 0; k < 3; k++) chimney(c, b.cx - 6 + k * 5, b.cy - b.H - 1, 22, 3, "o", "O", "Y")
+  c.rect(b.L[0] + 2, b.L[1] - b.H - 9, 6, 9, "J")
+  c.ellipse(b.L[0] + 4, b.L[1] - b.H - 9, 3, 1, "H")
 })
+building("zone_I_D6", 60, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 14, H: 16, top: "H", left: "J", right: "i" })
+  windows(c, b, { floors: 2, fh: 7, col: "u", lit: "q", every: 2, h: 3 })
+  // Esfera de gás e torre de destilação.
+  c.circ(b.cx + 5, b.cy - b.H - 6, 5, "H")
+  c.circ(b.cx + 6, b.cy - b.H - 5, 3, "J")
+  c.rect(b.cx - 8, b.cy - b.H - 22, 4, 22, "J")
+  c.rect(b.cx - 5, b.cy - b.H - 22, 1, 22, "I")
+  for (let k = 0; k < 4; k++) c.hline(b.cx - 9, b.cy - b.H - 4 - k * 5, 6, "N")
+})
+building("zone_I_D7", 56, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 14, H: 20, top: "Y", left: "H", right: "J" })
+  // Faixa azul e janelas em fita (sala limpa).
+  c.line(b.L[0] + 1, b.L[1] - 14, b.cx - 1, b.B[1] - 14, "Q")
+  c.line(b.cx + 1, b.B[1] - 14, b.R[0] - 1, b.R[1] - 14, "u")
+  c.line(b.L[0] + 1, b.L[1] - 7, b.cx - 1, b.B[1] - 7, "q")
+  c.line(b.cx + 1, b.B[1] - 7, b.R[0] - 1, b.R[1] - 7, "Q")
+  parapet(c, b, "J")
+  // Antena parabólica e exaustores.
+  c.circ(b.cx + 4, b.cy - b.H - 5, 3, "H")
+  c.line(b.cx + 4, b.cy - b.H - 5, b.cx + 7, b.cy - b.H - 8, "I")
+  c.rect(b.cx - 7, b.cy - b.H - 4, 3, 3, "I")
+})
+building("zone_I_D8", 58, (c, oy) => {
+  c.poly(ground(oy, 0), "G")
+  const b = block(c, { oy, hw: 14, H: 18, top: "E", left: "w", right: "W" })
+  windows(c, b, { floors: 2, fh: 8, col: "u", lit: "c", every: 2, h: 3 })
+  // Painéis solares no telhado verde e turbina.
+  for (let k = 0; k < 3; k++) c.line(b.cx - 8 + k * 4, b.cy - b.H + 1 - k, b.cx - 2 + k * 4, b.cy - b.H - 2 - k, "u")
+  c.vline(b.cx + 8, b.cy - b.H - 16, 15, "H")
+  c.line(b.cx + 8, b.cy - b.H - 16, b.cx + 8, b.cy - b.H - 22, "H")
+  c.line(b.cx + 8, b.cy - b.H - 16, b.cx + 13, b.cy - b.H - 13, "H")
+  c.line(b.cx + 8, b.cy - b.H - 16, b.cx + 3, b.cy - b.H - 13, "J")
+})
+building("zone_I_D9", 62, (c, oy) => {
+  c.poly(ground(oy, 0), "p")
+  const b = block(c, { oy, hw: 14, H: 14, top: "H", left: "u", right: "d" })
+  for (let f = 0; f < 3; f++) {
+    c.line(b.L[0] + 1, b.L[1] - 3 - f * 4, b.cx - 1, b.B[1] - 3 - f * 4, f === 1 ? "l" : "c")
+    c.line(b.cx + 1, b.B[1] - 3 - f * 4, b.R[0] - 1, b.R[1] - 3 - f * 4, "c")
+  }
+  // Domo do reator e braço robótico.
+  c.circ(b.cx - 3, b.cy - b.H - 5, 7, "Q")
+  c.circ(b.cx - 4, b.cy - b.H - 6, 5, "q")
+  c.px(b.cx - 6, b.cy - b.H - 9, "Y")
+  c.hline(b.cx - 10, b.cy - b.H - 2, 15, "l")
+  c.line(b.cx + 8, b.cy - b.H, b.cx + 10, b.cy - b.H - 12, "J", 2)
+  c.line(b.cx + 10, b.cy - b.H - 12, b.cx + 5, b.cy - b.H - 16, "H", 2)
+  c.px(b.cx + 4, b.cy - b.H - 16, "N")
+})
+
+// Prefeitura: palácio de 3 tiles em linha (eixo x), inspirado no Palácio dos Bandeirantes (SP):
+// fachada longa e clara de pilastras, corpo central mais alto com pórtico, gramado e bandeiras.
+sprite("cityhall", { w: 64, h: 62, outline: "k" }, (c) => {
+  const oy = 62 - 32
+  // Grade do palácio: i = 0..24 ao longo dos 3 tiles (eixo x), j = 0..8 na profundidade.
+  const P = (i, j, up = 0) => [Math.round(16 + (i - j) * 2), Math.round(oy + i + j - up)]
+  const quad = (pts, col) => c.poly(pts.flat(), col)
+  const prism = (i0, i1, j0, j1, H, top, front, side) => {
+    quad([P(i0, j1), P(i1, j1), P(i1, j1, H), P(i0, j1, H)], front)
+    quad([P(i1, j1), P(i1, j0), P(i1, j0, H), P(i1, j1, H)], side)
+    quad([P(i0, j0, H), P(i1, j0, H), P(i1, j1, H), P(i0, j1, H)], top)
+  }
+  // Gramado, esplanada e caminho de entrada.
+  quad([P(0, 0), P(24, 0), P(24, 8), P(0, 8)], "g")
+  quad([P(8, 6), P(16, 6), P(16, 8), P(8, 8)], "p")
+  quad([P(0, 6.6), P(8, 6.6), P(8, 7.4), P(0, 7.4)], "h")
+  quad([P(16, 6.6), P(24, 6.6), P(24, 7.4), P(16, 7.4)], "h")
+
+  // Alas: 3 andares de janelas entre pilastras.
+  const H = 13
+  prism(1, 23, 1, 5.5, H, "x", "w", "W")
+  for (let i = 1.5; i < 23; i += 1) {
+    if (i > 8 && i < 16) continue
+    const [x, y] = P(i, 5.5)
+    for (const up of [3, 7, 11]) c.px(x, y - up, "d")
+    c.px(x, y - 12, "Y")
+  }
+  for (let j = 1.75; j < 5.5; j += 1) {
+    const [x, y] = P(23, j)
+    for (const up of [3, 7, 11]) c.px(x, y - up, "u")
+  }
+  // Platibanda clara em toda a volta.
+  c.line(...P(1, 5.5, H), ...P(23, 5.5, H), "Y")
+  c.line(...P(23, 5.5, H), ...P(23, 1, H), "Y")
+  c.line(...P(1, 1, H), ...P(23, 1, H), "W")
+  c.line(...P(1, 1, H), ...P(1, 5.5, H), "W")
+
+  // Corpo central, mais alto e avançado, com pórtico de colunas.
+  const HC = 19
+  prism(8, 16, 0.5, 6.2, HC, "W", "Y", "w")
+  for (let i = 8.5; i < 16; i += 1) {
+    const [x, y] = P(i, 6.2)
+    c.vline(x, y - 14, 13, i % 2 < 1 ? "d" : "w")
+    c.px(x, y - 16, "x")
+  }
+  c.line(...P(8, 6.2, 15), ...P(16, 6.2, 15), "x")
+  c.line(...P(8, 6.2, HC), ...P(16, 6.2, HC), "H")
+  c.line(...P(16, 6.2, HC), ...P(16, 0.5, HC), "H")
+  // Porta e escadaria.
+  const [dx, dy] = P(12, 6.2)
+  c.rect(dx - 1, dy - 6, 3, 6, "D")
+  c.line(...P(10.5, 6.8), ...P(13.5, 6.8), "Y")
+  c.line(...P(10.5, 7.3), ...P(13.5, 7.3), "J")
+
+  // Bandeiras no topo: Brasil, São Paulo e a da cidade.
+  const flags = [[10, ["f", "y", "f"]], [12, ["Z", "Y", "N"]], [14, ["H", "Q", "H"]]]
+  for (const [i, cols] of flags) {
+    const [x, y] = P(i, 3.4, HC)
+    c.vline(x, y - 9, 9, "J")
+    cols.forEach((col, k) => c.hline(x + 1, y - 9 + k, 4, col))
+  }
+  // Arbustos e canteiros no gramado.
+  for (const [i, j] of [[2, 7], [5, 7.2], [19, 7], [22, 7.2], [0.8, 3], [0.8, 5]]) {
+    const [x, y] = P(i, j)
+    c.circ(x, y - 1, 1, "F")
+    c.px(x, y - 2, "v")
+  }
+})
+
 
 // Monumento: obelisco sobre pedestal.
 building("monument", 52, (c, oy) => {
@@ -1002,4 +1259,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "foam_*", "beach_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })

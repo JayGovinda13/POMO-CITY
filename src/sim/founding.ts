@@ -1,7 +1,7 @@
 import { annualRain, biomeOf, REGION_BY_ID } from "./climate";
 import { BOND_VALUE, DIFFICULTY, creditRating, type Difficulty } from "./finance";
 import { ZONE, type CityState } from "./types";
-import { createCity } from "./world";
+import { createCity, isHall } from "./world";
 import { MAP_SIZE } from "./config";
 import { COAST_NAMES, RELIEF_NAMES, WATER_NAMES, defaultMapOptions, type MapOptions } from "./terrain";
 import type { BiomeId } from "./types";
@@ -27,7 +27,7 @@ export const realQuarter = (now: number) => Math.floor(new Date(now).getUTCMonth
 export function isPristine(s: CityState): boolean {
   return (
     s.cyclesCompleted === 0 &&
-    s.buildings.every((b) => b.type === "cityhall") &&
+    s.buildings.every(isHall) &&
     s.zoneType.every((z) => z === ZONE.NONE) &&
     s.wires.every((w) => w === 0)
   );

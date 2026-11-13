@@ -237,6 +237,18 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     color: 0xd9c27a,
     height: 30,
   },
+  cityhall_wing: {
+    category: "special",
+    name: "Prefeitura",
+    description: "Ala do palácio da prefeitura (ela ocupa 3 quadrados).",
+    buildable: false,
+    cost: 0,
+    upkeep: 0,
+    workers: 0,
+    needsRoad: false,
+    color: 0xd9c27a,
+    height: 22,
+  },
   house: {
     category: "special",
     name: "Casa",

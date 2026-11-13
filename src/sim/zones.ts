@@ -6,7 +6,7 @@ import { CRIME_HIGH, POLLUTION_HIGH, computeServices, serviceDemand, type Servic
 import { TRIP_LIMIT_POPULATION, computeTraffic, trafficDemand, type TrafficResult } from "./traffic";
 import { ZONE_KINDS, type CityState, type Rank, type ZoneKind } from "./types";
 import { addTo } from "./inventory";
-import { techMods } from "./tech";
+import { ERAS, currentEra, techMods } from "./tech";
 import { eventMods } from "./events";
 
 export type Demand = Record<ZoneKind, number>;
@@ -48,9 +48,16 @@ export function computeDemand(
   };
 }
 
+/** Cada era depois da Industrial libera 1 nível novo nas zonas densas (prédios mais altos). */
+export const eraLevelBonus = (s: CityState) => Math.max(0, ERAS.indexOf(currentEra(s)));
+
+/** Nível máximo de uma zona hoje: o do catálogo e, nas densas, +1 por era alcançada. */
+export const zoneMaxLevel = (s: CityState, kind: ZoneKind, density: number) =>
+  ZONES[kind].maxLevel[density ? 1 : 0] + (density ? eraLevelBonus(s) : 0);
+
 export const maxLevel = (s: CityState, i: number) => {
   const kind = ZONE_KINDS[s.zoneType[i] - 1];
-  return kind ? ZONES[kind].maxLevel[s.zoneDensity[i]] : 0;
+  return kind ? zoneMaxLevel(s, kind, s.zoneDensity[i]) : 0;
 };
 
 function shuffle<T>(arr: T[], rand: () => number): T[] {

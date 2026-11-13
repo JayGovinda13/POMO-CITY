@@ -13,6 +13,9 @@ import {
   cityYear,
   createCity,
   eventMods,
+  foundCity,
+  roadAccess,
+  zoneMaxLevel,
   lockReason,
   migrateState,
   rankEligible,
@@ -193,5 +196,42 @@ describe("eventos aleatórios", () => {
     f.events = [{ id: "desafio_populacao", start: 0, until: 8, target: 5000 }];
     f.cyclesCompleted = 9;
     expect(rollEvents(f, rng(1), { healthServed: 1 })[0].title).toBe("Desafio não cumprido");
+  });
+});
+
+describe("palácio da prefeitura e níveis por era", () => {
+  it("na cidade fundada a prefeitura ocupa 3 tiles e não pode ser demolida nem coberta", () => {
+    const r = foundCity(createCity(5, T0), "sao-paulo", T0);
+    if (!r.ok) throw new Error(r.error);
+    const s = r.state;
+    const hall = s.buildings.find((b) => b.type === "cityhall")!;
+    const wings = s.buildings.filter((b) => b.type === "cityhall_wing");
+    expect(wings.map((b) => [b.x - hall.x, b.y - hall.y])).toEqual([[-1, 0], [1, 0]]);
+    const e = s.elevation[hall.y * s.width + hall.x];
+    for (const w of wings) {
+      const i = w.y * s.width + w.x;
+      expect(s.terrain[i]).toBe(0);
+      expect(s.elevation[i]).toBe(e);
+      expect(s.trees[i]).toBe(0);
+    }
+    const tries = applyCommands(s, [
+      { type: "demolish", x: hall.x + 1, y: hall.y },
+      { type: "build", building: "road", x: hall.x - 1, y: hall.y },
+    ]);
+    expect(tries.rejected).toHaveLength(2);
+    // A malha viária parte também das alas.
+    const road = applyCommands(s, [{ type: "build", building: "road", x: hall.x + 2, y: hall.y }]).state;
+    expect(roadAccess(road)[hall.y * s.width + hall.x + 2]).toBe(0);
+  });
+
+  it("cada era libera 1 nível novo nas zonas densas", () => {
+    const s = city();
+    expect(zoneMaxLevel(s, "R", 1)).toBe(4);
+    expect(zoneMaxLevel(s, "R", 0)).toBe(2);
+    s.cyclesCompleted = (1930 - 1900) * 4; // Era Elétrica
+    expect(zoneMaxLevel(s, "R", 1)).toBe(5);
+    s.cyclesCompleted = (2070 - 1900) * 4; // Era do Futuro
+    expect(zoneMaxLevel(s, "C", 1)).toBe(9);
+    expect(zoneMaxLevel(s, "I", 0)).toBe(2);
   });
 });

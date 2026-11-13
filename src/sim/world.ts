@@ -91,7 +91,7 @@ export function createCity(
 
   const cityhall: Building = { id: 1, type: "cityhall", x: cx, y: cy };
   const n = width * height;
-  return {
+  const city: CityState = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     version: 1,
     seed,
@@ -138,6 +138,39 @@ export function createCity(
     dayKey: utcDayKey(now),
     cyclesToday: 0,
   };
+  // O palácio de 3 tiles vale nos mapas do jogo (gerados na fundação); o mapa clássico, sem
+  // opções, mantém a prefeitura de 1 tile (saves antigos ganham as alas na migração).
+  if (opts.map) placeHallWings(city);
+  return city;
+}
+
+/** A prefeitura e suas duas alas (o palácio ocupa 3 tiles em linha, no eixo x). */
+export const isHall = (b: Pick<Building, "type">) => b.type === "cityhall" || b.type === "cityhall_wing";
+
+/**
+ * Garante as alas da prefeitura em (x−1, y) e (x+1, y): terreno firme na altura da prefeitura,
+ * sem árvore, lote ou fio. O que estiver no caminho é removido (só acontece em saves antigos).
+ */
+export function placeHallWings(s: CityState): void {
+  const hall = s.buildings.find((b) => b.type === "cityhall");
+  if (!hall) return;
+  const hi = hall.y * s.width + hall.x;
+  for (const dx of [-1, 1]) {
+    const x = hall.x + dx;
+    const y = hall.y;
+    if (x < 0 || x >= s.width) continue;
+    if (s.buildings.some((b) => b.type === "cityhall_wing" && b.x === x && b.y === y)) continue;
+    const i = y * s.width + x;
+    s.buildings = s.buildings.filter((b) => !(b.x === x && b.y === y));
+    s.terrain[i] = 0;
+    if (s.elevation?.length) s.elevation[i] = s.elevation[hi] ?? 0;
+    if (s.trees?.length) s.trees[i] = 0;
+    s.zoneType[i] = 0;
+    s.zoneDensity[i] = 0;
+    s.zoneLevel[i] = 0;
+    s.wires[i] = 0;
+    s.buildings.push({ id: s.nextId++, type: "cityhall_wing", x, y });
+  }
 }
 
 export function buildingAt(s: CityState, x: number, y: number): Building | undefined {
@@ -177,11 +210,14 @@ export function connectedRoads(s: CityState): Set<number> {
   const seen = new Set<number>();
   if (!hall) return seen;
   const queue: number[] = [];
-  for (const [dx, dy] of DIRS) {
-    const x = hall.x + dx;
-    const y = hall.y + dy;
-    if (inBounds(s, x, y) && roads.has(idx(s, x, y)) && viaLinks(s, idx(s, hall.x, hall.y), idx(s, x, y), (k) => tunnels.has(k)))
-      queue.push(idx(s, x, y));
+  // A malha parte de qualquer um dos 3 tiles do palácio.
+  for (const part of s.buildings.filter(isHall)) {
+    for (const [dx, dy] of DIRS) {
+      const x = part.x + dx;
+      const y = part.y + dy;
+      if (inBounds(s, x, y) && roads.has(idx(s, x, y)) && viaLinks(s, idx(s, part.x, part.y), idx(s, x, y), (k) => tunnels.has(k)))
+        queue.push(idx(s, x, y));
+    }
   }
   const viaHighway = new Set<number>();
   while (queue.length) {

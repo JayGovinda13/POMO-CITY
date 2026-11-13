@@ -11,7 +11,7 @@ import { BASE_PRICE } from "./economy";
 import { addTo, getQty } from "./inventory";
 import { BONUS_MAX, isCovered, payoutFor, repairCost, waitingLeft } from "./insurance";
 import { RANKS, ZONE, type CityState, type Inventory, type ResourceId } from "./types";
-import { rng } from "./world";
+import { isHall, rng } from "./world";
 import { techMods } from "./tech";
 import { computeServices, fireProtection } from "./services";
 
@@ -146,7 +146,7 @@ export function applyDisaster(
   }
 
   // Construções danificadas (só no desastre normal): param até o reparo.
-  const candidates = next.buildings.filter((b) => !b.damaged && b.type !== "road" && b.type !== "cityhall");
+  const candidates = next.buildings.filter((b) => !b.damaged && b.type !== "road" && !isHall(b));
   for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];

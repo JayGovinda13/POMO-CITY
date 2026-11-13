@@ -145,13 +145,13 @@ describe("Fase 2 — clima na simulação", () => {
       // Coordenadas relativas à prefeitura (o mapa fundado é 40×40).
       const h = s.buildings.find((b) => b.type === "cityhall")!;
       const cmds: Command[] = [
-        { type: "build", building: "road", x: h.x + 1, y: h.y },
-        { type: "build", building: "farm", x: h.x + 1, y: h.y - 1 },
+        { type: "build", building: "road", x: h.x, y: h.y + 1 },
+        { type: "build", building: "farm", x: h.x + 1, y: h.y + 1 },
         { type: "wire", x: h.x, y: h.y - 1 },
       ];
       const built = applyCommands(s, cmds).state;
-      built.zoneType[at(built, h.x - 1, h.y)] = ZONE.R;
-      built.zoneLevel[at(built, h.x - 1, h.y)] = 2;
+      built.zoneType[at(built, h.x - 1, h.y + 1)] = ZONE.R;
+      built.zoneLevel[at(built, h.x - 1, h.y + 1)] = 2;
       built.population = 8;
       return resolveCycle(built, T0).report.produced["food:D"] ?? 0;
     };

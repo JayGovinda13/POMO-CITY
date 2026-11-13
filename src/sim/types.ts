@@ -10,6 +10,8 @@ export type BiomeId = "plains" | "forest" | "mountains" | "desert" | "tundra";
 export type BuildingType =
   | "road"
   | "cityhall"
+  /** Alas da prefeitura (ela ocupa 3 tiles em linha): ocupam o terreno, sem função própria. */
+  | "cityhall_wing"
   /** Legado (v1): casas viraram zonas residenciais na migração para v2. */
   | "house"
   | "farm"
@@ -87,7 +89,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 11;
+export const CURRENT_SCHEMA_VERSION = 12;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */

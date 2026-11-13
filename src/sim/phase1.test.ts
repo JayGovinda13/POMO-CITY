@@ -63,15 +63,17 @@ describe("Fase 0 — migração de estado", () => {
     delete v1.wires;
     v1.buildings = [
       ...v2.buildings,
-      { id: 2, type: "road", x: 13, y: 12 },
-      { id: 3, type: "house", x: 14, y: 12 },
+      { id: 2, type: "road", x: 12, y: 13 },
+      { id: 3, type: "house", x: 12, y: 14 },
     ];
     const m = migrateState(v1 as CityState);
     expect(m.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(m.buildings.some((b) => b.type === "house")).toBe(false);
-    expect(m.zoneType[at(m, 14, 12)]).toBe(ZONE.R);
-    expect(m.zoneLevel[at(m, 14, 12)]).toBe(2);
-    expect(m.wires[at(m, 13, 12)]).toBe(1);
+    expect(m.zoneType[at(m, 12, 14)]).toBe(ZONE.R);
+    expect(m.zoneLevel[at(m, 12, 14)]).toBe(2);
+    expect(m.wires[at(m, 12, 13)]).toBe(1);
+    // v12: a prefeitura ganha as duas alas (palácio de 3 tiles).
+    expect(m.buildings.filter((b) => b.type === "cityhall_wing").map((b) => [b.x, b.y])).toEqual([[11, 12], [13, 12]]);
     expect(migrateState(m)).toBe(m); // idempotente
   });
 });

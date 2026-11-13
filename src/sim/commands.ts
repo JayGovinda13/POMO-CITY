@@ -7,7 +7,7 @@ import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
 import { lockReason } from "./unlocks";
 import { sanitizeCityName } from "./founding";
-import { buildingAt, idx, inBounds } from "./world";
+import { buildingAt, idx, inBounds, isHall } from "./world";
 import { RANK_TERRAFORM, TERRAFORM, isWater, MAX_ELEVATION } from "./terrain";
 import { addTo } from "./inventory";
 import { techLock } from "./tech";
@@ -244,7 +244,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
 
   if (cmd.type === "demolish") {
     if (cmd.underground) return s.pipes[i] ? null : "Não há cano aqui";
-    if (here?.type === "cityhall") return "A prefeitura não pode ser demolida";
+    if (here && isHall(here)) return "A prefeitura não pode ser demolida";
     if (!here && !s.wires[i] && !s.zoneType[i] && !s.trees?.[i]) return "Nada para demolir";
     return null;
   }

@@ -1,6 +1,7 @@
 import { DEFAULT_POLICIES, START_EQ, START_LIFE } from "./config";
 import { CURRENT_SCHEMA_VERSION, ZONE, type CityState } from "./types";
 import { legacyTrees } from "./terrain";
+import { placeHallWings } from "./world";
 
 /**
  * Atualiza estados salvos em versões antigas para o formato atual.
@@ -93,6 +94,11 @@ export function migrateState(raw: CityState): CityState {
     s.techs = [];
     s.research = { target: null, progress: 0 };
     s.events = [];
+  }
+
+  if (from < 12) {
+    // v11 → v12: a prefeitura virou um palácio de 3 tiles (ganha duas alas).
+    placeHallWings(s);
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

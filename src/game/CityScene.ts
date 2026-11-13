@@ -75,6 +75,11 @@ export class CityScene extends Phaser.Scene {
   private terrainRT?: Phaser.GameObjects.RenderTexture;
   private lotG!: Phaser.GameObjects.Graphics;
   private flatLayer!: Phaser.GameObjects.Container;
+  // Animações de ambiente (sempre ligadas): ondas, espuma na praia e vento nas árvores.
+  private waves: { img: Phaser.GameObjects.Image; k: number; slow: boolean }[] = [];
+  private foams: { img: Phaser.GameObjects.Image; x: number; y: number; dx: number; dy: number; ph: number; d: number }[] = [];
+  private swaying: { img: Phaser.GameObjects.Image; x: number; ph: number; wx: number; off: number }[] = [];
+  private waveStep = -1;
   private spriteLayer!: Phaser.GameObjects.Container;
   private fxG!: Phaser.GameObjects.Graphics;
   private zoomIdx = 1;
@@ -179,10 +184,34 @@ export class CityScene extends Phaser.Scene {
   }
 
   /** Quadro a quadro: a cidade só se mexe durante o foco (e não na visão subterrânea). */
-  update(_time: number, delta: number) {
+  update(time: number, delta: number) {
+    this.ambient(time);
     const s = useGame.getState();
     const active = s.phase === "focus" && !!s.city && s.overlay !== "water";
     this.life?.update(delta, active);
+  }
+
+  /** Ambiente vivo: o mar ondula, a espuma vai e volta na areia e o vento passa pelas árvores. */
+  private ambient(time: number) {
+    const step = Math.floor(time / 420);
+    if (step !== this.waveStep) {
+      this.waveStep = step;
+      for (const w of this.waves) w.img.setFrame(`water_${((w.slow ? step >> 1 : step) + w.k) & 3}`);
+    }
+    for (const f of this.foams) {
+      const d = Math.round((1 + Math.sin(time / 850 + f.ph)) * 1.5); // 0..3 px mar adentro
+      if (d === f.d) continue;
+      f.d = d;
+      f.img.setPosition(f.x + f.dx * d, f.y + (f.dy * d) / 2).setAlpha(0.95 - d * 0.22);
+    }
+    for (const t of this.swaying) {
+      // Rajadas atravessando o mapa da esquerda para a direita, com uma brisa de fundo.
+      const wind = Math.sin(time * 0.0026 - t.wx * 0.016) + 0.45 * Math.sin(time * 0.0011 + t.ph);
+      const off = wind > 0.75 ? 1 : wind < -0.95 ? -1 : 0;
+      if (off === t.off) continue;
+      t.off = off;
+      t.img.x = t.x + off;
+    }
   }
 
   private pinchStart: number | null = null;
@@ -342,6 +371,24 @@ export class CityScene extends Phaser.Scene {
 
     this.flatLayer.removeAll(true);
     this.spriteLayer.removeAll(true);
+    this.waves = [];
+    this.foams = [];
+    this.swaying = [];
+    this.waveStep = -1;
+    const animated = this.textures.get("city").has("water_3");
+    const isSea = (x: number, y: number) => x >= 0 && y >= 0 && x < city.width && y < city.height && city.terrain[y * city.width + x] === 2;
+    // Vizinhos na máscara das arestas: 1 = x−1, 2 = y−1, 4 = x+1, 8 = y+1 (e para onde a aresta aponta na tela).
+    const EDGES = [
+      [1, -1, 0, -1, -1],
+      [2, 0, -1, 1, -1],
+      [4, 1, 0, 1, 1],
+      [8, 0, 1, -1, 1],
+    ] as const;
+    /** Faixa de areia: terra colada no mar e no máximo 1 degrau acima dele. */
+    const isBeach = (x: number, y: number) =>
+      animated && city.terrain[y * city.width + x] === 0 && E(x, y) <= 1 && EDGES.some(([, dx, dy]) => isSea(x + dx, y + dy));
+    const hall = city.buildings.find((b) => b.type === "cityhall");
+    const palace = !!hall && city.buildings.filter((b) => b.type === "cityhall_wing" && b.y === hall.y && Math.abs(b.x - hall.x) === 1).length === 2;
     this.lotG.clear();
     const fx = this.fxG.clear();
     // 2,5D: sombra projetada no chão (luz vindo de cima-esquerda), proporcional à altura.
@@ -379,10 +426,28 @@ export class CityScene extends Phaser.Scene {
         const { sx, sy } = iso(x, y);
         const v = tileHash(city.seed, x, y) & 1;
         const t = city.terrain[i];
-        const name = (t ? this.frame(`water_${v}`) : this.frame(`ground_${city.biome}_${v}`)) ?? "ground_plains_0";
+        // Faixa de areia: terra no nível do mar, colada nele.
+        const beach = !t && isBeach(x, y);
+        const name = (t ? this.frame(`water_${v}`) : this.frame(beach ? `beach_${v}` : `ground_${city.biome}_${v}`)) ?? "ground_plains_0";
         const img = this.add.image(sx, sy, "city", name);
         if (t === 2) img.setTint(0x8ab0d8); // mar: azul mais profundo
         this.flatLayer.add(img);
+        if (t && animated) {
+          this.waves.push({ img, k: (x + y * 3 + v) & 3, slow: t !== 2 });
+          // Espuma nas arestas do mar que tocam a terra (vai e volta com as ondas).
+          if (t === 2) {
+            for (const [mask, dx, dy, ox, oy] of EDGES) {
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx < 0 || ny < 0 || nx >= city.width || ny >= city.height) continue;
+              const ni = ny * city.width + nx;
+              if (!isBeach(nx, ny)) continue;
+              const foam = this.add.image(sx, sy, "city", `foam_${mask}`);
+              this.flatLayer.add(foam);
+              this.foams.push({ img: foam, x: sx, y: sy, dx: -ox, dy: -oy, ph: (x + y) * 0.7, d: -1 });
+            }
+          }
+        }
       }
       const g = this.add.graphics();
       this.flatLayer.add(g);
@@ -407,7 +472,8 @@ export class CityScene extends Phaser.Scene {
           const B = [sx, sy + TH / 2];
           const other = edge ? undefined : buildingAt.get(ny * city.width + nx);
           const ramp = here && other && Math.abs(e - en) === 1 && RAMP[here.type] && linked(here.type, x, y, nx, ny);
-          const base = water ? 0x2f558f : ramp ? RAMP[here!.type] : SOIL;
+          const sand = !water && !ramp && isBeach(x, y);
+          const base = water ? 0x2f558f : ramp ? RAMP[here!.type] : sand ? 0xcdb070 : SOIL;
           g.fillStyle(shade(base, side === "R" ? 0.95 : 0.75), 1);
           g.fillPoints([new V(A[0], A[1]), new V(B[0], B[1]), new V(B[0], B[1] + dh), new V(A[0], A[1] + dh)], true);
           if (ramp && here!.type !== "rail") {
@@ -416,7 +482,7 @@ export class CityScene extends Phaser.Scene {
             g.lineBetween((A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[0] + B[0]) / 2, (A[1] + B[1]) / 2 + dh);
           } else if (!water && !ramp) {
             // Beirada de grama e estratos do solo.
-            g.lineStyle(1, grass, 1);
+            g.lineStyle(1, sand ? 0xf0dca8 : grass, 1);
             g.lineBetween(A[0], A[1] + 1, B[0], B[1] + 1);
             g.lineStyle(1, shade(base, 0.6), 0.6);
             for (let k = EH; k < dh; k += EH) g.lineBetween(A[0], A[1] + k, B[0], B[1] + k);
@@ -446,6 +512,17 @@ export class CityScene extends Phaser.Scene {
           else if (cond < 70) img.setTint(0xc8a888);
           this.flatLayer.add(img);
           if (city.terrain[i] !== 0) img.setTint(0xd8d0c0); // ponte: tabuleiro mais claro
+        } else if (b && palace && (b.type === "cityhall" || b.type === "cityhall_wing")) {
+          // Palácio de 3 tiles: um sprite só, fatiado por tile para respeitar a ordem de profundidade.
+          const c = iso(hall!.x, hall!.y);
+          const img = this.add.image(c.sx, c.sy + TH + 1, "city", "cityhall").setOrigin(0.5, 1);
+          const w = img.width;
+          const k = b.x - hall!.x; // −1 = ala de trás, 0 = centro, 1 = ala da frente
+          if (k < 0) img.setCrop(0, 0, w / 2 - 8, img.height);
+          else if (k === 0) img.setCrop(w / 2 - 8, 0, 16, img.height);
+          else img.setCrop(w / 2 + 8, 0, w / 2 - 8, img.height);
+          this.spriteLayer.add(img);
+          castShadow(sx, sy, k === 0 ? 20 : 14);
         } else if (b) {
           const name = this.frame(b.type) ?? "farm";
           const img = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
@@ -485,7 +562,15 @@ export class CityScene extends Phaser.Scene {
         if (!b && city.trees?.[i] && !city.zoneLevel[i] && !city.wires[i] && city.terrain[i] === 0) {
           const name = this.frame(`decor_${city.biome}_${tileHash(city.seed ^ 0x9e37, x, y) & 1}`);
           if (name) {
-            this.spriteLayer.add(this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1));
+            // Copa e tronco separados: a copa balança 1 px com o vento.
+            const trunk = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1);
+            const crown = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1);
+            const cut = trunk.height - 8;
+            trunk.setCrop(0, cut, trunk.width, 8);
+            crown.setCrop(0, 0, crown.width, cut);
+            this.spriteLayer.add(trunk);
+            this.spriteLayer.add(crown);
+            this.swaying.push({ img: crown, x: sx, ph: (x * 7 + y * 13) % 6.28, wx: sx, off: 0 });
             castShadow(sx, sy, 12, 0.5);
           }
         }

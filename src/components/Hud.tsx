@@ -15,6 +15,7 @@ import {
   REGION_BY_ID,
   weatherAt,
   computeDemand,
+  zoneMaxLevel,
   repairCost,
   RESOURCE_NAMES,
   citizensView,
@@ -280,7 +281,7 @@ function TileInfo({
             {ZONES[ZONE_KINDS[zone - 1]].name} {city.zoneDensity[i] ? "densa" : "leve"}
           </strong>
           <p>
-            Nível {city.zoneLevel[i]}/{ZONES[ZONE_KINDS[zone - 1]].maxLevel[city.zoneDensity[i]]}
+            Nível {city.zoneLevel[i]}/{zoneMaxLevel(city, ZONE_KINDS[zone - 1], city.zoneDensity[i])}
           </p>
           {!powered[i] && <p className="text-yellow-300">Sem energia</p>}
           {access[i] < 0 && <p className="text-red-300">Longe demais da estrada (máx. 3 tiles)</p>}

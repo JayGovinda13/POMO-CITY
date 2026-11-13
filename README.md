@@ -116,6 +116,18 @@ ampliam o estoque.
   O ranking mostra apenas o nome da cidade e a região. No Supabase, exige a migration
   `supabase/migrations/20261112000000_leaderboard.sql`.
 
+## Palácio da prefeitura, eras e ambiente vivo
+
+- **Prefeitura de 3 quadrados**: um palácio inspirado no Palácio dos Bandeirantes (SP), em linha no
+  eixo x (a prefeitura + duas alas `cityhall_wing`). Não pode ser demolido; a malha viária parte de
+  qualquer um dos 3 tiles. Saves antigos ganham as alas na migração (v12) — o que estiver nos dois
+  tiles vizinhos é removido.
+- **Cada era libera 1 nível novo nas zonas densas**: nível 4 na Era Industrial, 5 na Elétrica (1930),
+  6 na Atômica (1960), 7 na Digital (1990), 8 na Verde (2030) e 9 na Era do Futuro (2070), com
+  prédios próprios de cada época (R, C e I). Zonas leves continuam até o nível 2.
+- **Animações de ambiente** (sempre ligadas): o vento passa em rajadas pelas copas das árvores, a
+  água ondula (4 quadros) e o litoral ganhou faixa de areia com espuma que vai e volta.
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se
