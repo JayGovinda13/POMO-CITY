@@ -109,16 +109,13 @@ export function foundCity(
 }
 
 /**
- * Novo jogo: cidade nova (região a escolher), preservando a sequência de foco e o limite
- * diário — o foco é do jogador, não da cidade, e recomeçar não pode servir para burlar o limite.
+ * Novo jogo: cidade nova (região a escolher) e sequência de foco zerada — a cidade nova começa do
+ * primeiro ciclo (Rank D). Só o limite diário é preservado: recomeçar não pode servir para burlá-lo.
  */
 export function newGame(old: CityState, seed: number, now: number): CityState {
   const fresh = createCity(seed, now);
   return {
     ...fresh,
-    streak: old.streak,
-    streakFrozen: old.streakFrozen,
-    lastCycleAt: old.lastCycleAt,
     dayKey: old.dayKey,
     cyclesToday: old.cyclesToday,
     version: old.version + 1,

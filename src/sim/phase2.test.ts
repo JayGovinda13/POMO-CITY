@@ -187,13 +187,14 @@ describe("Fase 2 — clima na simulação", () => {
 });
 
 describe("Sessão — novo jogo, sequência guardada e desastres", () => {
-  it("novo jogo preserva sequência e limite diário; região volta a ser escolhida", () => {
+  it("novo jogo zera a sequência e preserva o limite diário; região volta a ser escolhida", () => {
     const old = founded("lisboa");
     old.streak = 4;
     old.cyclesToday = 9;
     old.money = 5;
     const g = newGame(old, 1234, T0);
-    expect(g.streak).toBe(4);
+    expect(g.streak).toBe(0);
+    expect(g.lastCycleAt).toBeNull();
     expect(g.cyclesToday).toBe(9);
     expect(g.money).toBe(1000);
     expect(g.regionId).toBeNull();

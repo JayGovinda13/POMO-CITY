@@ -83,7 +83,7 @@ export function TitleScreen() {
                 className="retro-button w-full py-2"
                 disabled={busy}
                 onClick={() => {
-                  if (confirm("Começar um novo jogo? A cidade atual será substituída. Sua sequência de foco é mantida.")) {
+                  if (confirm("Começar um novo jogo? A cidade atual será substituída e a sequência de foco recomeça do primeiro ciclo.")) {
                     newGame();
                   }
                 }}
