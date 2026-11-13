@@ -59,7 +59,7 @@ import { Logo } from "./Logo";
 import { ResourcesButton } from "./ResourcesButton";
 import { MusicButton } from "./Music";
 import { MOOD_ICON, Portrait } from "./Portrait";
-import { ResourceIcon, Car, HomeSale, Industry, ShieldAlert, Calendar, City, Coins, DragHandGesture, Droplet, Eye, Farm, Flash, GraduationCap, Group, Heart, MapIcon, MapsGoStraight, Packages, SeaWaves, Shield, Tower, Train, Trash, Tree, WeatherIcon, Xmark } from "./icons";
+import { RotateLeft, RotateRight, ResourceIcon, Car, HomeSale, Industry, ShieldAlert, Calendar, City, Coins, DragHandGesture, Droplet, Eye, Farm, Flash, GraduationCap, Group, Heart, MapIcon, MapsGoStraight, Packages, SeaWaves, Shield, Tower, Train, Trash, Tree, WeatherIcon, Xmark } from "./icons";
 
 type CategoryId = "vias" | "zonas" | "terreno" | BuildCategory | "view";
 
@@ -609,6 +609,8 @@ function Toolbar({ locked }: { locked: boolean }) {
           iconBtn(c.id, c.icon, c.title, open === c.id || (c.id !== "view" && activeCat === c.id), () => setOpen(open === c.id ? null : c.id), locked && c.id !== "view"),
         )}
         {iconBtn("demolish", <Trash />, "Demolir", tool === "demolish", () => setTool("demolish"), locked)}
+        {iconBtn("rot-l", <RotateLeft />, "Girar a câmera para a esquerda", false, () => bus.emit("camera:rotate", -1))}
+        {iconBtn("rot-r", <RotateRight />, "Girar a câmera para a direita", false, () => bus.emit("camera:rotate", 1))}
       </nav>
       {open && (
         <section className="retro-panel w-full max-w-sm sm:w-56">

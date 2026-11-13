@@ -21,6 +21,11 @@ export function leaderboardEntry(s: CityState): LeaderboardEntry {
  */
 export async function publishScore(playerId: string, s: CityState): Promise<void> {
   if (!s.regionId) return;
-  if (!rankEligible(s)) return repo().removeScore(playerId);
-  await repo().publishScore(playerId, leaderboardEntry(s));
+  // O ranking é vitrine: nenhuma falha aqui pode atrapalhar o jogo.
+  try {
+    if (!rankEligible(s)) await repo().removeScore(playerId);
+    else await repo().publishScore(playerId, leaderboardEntry(s));
+  } catch (e) {
+    console.error("leaderboard", e);
+  }
 }

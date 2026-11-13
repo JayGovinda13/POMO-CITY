@@ -85,6 +85,8 @@ interface GameStore {
   /** Presença registrada no servidor ("playing" = sessão aberta). */
   presence: "playing" | "exited";
   toast: string | null;
+  /** Falha ao carregar a cidade (mostrada na tela inicial, com "Tentar de novo"). */
+  loadError: string | null;
   busy: boolean;
 
   load(): Promise<void>;
@@ -125,7 +127,9 @@ async function call(path: string, body?: unknown, retried = false): Promise<Serv
   });
   // Sessão expirada/removida: cria outra e tenta uma vez mais.
   if (res.status === 401 && !retried) return call(path, body, true);
-  return { ...(await res.json()), status: res.status };
+  // Resposta que não é JSON (ex.: página de erro da hospedagem) vira só o status.
+  const data = await res.json().catch(() => ({}));
+  return { ...data, status: res.status };
 }
 
 function derive(serverState: CityState | null, pending: Command[]) {
@@ -188,11 +192,18 @@ export const useGame = create<GameStore>()(
         screen: "menu",
         presence: "exited",
         toast: null,
+        loadError: null,
         busy: false,
 
         async load() {
+          set({ loadError: null });
           try {
-            const snap = await call("/api/city");
+            // Nunca fica "carregando" para sempre: sem resposta em 20 s, mostra o erro e o botão de tentar de novo.
+            const snap = await Promise.race([
+              call("/api/city"),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("O servidor demorou demais para responder")), 20_000)),
+            ]);
+            if (!snap.state) throw new Error(snap.error ?? `O servidor respondeu com erro (${snap.status})`);
             accept(snap);
             // Recarregou a página no meio de uma sessão: volta direto para a cidade.
             if (snap.presence === "playing" && !snap.disaster) set({ screen: "game" });
@@ -201,7 +212,9 @@ export const useGame = create<GameStore>()(
               beginBreak(snap.config, snap.state);
             }
           } catch (e) {
-            get().showToast((e as Error).message || "Sem conexão — jogando offline");
+            const msg = (e as Error).message || "Sem conexão";
+            if (!get().serverState) set({ loadError: msg });
+            get().showToast(msg);
           }
         },
 

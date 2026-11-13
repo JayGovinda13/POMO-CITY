@@ -125,6 +125,8 @@ ampliam o estoque.
 - **Cada era libera 1 nível novo nas zonas densas**: nível 4 na Era Industrial, 5 na Elétrica (1930),
   6 na Atômica (1960), 7 na Digital (1990), 8 na Verde (2030) e 9 na Era do Futuro (2070), com
   prédios próprios de cada época (R, C e I). Zonas leves continuam até o nível 2.
+- **Girar a câmera**: dois botões na barra de ferramentas giram a vista em passos de 90° (4 ângulos),
+  mantendo o mesmo ponto do mapa no centro; estradas, barrancos, espuma e o palácio acompanham.
 - **Animações de ambiente** (sempre ligadas): o vento passa em rajadas pelas copas das árvores, a
   água ondula (4 quadros) e o litoral ganhou faixa de areia com espuma que vai e volta.
 

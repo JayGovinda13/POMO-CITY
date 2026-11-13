@@ -14,9 +14,23 @@ export function TitleScreen() {
   const city = useGame((s) => s.serverState);
   const busy = useGame((s) => s.busy);
   const toast = useGame((s) => s.toast);
+  const loadError = useGame((s) => s.loadError);
   const { enter, newGame } = useGame.getState();
 
   if (!city) {
+    if (loadError) {
+      return (
+        <div className="grid h-dvh place-items-center p-4 text-sm">
+          <section className="retro-panel w-full max-w-sm space-y-3 p-4 text-center">
+            <p className="text-red-300">Não foi possível carregar o POMO-CITY.</p>
+            <p className="break-words text-zinc-400">{loadError}</p>
+            <button type="button" className="retro-button" onClick={() => useGame.getState().load()}>
+              Tentar de novo
+            </button>
+          </section>
+        </div>
+      );
+    }
     return <div className="grid h-dvh place-items-center text-sm">Carregando POMO-CITY…</div>;
   }
 

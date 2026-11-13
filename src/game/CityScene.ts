@@ -21,9 +21,29 @@ const elevAt = (x: number, y: number) => {
   return ELEV.e[yi * ELEV.w + xi] ?? 0;
 };
 const setElevation = (city: CityState) => {
+  SIZE = city.width;
   ELEV = city.elevation?.length ? { w: city.width, h: city.height, e: city.elevation } : null;
 };
-const iso = (x: number, y: number) => ({ sx: ((x - y) * TW) / 2, sy: ((x + y) * TH) / 2 - elevAt(x, y) * EH });
+/** Giro da câmera em passos de 90° (0–3) e o lado do mapa (quadrado). */
+let ROT = 0;
+let SIZE = 0;
+/** Mapa → vista: as coordenadas do tile como a câmera girada as vê. */
+const toView = (x: number, y: number): [number, number] => {
+  const n = SIZE - 1;
+  return ROT === 1 ? [n - y, x] : ROT === 2 ? [n - x, n - y] : ROT === 3 ? [y, n - x] : [x, y];
+};
+/** Vista → mapa (inversa de toView). */
+const toWorld = (vx: number, vy: number): [number, number] => {
+  const n = SIZE - 1;
+  return ROT === 1 ? [vy, n - vx] : ROT === 2 ? [n - vx, n - vy] : ROT === 3 ? [n - vy, vx] : [vx, vy];
+};
+/** Um passo na vista (ex.: +1 em x = "baixo-direita" na tela) → passo no mapa. */
+const viewStep = (dvx: number, dvy: number): [number, number] =>
+  ROT === 1 ? [dvy, -dvx] : ROT === 2 ? [-dvx, -dvy] : ROT === 3 ? [-dvy, dvx] : [dvx, dvy];
+const iso = (x: number, y: number) => {
+  const [vx, vy] = toView(x, y);
+  return { sx: ((vx - vy) * TW) / 2, sy: ((vx + vy) * TH) / 2 - elevAt(x, y) * EH };
+};
 
 function shade(color: number, f: number) {
   const r = Math.min(255, Math.round(((color >> 16) & 0xff) * f));
@@ -174,6 +194,9 @@ export class CityScene extends Phaser.Scene {
       this.panFrom = null;
       this.drawHover();
     };
+    const offRotate = bus.on("camera:rotate", (dir) => this.rotate(dir));
+    this.events.once("shutdown", offRotate);
+    this.events.once("destroy", offRotate);
     this.input.on("pointerup", stop);
     this.input.on("pointerupoutside", stop);
     this.input.on("wheel", (_p: unknown, _o: unknown, _dx: number, dy: number) => {
@@ -238,6 +261,23 @@ export class CityScene extends Phaser.Scene {
     return true;
   }
 
+  /** Gira a câmera 90° mantendo no centro o mesmo ponto do mapa. */
+  private rotate(dir: number) {
+    const city = useGame.getState().city;
+    if (!city) return;
+    setElevation(city);
+    const cam = this.cameras.main;
+    const mid = cam.getWorldPoint(cam.width / 2, cam.height / 2);
+    const fx = (mid.x / (TW / 2) + mid.y / (TH / 2)) / 2;
+    const fy = (mid.y / (TH / 2) - mid.x / (TW / 2)) / 2;
+    const [wx, wy] = toWorld(fx, fy);
+    ROT = (ROT + dir + 4) % 4;
+    const [vx, vy] = toView(wx, wy);
+    cam.centerOn(((vx - vy) * TW) / 2, ((vx + vy) * TH) / 2);
+    this.hover = null;
+    this.redraw();
+  }
+
   private centerOn(city: CityState) {
     const { sx, sy } = iso(city.width / 2, city.height / 2);
     this.cameras.main.centerOn(sx, sy);
@@ -252,7 +292,8 @@ export class CityScene extends Phaser.Scene {
       const wy = w.y + k * EH;
       const fx = (w.x / (TW / 2) + wy / (TH / 2)) / 2;
       const fy = (wy / (TH / 2) - w.x / (TW / 2)) / 2;
-      return { x: Math.floor(fx + 0.5), y: Math.floor(fy + 0.5) };
+      const [x, y] = toWorld(Math.floor(fx + 0.5), Math.floor(fy + 0.5));
+      return { x, y };
     };
     let best = pick(0);
     let bestDepth = -Infinity;
@@ -260,7 +301,8 @@ export class CityScene extends Phaser.Scene {
       const c = pick(k);
       if (c.x < 0 || c.y < 0 || c.x >= city.width || c.y >= city.height) continue;
       if (elevAt(c.x, c.y) !== k) continue;
-      const depth = c.x + c.y + k * 0.01;
+      const v = toView(c.x, c.y);
+      const depth = v[0] + v[1] + k * 0.01;
       if (depth > bestDepth) {
         bestDepth = depth;
         best = c;
@@ -335,6 +377,22 @@ export class CityScene extends Phaser.Scene {
     this.drawHover();
   }
 
+  /** Palácio espelhado (câmera a 90°/270°), gerado uma vez a partir do sprite original. */
+  private mirroredPalace(): string {
+    const key = "cityhall_mirror";
+    if (!this.textures.exists(key)) {
+      const f = this.textures.getFrame("city", "cityhall");
+      const canvas = this.textures.createCanvas(key, f.width, f.height)!;
+      const ctx = canvas.getContext();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(f.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(f.source.image as CanvasImageSource, f.cutX, f.cutY, f.width, f.height, 0, 0, f.width, f.height);
+      canvas.refresh();
+    }
+    return key;
+  }
+
   private frame(name: string) {
     return this.textures.get("city").has(name) ? name : null;
   }
@@ -363,8 +421,15 @@ export class CityScene extends Phaser.Scene {
       if (!LINKS[type]?.includes(other)) return false;
       return Math.abs(E(x, y) - E(nx, ny)) <= 1 || other === "tunnel";
     };
+    // A máscara segue a vista (câmera girada): 1 = cima-esq., 2 = cima-dir., 4 = baixo-dir., 8 = baixo-esq.
+    const VIEW_DIRS = [
+      [1, ...viewStep(-1, 0)],
+      [2, ...viewStep(0, -1)],
+      [4, ...viewStep(1, 0)],
+      [8, ...viewStep(0, 1)],
+    ] as const;
     const linkMask = (type: string, x: number, y: number) =>
-      (linked(type, x, y, x - 1, y) ? 1 : 0) | (linked(type, x, y, x, y - 1) ? 2 : 0) | (linked(type, x, y, x + 1, y) ? 4 : 0) | (linked(type, x, y, x, y + 1) ? 8 : 0);
+      VIEW_DIRS.reduce((m, [bit, dx, dy]) => m | (linked(type, x, y, x + dx, y + dy) ? bit : 0), 0);
     const SOIL = 0x7a5a3a;
     const grass = BIOMES[city.biome].grass;
     const RAMP: Record<string, number> = { road: 0x4d4d57, highway: 0x7b796f, rail: 0xa9a37e };
@@ -379,11 +444,12 @@ export class CityScene extends Phaser.Scene {
     const isSea = (x: number, y: number) => x >= 0 && y >= 0 && x < city.width && y < city.height && city.terrain[y * city.width + x] === 2;
     // Vizinhos na máscara das arestas: 1 = x−1, 2 = y−1, 4 = x+1, 8 = y+1 (e para onde a aresta aponta na tela).
     const EDGES = [
-      [1, -1, 0, -1, -1],
-      [2, 0, -1, 1, -1],
-      [4, 1, 0, 1, 1],
-      [8, 0, 1, -1, 1],
+      [1, ...viewStep(-1, 0), -1, -1],
+      [2, ...viewStep(0, -1), 1, -1],
+      [4, ...viewStep(1, 0), 1, 1],
+      [8, ...viewStep(0, 1), -1, 1],
     ] as const;
+    const [frontX, frontY] = [viewStep(1, 0), viewStep(0, 1)];
     /** Faixa de areia: terra colada no mar e no máximo 1 degrau acima dele. */
     const isBeach = (x: number, y: number) =>
       animated && city.terrain[y * city.width + x] === 0 && E(x, y) <= 1 && EDGES.some(([, dx, dy]) => isSea(x + dx, y + dy));
@@ -420,8 +486,8 @@ export class CityScene extends Phaser.Scene {
     for (let d = 0; d <= city.width + city.height - 2; d++) {
       const x0 = Math.max(0, d - city.height + 1);
       const x1 = Math.min(d, city.width - 1);
-      for (let x = x0; x <= x1; x++) {
-        const y = d - x;
+      for (let vx = x0; vx <= x1; vx++) {
+        const [x, y] = toWorld(vx, d - vx);
         const i = y * city.width + x;
         const { sx, sy } = iso(x, y);
         const v = tileHash(city.seed, x, y) & 1;
@@ -451,8 +517,8 @@ export class CityScene extends Phaser.Scene {
       }
       const g = this.add.graphics();
       this.flatLayer.add(g);
-      for (let x = x0; x <= x1; x++) {
-        const y = d - x;
+      for (let vx = x0; vx <= x1; vx++) {
+        const [x, y] = toWorld(vx, d - vx);
         const i = y * city.width + x;
         const { sx, sy } = iso(x, y);
         const e = E(x, y);
@@ -461,10 +527,10 @@ export class CityScene extends Phaser.Scene {
         // Paredões: faces de frente (+x à direita, +y à esquerda) até a altura do vizinho; na borda
         // do mapa, até a base (efeito maquete).
         for (const [nx, ny, side] of [
-          [x + 1, y, "R"],
-          [x, y + 1, "L"],
+          [x + frontX[0], y + frontX[1], "R"],
+          [x + frontY[0], y + frontY[1], "L"],
         ] as const) {
-          const edge = nx >= city.width || ny >= city.height;
+          const edge = nx < 0 || ny < 0 || nx >= city.width || ny >= city.height;
           const en = edge ? -0.75 : E(nx, ny);
           if (e <= en) continue;
           const dh = (e - en) * EH;
@@ -495,8 +561,8 @@ export class CityScene extends Phaser.Scene {
           g.fillRect(sx + 7, sy + 2, 2, 4);
         }
       }
-      for (let x = x0; x <= x1; x++) {
-        const y = d - x;
+      for (let vx = x0; vx <= x1; vx++) {
+        const [x, y] = toWorld(vx, d - vx);
         const i = y * city.width + x;
         const { sx, sy } = iso(x, y);
         const b = buildingAt.get(i);
@@ -515,11 +581,16 @@ export class CityScene extends Phaser.Scene {
         } else if (b && palace && (b.type === "cityhall" || b.type === "cityhall_wing")) {
           // Palácio de 3 tiles: um sprite só, fatiado por tile para respeitar a ordem de profundidade.
           const c = iso(hall!.x, hall!.y);
-          const img = this.add.image(c.sx, c.sy + TH + 1, "city", "cityhall").setOrigin(0.5, 1);
+          const flip = ROT === 1 || ROT === 3;
+          const img = (flip ? this.add.image(c.sx, c.sy + TH + 1, this.mirroredPalace()) : this.add.image(c.sx, c.sy + TH + 1, "city", "cityhall")).setOrigin(0.5, 1);
           const w = img.width;
-          const k = b.x - hall!.x; // −1 = ala de trás, 0 = centro, 1 = ala da frente
-          if (k < 0) img.setCrop(0, 0, w / 2 - 8, img.height);
-          else if (k === 0) img.setCrop(w / 2 - 8, 0, 16, img.height);
+          // Posição da fatia na vista: −1 = ala de trás, 0 = centro, 1 = ala da frente. Com a câmera
+          // de lado (90°/270°) o palácio corre no outro eixo: o sprite é espelhado.
+          const k = (b.x - hall!.x) * (ROT === 0 || ROT === 1 ? 1 : -1);
+          // De lado, a ala da frente fica à esquerda na tela (o sprite espelhado é uma textura própria).
+          const part = flip ? -k : k;
+          if (part < 0) img.setCrop(0, 0, w / 2 - 8, img.height);
+          else if (part === 0) img.setCrop(w / 2 - 8, 0, 16, img.height);
           else img.setCrop(w / 2 + 8, 0, w / 2 - 8, img.height);
           this.spriteLayer.add(img);
           castShadow(sx, sy, k === 0 ? 20 : 14);

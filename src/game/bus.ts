@@ -5,6 +5,8 @@ type Events = {
   "tile:click": { x: number; y: number };
   "tile:hover": { x: number; y: number } | null;
   "area:select": { x0: number; y0: number; x1: number; y1: number };
+  /** Girar a câmera 90°: −1 = anti-horário, 1 = horário. */
+  "camera:rotate": number;
 };
 
 type Handler<K extends keyof Events> = (payload: Events[K]) => void;
