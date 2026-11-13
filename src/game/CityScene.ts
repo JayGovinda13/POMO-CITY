@@ -147,10 +147,24 @@ export class CityScene extends Phaser.Scene {
     this.redraw();
     this.unsubscribe = useGame.subscribe((s, prev) => {
       if (s.city !== prev.city || s.tool !== prev.tool || s.phase !== prev.phase || s.overlay !== prev.overlay) {
-        if (!prev.city && s.city) this.centerOn(s.city);
+        // Cidade nova (ou mapa novo, na fundação): a câmera volta para a prefeitura.
+        if (s.city && (!prev.city || prev.city.seed !== s.city.seed || prev.city.width !== s.city.width || prev.city.regionId !== s.city.regionId)) {
+          setElevation(s.city);
+          this.centerOn(s.city);
+        }
         this.redraw();
       }
     });
+    // A tela mudou de tamanho (girar o celular, barra do navegador): o centro da vista continua o mesmo.
+    let last = { w: this.scale.width, h: this.scale.height };
+    const onResize = (size: Phaser.Structs.Size) => {
+      const cam = this.cameras.main;
+      cam.scrollX -= (size.width - last.w) / 2;
+      cam.scrollY -= (size.height - last.h) / 2;
+      last = { w: size.width, h: size.height };
+    };
+    this.scale.on("resize", onResize);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off("resize", onResize));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unsubscribe?.());
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -279,7 +293,8 @@ export class CityScene extends Phaser.Scene {
   }
 
   private centerOn(city: CityState) {
-    const { sx, sy } = iso(city.width / 2, city.height / 2);
+    const hall = city.buildings.find((b) => b.type === "cityhall");
+    const { sx, sy } = hall ? iso(hall.x, hall.y) : iso(city.width / 2, city.height / 2);
     this.cameras.main.centerOn(sx, sy);
   }
 
