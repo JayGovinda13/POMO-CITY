@@ -254,6 +254,12 @@ class FileRepo implements PlayerRepo {
 
 let repoInstance: PlayerRepo | null = null;
 export function repo(): PlayerRepo {
+  // Na Vercel o disco é somente leitura: sem o Supabase não há onde guardar as cidades.
+  if (!supabaseEnabled && process.env.VERCEL) {
+    throw new Error(
+      "Supabase não configurado neste deploy: defina NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY e SUPABASE_SECRET_KEY na Vercel (Production e Preview) e faça um novo deploy",
+    );
+  }
   repoInstance ??= supabaseEnabled ? new SupabaseRepo() : new FileRepo();
   return repoInstance;
 }
