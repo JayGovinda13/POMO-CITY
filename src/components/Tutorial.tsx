@@ -44,7 +44,7 @@ const STEPS: Step[] = [
           Quando a pausa acaba, o <strong>foco começa sozinho</strong> (ou clique em <strong>Focar agora</strong>) — vá trabalhar. Durante o foco a cidade fica só para olhar — obras ficam bloqueadas.
         </p>
         <p>
-          Ao terminar, aparece o <strong>relatório do ciclo</strong> e começa a <strong>pausa</strong> (5 min, ou 20 min a cada 4 ciclos):
+          Ao terminar, aparece o <strong>relatório do ciclo</strong> e começa a <strong>pausa</strong> (5 min, ou 15 min a cada 4 ciclos):
           a hora de gerenciar a cidade. O relógio é conferido pelo servidor, então não dá para adiantar.
         </p>
       </>

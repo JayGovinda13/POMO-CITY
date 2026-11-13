@@ -16,7 +16,7 @@ export const FOOD_PER_RESIDENT = 0.5;
 
 export const DEFAULT_FOCUS_SECONDS = 25 * 60;
 export const BREAK_SECONDS = 5 * 60;
-export const LONG_BREAK_SECONDS = 20 * 60;
+export const LONG_BREAK_SECONDS = 15 * 60;
 /** A cada N ciclos, a pausa é longa (turno de gestão pesada). */
 export const LONG_BREAK_EVERY = 4;
 
