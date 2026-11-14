@@ -142,7 +142,7 @@ describe("Fase 2 — clima na simulação", () => {
       s.cyclesCompleted = index;
       s.terrain = s.terrain.map(() => 0);
       s.elevation = s.elevation.map(() => 0);
-      // Coordenadas relativas à prefeitura (o mapa fundado é 40×40).
+      // Coordenadas relativas à prefeitura (o mapa fundado é 100×100).
       const h = s.buildings.find((b) => b.type === "cityhall")!;
       const cmds: Command[] = [
         { type: "build", building: "road", x: h.x, y: h.y + 1 },

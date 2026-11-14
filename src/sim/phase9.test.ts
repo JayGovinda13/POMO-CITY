@@ -45,11 +45,11 @@ const apply = (s: CityState, cmds: Command[]) => {
 const opts = (o: Partial<MapOptions> = {}): MapOptions => ({ relief: "colinas", water: "rio_lagos", coast: "nenhuma", forest: 2, variant: 0, ...o });
 
 describe("Fase 9 — gerador de mapas", () => {
-  it("é determinístico, 40×40, com centro plano e em terra", () => {
+  it("é determinístico, 100×100, com centro plano e em terra", () => {
     const a = generateMap(7, MAP_SIZE, "forest", opts());
     const b = generateMap(7, MAP_SIZE, "forest", opts());
     expect(a).toEqual(b);
-    expect(a.terrain).toHaveLength(1600);
+    expect(a.terrain).toHaveLength(MAP_SIZE * MAP_SIZE);
     const c = MAP_SIZE / 2;
     for (let dy = -3; dy <= 3; dy++)
       for (let dx = -3; dx <= 3; dx++) {
@@ -79,13 +79,13 @@ describe("Fase 9 — gerador de mapas", () => {
     expect(count(3)).toBeGreaterThan(count(1));
   });
 
-  it("fundar cria cidade 40×40 com o mapa escolhido; opções inválidas viram o padrão", () => {
+  it("fundar cria cidade 100×100 com o mapa escolhido; opções inválidas viram o padrão", () => {
     const r = foundCity(createCity(5, T0), "salvador", T0, "medio", "Teste", { relief: "plano", water: "seco", coast: "leste", forest: 0, variant: 2 });
     if (!r.ok) throw new Error(r.error);
-    expect(r.state.width).toBe(40);
+    expect(r.state.width).toBe(100);
     expect(r.state.terrain.some((t) => t === 2)).toBe(true);
     expect(r.state.trees.every((t) => t === 0)).toBe(true);
-    expect(r.state.buildings[0]).toMatchObject({ type: "cityhall", x: 20, y: 20 });
+    expect(r.state.buildings[0]).toMatchObject({ type: "cityhall", x: 50, y: 50 });
     expect(sanitizeMapOptions({ relief: "lua", forest: 9 }, "desert", 0.1)).toEqual(defaultMapOptions("desert", 0.1));
   });
 

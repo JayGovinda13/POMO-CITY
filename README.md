@@ -93,7 +93,7 @@ ampliam o estoque.
 
 ## Terreno (Fase 9)
 
-- Cidades novas têm mapa 40×40, desenhado no editor da fundação: relevo, rio, lagos, mar e mata.
+- Cidades novas têm mapa 100×100 (as já fundadas continuam com o tamanho em que nasceram), desenhado no editor da fundação: relevo, rio, lagos, mar e mata.
 - Ferramentas ⛰️: elevar e rebaixar terreno, criar água, aterrar e plantar árvores. Ficam mais
   baratas com foco de Rank alto.
 - Vias sobem 1 nível por rampa; para mais, use túnel.

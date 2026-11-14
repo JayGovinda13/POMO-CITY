@@ -6,7 +6,8 @@ import { CityLife } from "./CityLife";
 
 const TW = 32; // largura do tile isométrico
 const TH = 16; // altura do tile isométrico
-const ZOOMS = [1, 2, 3, 4];
+// 0,5 = visão geral do mapa 100×100 (os demais são inteiros: pixel art nítido).
+const ZOOMS = [0.5, 1, 2, 3, 4];
 const V = Phaser.Math.Vector2;
 
 /** Pixels por nível de altitude (Fase 9). */
@@ -102,7 +103,7 @@ export class CityScene extends Phaser.Scene {
   private waveStep = -1;
   private spriteLayer!: Phaser.GameObjects.Container;
   private fxG!: Phaser.GameObjects.Graphics;
-  private zoomIdx = 1;
+  private zoomIdx = 2;
   private lastTerrainKey = "";
   private hover: Tile | null = null;
   private painting = false;
@@ -136,7 +137,7 @@ export class CityScene extends Phaser.Scene {
     this.life = new CityLife(this, iso);
     this.cameras.main.setBackgroundColor("#1b1f3a");
     // Celular: começa mais afastado (cabe mais cidade na tela pequena).
-    if (this.scale.width < 640) this.zoomIdx = 0;
+    if (this.scale.width < 640) this.zoomIdx = 1;
     this.cameras.main.setZoom(ZOOMS[this.zoomIdx]);
     // Dois dedos: pinça dá zoom (e não pinta nem move a ferramenta).
     this.input.addPointer(1);
@@ -222,10 +223,36 @@ export class CityScene extends Phaser.Scene {
 
   /** Quadro a quadro: a cidade só se mexe durante o foco (e não na visão subterrânea). */
   update(time: number, delta: number) {
+    this.cull();
     this.ambient(time);
     const s = useGame.getState();
     const active = s.phase === "focus" && !!s.city && s.overlay !== "water";
     this.life?.update(delta, active);
+  }
+
+  private cullKey = "";
+  /**
+   * Mapa grande (100×100 = mais de 10 mil sprites): só o que está na tela é desenhado. Refaz a conta
+   * quando a câmera se move, aproxima ou a cidade é redesenhada.
+   */
+  private cull() {
+    const cam = this.cameras.main;
+    const key = `${Math.round(cam.scrollX / 32)},${Math.round(cam.scrollY / 32)},${cam.zoom},${cam.width},${cam.height}`;
+    if (key === this.cullKey) return;
+    this.cullKey = key;
+    // Área visível calculada aqui (cam.worldView só é atualizada na renderização, um quadro depois).
+    const cx = cam.scrollX + cam.width / 2;
+    const cy = cam.scrollY + cam.height / 2;
+    const hw = cam.width / 2 / cam.zoom;
+    const hh = cam.height / 2 / cam.zoom;
+    const pad = 96; // folga para prédios altos e para o passo de 32 px da chave
+    const x0 = cx - hw - pad, x1 = cx + hw + pad, y0 = cy - hh - pad, y1 = cy + hh + pad + 64;
+    for (const layer of [this.flatLayer, this.spriteLayer]) {
+      for (const o of layer.list) {
+        if (!(o instanceof Phaser.GameObjects.Image)) continue;
+        o.visible = o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1;
+      }
+    }
   }
 
   /** Ambiente vivo: o mar ondula, a espuma vai e volta na areia e o vento passa pelas árvores. */
@@ -388,6 +415,7 @@ export class CityScene extends Phaser.Scene {
     this.terrainG.clear();
     this.buildG.clear();
     this.redrawSprites(city);
+    this.cullKey = "";
     this.drawOverlay(city);
     this.drawHover();
   }

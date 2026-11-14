@@ -42,7 +42,7 @@ export function MapEditor({
   useEffect(() => {
     const ctx = canvas.current?.getContext("2d");
     if (!ctx) return;
-    const px = 4;
+    const px = 2;
     const grass = BIOMES[biome].grass;
     for (let y = 0; y < MAP_SIZE; y++)
       for (let x = 0; x < MAP_SIZE; x++) {
@@ -53,13 +53,13 @@ export function MapEditor({
         ctx.fillRect(x * px, y * px, px, px);
         if (map.trees[i]) {
           ctx.fillStyle = hex(mix(grass, 0.45));
-          ctx.fillRect(x * px + 1, y * px + 1, 2, 2);
+          ctx.fillRect(x * px, y * px, 1, 1);
         }
       }
     // Prefeitura no centro.
     const c = Math.floor(MAP_SIZE / 2);
     ctx.fillStyle = "#f4f1e8";
-    ctx.fillRect(c * px - 1, c * px - 1, px + 2, px + 2);
+    ctx.fillRect(c * px - 2, c * px - 2, px + 4, px + 4);
   }, [map, biome]);
 
   const select = <K extends keyof MapOptions>(key: K, label: string, options: Record<string, string> | readonly string[]) => (
@@ -94,8 +94,8 @@ export function MapEditor({
       <div className="flex gap-2">
         <canvas
           ref={canvas}
-          width={MAP_SIZE * 4}
-          height={MAP_SIZE * 4}
+          width={MAP_SIZE * 2}
+          height={MAP_SIZE * 2}
           className="h-32 w-32 shrink-0 border-2 border-zinc-600"
           style={{ imageRendering: "pixelated" }}
           aria-label="Prévia do mapa"
