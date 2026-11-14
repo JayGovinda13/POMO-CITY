@@ -50,7 +50,7 @@ export function CycleReportModal() {
           </p>
           {!report.rewarded ? (
             <p className="text-amber-300">
-              Limite diário de ciclos recompensados atingido. Descanse — amanhã a cidade volta a produzir.
+              Limite diário de 16 ciclos atingido: este ciclo conta para a sequência, mas a cidade não rendeu. Ela volta a produzir à meia-noite (horário de Brasília).
             </p>
           ) : (
             <>

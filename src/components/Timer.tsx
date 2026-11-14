@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "@/store/game";
-import { effectiveStreak, rankForStreak } from "@/sim";
+import { DAILY_REWARD_CAP, cyclesDoneToday, effectiveStreak, rankForStreak } from "@/sim";
 import { RankBadge } from "./ranks";
 import { FireFlame } from "./icons";
 import { ringBell } from "./Music";
@@ -97,6 +97,8 @@ export function Timer() {
   const city = useGame((s) => s.city);
   const pending = useGame((s) => s.pending.length);
   const nextRank = city ? rankForStreak(effectiveStreak(city, now) + 1) : null;
+  const doneToday = city ? cyclesDoneToday(city, now) : 0;
+  const capped = doneToday >= DAILY_REWARD_CAP;
 
   return (
     <div className="retro-panel pointer-events-auto mx-auto flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
@@ -137,6 +139,14 @@ export function Timer() {
           title={`Sequência de ${city.streak} ciclo(s)${city.streakFrozen ? " (guardada)" : ""} · ${city.cyclesToday} ciclo(s) hoje. O próximo lote sai com este Rank.`}
         >
           <FireFlame /> {city.streak} <RankBadge rank={nextRank} />
+        </span>
+      )}
+      {city && (
+        <span
+          className={capped ? "text-amber-300" : "text-zinc-400"}
+          title={`Ciclos de hoje: ${doneToday}/${DAILY_REWARD_CAP}. Depois do ${DAILY_REWARD_CAP}º, o ciclo conta para a sequência mas a cidade não rende (sem dinheiro nem recursos) até a meia-noite, horário de Brasília. O limite é do jogador: começar um novo jogo não o zera.`}
+        >
+          {doneToday}/{DAILY_REWARD_CAP} hoje
         </span>
       )}
       {pending > 0 && (

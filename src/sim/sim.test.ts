@@ -12,6 +12,7 @@ import {
   type CityState,
   type Command,
   TAX_BASE,
+  utcDayKey,
 } from "./index";
 
 const T0 = Date.UTC(2026, 10, 9, 12, 0, 0);
@@ -98,7 +99,7 @@ describe("ranks e sequência", () => {
   it("limite diário: ciclo conta mas não gera recompensa", () => {
     let s = city();
     s.cyclesToday = DAILY_REWARD_CAP;
-    s.dayKey = new Date(T0).toISOString().slice(0, 10);
+    s.dayKey = utcDayKey(T0);
     const { report, state } = resolveCycle(s, T0);
     expect(report.rewarded).toBe(false);
     expect(state.money).toBe(s.money);

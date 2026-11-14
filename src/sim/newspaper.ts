@@ -81,7 +81,7 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
   // ── Manchete: o fato mais importante do ciclo ──
   const candidates: (NewsStory & { priority: number })[] = [];
   if (!report.rewarded) {
-    candidates.push({ priority: 100, tone: "neutral", title: "Cidade descansa após jornada recorde", body: "O limite de ciclos do dia foi atingido: a cidade folga até amanhã." });
+    candidates.push({ priority: 100, tone: "neutral", title: "Cidade descansa após jornada recorde", body: "O limite de 16 ciclos do dia foi atingido: a cidade folga até a meia-noite." });
   }
   if (report.starving) {
     candidates.push({ priority: 90, tone: "bad", title: "FOME! Moradores deixam a cidade", body: "Sem comida nem dinheiro para comprá-la, famílias fazem as malas. Fazendas são urgentes." });

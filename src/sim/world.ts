@@ -20,7 +20,15 @@ export const idx = (s: Pick<CityState, "width">, x: number, y: number) => y * s.
 export const inBounds = (s: Pick<CityState, "width" | "height">, x: number, y: number) =>
   x >= 0 && y >= 0 && x < s.width && y < s.height;
 
-export const utcDayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/**
+ * Chave do dia do limite diário. O dia vira à meia-noite de Brasília (UTC−3, sem horário de verão),
+ * não às 21h: o nome `utc` ficou por compatibilidade com o estado salvo.
+ */
+export const utcDayKey = (ms: number) => new Date(ms - 3 * 3_600_000).toISOString().slice(0, 10);
+
+/** Ciclos já feitos hoje (0 se o dia salvo é de ontem: o contador só zera no próximo ciclo). */
+export const cyclesDoneToday = (s: Pick<CityState, "dayKey" | "cyclesToday">, now: number) =>
+  s.dayKey === utcDayKey(now) ? s.cyclesToday : 0;
 
 // ── Calendário: 1 ciclo concluído = 1 estação (trimestre); 4 ciclos = 1 ano ──
 // O nome da estação depende do hemisfério da cidade, definido na escolha de localização
