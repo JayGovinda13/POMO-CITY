@@ -13,6 +13,7 @@ export function GameMenu() {
   const busy = useGame((s) => s.busy);
   const { exit, newGame } = useGame.getState();
   const locked = phase === "focus";
+  const confirmMode = useGame((s) => s.confirmMode);
 
   return (
     <>
@@ -53,6 +54,13 @@ export function GameMenu() {
               >
                 ✚ Novo jogo
               </button>
+              <label className="flex items-start gap-2 px-1" title="Cada toque no mapa vira uma proposta; você confirma, desfaz ou cancela antes de valer.">
+                <input type="checkbox" className="mt-0.5" checked={confirmMode} onChange={(e) => useGame.getState().setConfirmMode(e.target.checked)} />
+                <span>
+                  Confirmar obras antes de construir
+                  <span className="block text-zinc-400">Evita obras por toque acidental (ligado por padrão no celular).</span>
+                </span>
+              </label>
               <button
                 type="button"
                 className="retro-button w-full"

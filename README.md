@@ -133,6 +133,14 @@ ampliam o estoque.
 - **Animações de ambiente** (sempre ligadas): o vento passa em rajadas pelas copas das árvores, a
   água ondula (4 quadros) e o litoral ganhou faixa de areia com espuma que vai e volta.
 
+## Confirmar obras
+
+Em telas de toque o jogo começa com **"Confirmar obras"** ligado (no computador, desligado; dá para
+mudar no menu ☰). Cada toque ou arrasto no mapa vira uma *proposta*, já visível na cidade, e uma barra
+mostra o custo com **↶ Desfazer** (último toque), **✖ Cancelar** (tudo) e **✔ Confirmar**. Só depois de
+confirmar a obra entra na fila do servidor. Pesquisa, orçamento e decretos continuam valendo na hora.
+Propostas não confirmadas são descartadas quando o foco começa.
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

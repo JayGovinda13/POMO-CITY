@@ -65,7 +65,15 @@ interface GameStore {
   serverState: CityState | null;
   /** Comandos da pausa ainda não enviados (persistidos localmente). */
   pending: Command[];
-  /** serverState + pending: o que o jogador vê. */
+  /** Obras propostas e ainda não confirmadas (modo "confirmar obras"). */
+  draft: Command[];
+  /** Confirmar obras antes de valer (padrão: ligado em telas de toque). */
+  confirmMode: boolean;
+  setConfirmMode(on: boolean): void;
+  confirmDraft(): void;
+  cancelDraft(): void;
+  undoDraft(): void;
+  /** serverState + pending + draft: o que o jogador vê. */
   city: CityState | null;
   phase: Phase;
   /** Fim da fase atual, já convertido para o relógio local. */
@@ -132,12 +140,24 @@ async function call(path: string, body?: unknown, retried = false): Promise<Serv
   return { ...data, status: res.status };
 }
 
-function derive(serverState: CityState | null, pending: Command[]) {
-  if (!serverState) return { city: null, pending };
-  const { state, rejected } = applyCommands(serverState, pending);
-  // Descarta da fila o que ficou inválido (ex.: estado do servidor mudou).
-  const valid = rejected.length ? pending.filter((_, i) => !rejected.some((r) => r.index === i)) : pending;
-  return { city: state, pending: valid };
+/** Comandos de mapa: com "confirmar obras" ligado, ficam num rascunho até o jogador confirmar. */
+const MAP_COMMANDS = new Set<Command["type"]>(["build", "wire", "pipe", "zone", "demolish", "terraform"]);
+
+/** Celular/tablet (toque) começa com a confirmação ligada: um toque errado não vira obra. */
+const defaultConfirm = () => typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+
+function derive(serverState: CityState | null, pending: Command[], draft: Command[] = []) {
+  if (!serverState) return { city: null, pending, draft: [] as Command[] };
+  const all = [...pending, ...draft];
+  const { state, rejected } = applyCommands(serverState, all);
+  if (!rejected.length) return { city: state, pending, draft };
+  // Descarta o que ficou inválido (ex.: estado do servidor mudou).
+  const bad = new Set(rejected.map((r) => r.index));
+  return {
+    city: state,
+    pending: pending.filter((_, i) => !bad.has(i)),
+    draft: draft.filter((_, i) => !bad.has(pending.length + i)),
+  };
 }
 
 export const useGame = create<GameStore>()(
@@ -163,6 +183,7 @@ export const useGame = create<GameStore>()(
           phase: phase === "loading" ? "idle" : phase,
           endsAt: snap.activeCycle ? snap.activeCycle.endsAt - clockSkew : phase === "break" ? get().endsAt : null,
           ...derive(snap.state, pending),
+          draft: [],
         });
         // O servidor concluiu um ciclo por conta própria (celular bloqueado até o fim do foco):
         // mostra o jornal e começa a pausa, como se o app tivesse visto o fim do foco.
@@ -175,6 +196,26 @@ export const useGame = create<GameStore>()(
       return {
         serverState: null,
         pending: [],
+        draft: [],
+        confirmMode: defaultConfirm(),
+        setConfirmMode(on) {
+          // Desligar com obras propostas confirma o que já está na tela.
+          if (!on) get().confirmDraft();
+          set({ confirmMode: on });
+        },
+        confirmDraft() {
+          const { draft, pending } = get();
+          if (!draft.length) return;
+          set({ pending: [...pending, ...draft], draft: [] });
+        },
+        cancelDraft() {
+          const { serverState, pending } = get();
+          set({ ...derive(serverState, pending), draft: [] });
+        },
+        undoDraft() {
+          const { serverState, pending, draft } = get();
+          set(derive(serverState, pending, draft.slice(0, -1)));
+        },
         city: null,
         phase: "loading",
         endsAt: null,
@@ -306,7 +347,9 @@ export const useGame = create<GameStore>()(
             const what = quote.imports.map((m) => `${m.units} ${RESOURCES[m.res].icon} ${RESOURCES[m.res].name}`).join(", ");
             get().showToast(`Faltou ${what}: importado por $${quote.importCost}. Produzir na cidade sairia mais barato.`);
           }
-          set({ pending: [...get().pending, cmd], city: r.state });
+          // Obras no mapa esperam a confirmação (se ligada); o resto (pesquisa, orçamento…) vale na hora.
+          if (get().confirmMode && MAP_COMMANDS.has(cmd.type)) set({ draft: [...get().draft, cmd], city: r.state });
+          else set({ pending: [...get().pending, cmd], city: r.state });
           return true;
         },
 
@@ -315,10 +358,16 @@ export const useGame = create<GameStore>()(
           if (!tool || tool === "pan" || isAreaTool(tool)) return;
           if (tool === "demolish") {
             // Desfazer obra ainda não sincronizada: remove o comando da fila em vez de enfileirar demolição.
+            const { draft } = get();
+            const di = draft.findLastIndex((c) => c.type === "build" && c.x === x && c.y === y);
             const i = pending.findLastIndex((c) => c.type === "build" && c.x === x && c.y === y);
             const stillThere = city?.buildings.some((b) => b.x === x && b.y === y);
+            if (di >= 0 && stillThere) {
+              set(derive(serverState, pending, draft.filter((_, j) => j !== di)));
+              return;
+            }
             if (i >= 0 && stillThere) {
-              set(derive(serverState, pending.filter((_, j) => j !== i)));
+              set(derive(serverState, pending.filter((_, j) => j !== i), draft));
               return;
             }
             // Na visão subterrânea, demolir remove o cano do tile.
@@ -342,6 +391,10 @@ export const useGame = create<GameStore>()(
 
         async startFocus() {
           if (get().busy) return;
+          if (get().draft.length) {
+            get().showToast("Obras não confirmadas foram descartadas.");
+            get().cancelDraft();
+          }
           set({ busy: true });
           try {
             const snap = await call("/api/cycle/start", { commands: get().pending });
@@ -440,6 +493,7 @@ export const useGame = create<GameStore>()(
         endsAt: s.phase === "break" ? s.endsAt : null,
         tool: s.tool,
         overlay: s.overlay,
+        confirmMode: s.confirmMode,
       }),
     },
   ),

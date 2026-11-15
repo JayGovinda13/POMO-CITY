@@ -47,6 +47,7 @@ import { bus } from "@/game/bus";
 import { Panel } from "./Panel";
 import { hex } from "./ranks";
 import { Timer } from "./Timer";
+import { ConfirmBar } from "./ConfirmBar";
 import { CycleReportModal } from "./CycleReportModal";
 import { GameMenu } from "./GameMenu";
 import { MarketButton } from "./MarketPanel";
@@ -252,6 +253,7 @@ export function Hud() {
         )}
       </div>
 
+      <ConfirmBar />
       <Timer />
 
       {toast && (
