@@ -4,7 +4,8 @@
 // Tudo determinístico (seed + ciclo), como o resto da simulação.
 
 import { addTo, getQty } from "./inventory";
-import { RANKS, type CityState } from "./types";
+import { RANKS, ZONE, type CityState } from "./types";
+import { isHall } from "./world";
 
 export type EventId =
   | "feira"
@@ -13,6 +14,8 @@ export type EventId =
   | "festival"
   | "imigracao"
   | "gripe"
+  | "peste"
+  | "incendio"
   | "greve"
   | "onda_calor"
   | "ratos"
@@ -52,8 +55,10 @@ const DEF: Record<EventId, { weight: number; duration: number; challenge?: boole
   jazida: { weight: 2, duration: 0 },
   festival: { weight: 3, duration: 1 },
   imigracao: { weight: 2, duration: 2 },
-  gripe: { weight: 2, duration: 2 },
-  greve: { weight: 2, duration: 1 },
+  gripe: { weight: 3, duration: 2 },
+  peste: { weight: 2, duration: 2 },
+  incendio: { weight: 4, duration: 0 },
+  greve: { weight: 3, duration: 1 },
   onda_calor: { weight: 2, duration: 1 },
   ratos: { weight: 2, duration: 0 },
   desafio_populacao: { weight: 2, duration: 8, challenge: true },
@@ -77,6 +82,7 @@ export function eventMods(s: Pick<CityState, "events" | "cyclesCompleted">): Eve
       m.water *= 0.75;
       m.mood.push({ text: "Onda de calor", delta: -1 });
     } else if (e.id === "gripe") m.mood.push({ text: "Surto de gripe", delta: -1 });
+    else if (e.id === "peste") m.mood.push({ text: "Peste na cidade", delta: -2 });
     else if (e.id === "festival") m.mood.push({ text: "Festival da cidade", delta: 1 });
   }
   return m;
@@ -86,11 +92,20 @@ export function eventMods(s: Pick<CityState, "events" | "cyclesCompleted">): Eve
  * Sorteia e aplica os eventos do ciclo (muta `s`). Chamado no fim do ciclo, com o gerador do
  * ciclo. Também confere os desafios que venceram. Devolve as notícias para o relatório/jornal.
  */
-export function rollEvents(
-  s: CityState,
-  rand: () => number,
-  info: { healthServed: number },
-): EventNews[] {
+export interface EventContext {
+  healthServed: number;
+  /** Há bombeiros funcionando? Sem eles, incêndios podem acontecer. (Padrão: sim.) */
+  hasFire?: boolean;
+  /** Há hospital funcionando? Sem ele, doenças podem aparecer. (Padrão: sim.) */
+  hasHospital?: boolean;
+  /** Aprovação dos moradores, de −1 a 1. Com a população triste (< 0), greves podem estourar. */
+  approval?: number;
+}
+
+export function rollEvents(s: CityState, rand: () => number, info: EventContext): EventNews[] {
+  const hasFire = info.hasFire ?? true;
+  const hasHospital = info.hasHospital ?? true;
+  const approval = info.approval ?? 0;
   const news: EventNews[] = [];
   s.events ??= [];
 
@@ -114,10 +129,19 @@ export function rollEvents(
   if (s.population < 20 || rand() >= EVENT_CHANCE) return news;
 
   const hasChallenge = s.events.some((e) => DEF[e.id].challenge);
-  const pool = (Object.keys(DEF) as EventId[]).filter((id) => !(DEF[id].challenge && hasChallenge) && !s.events!.some((e) => e.id === id));
-  const total = pool.reduce((a, id) => a + DEF[id].weight, 0);
+  // Eventos de causa: só acontecem quando falta o serviço (ou o povo está triste).
+  const cause = (id: EventId) => {
+    if (id === "incendio") return !hasFire && (s.zoneLevel.some((l) => l > 0) || s.buildings.some((b) => b.type !== "road" && !isHall(b)));
+    if (id === "gripe" || id === "peste") return !hasHospital;
+    if (id === "greve") return approval < 0;
+    return true;
+  };
+  // Povo muito triste faz greve mais provável.
+  const weight = (id: EventId) => (id === "greve" ? DEF[id].weight + Math.round(-approval * 8) : DEF[id].weight);
+  const pool = (Object.keys(DEF) as EventId[]).filter((id) => !(DEF[id].challenge && hasChallenge) && !s.events!.some((e) => e.id === id) && cause(id));
+  const total = pool.reduce((a, id) => a + weight(id), 0);
   let x = rand() * total;
-  const id = pool.find((p) => (x -= DEF[p].weight) <= 0) ?? pool[0];
+  const id = pool.find((p) => (x -= weight(p)) <= 0) ?? pool[0];
   // Vale nas próximas `duration` estações (o evento é sorteado no fim do ciclo).
   const ev: ActiveEvent = { id, start: s.cyclesCompleted, until: s.cyclesCompleted + DEF[id].duration };
 
@@ -145,19 +169,50 @@ export function rollEvents(
       news.push({ id, tone: "good", title: "Onda de imigrantes", body: "Famílias chegam atrás de trabalho: a procura por moradia sobe nas próximas 2 estações." });
       break;
     case "gripe": {
-      // Hospitais seguram o surto; sem eles, parte da população vai embora.
-      const loss = info.healthServed >= 0.6 ? 0 : Math.round(s.population * (0.08 - info.healthServed * 0.1));
+      // Sem hospital ninguém trata os doentes: parte da população vai embora.
+      const loss = Math.max(1, Math.round(s.population * 0.08));
       s.population = Math.max(0, s.population - loss);
+      news.push({ id, tone: "bad", title: "Surto de gripe", body: `Sem hospital na cidade, ${loss} moradores adoeceram e se mudaram. Um hospital evita isso.` });
+      break;
+    }
+    case "peste": {
+      const loss = Math.max(2, Math.round(s.population * 0.15));
+      s.population = Math.max(0, s.population - loss);
+      news.push({ id, tone: "bad", title: "PESTE assola a cidade", body: `Sem hospital para conter a doença, ${loss} moradores morreram ou fugiram. A cidade vive dias de luto.` });
+      break;
+    }
+    case "incendio": {
+      // Sem bombeiros o fogo se espalha: lotes perdem níveis e prédios param até o reparo.
+      const lots: number[] = [];
+      for (let i = 0; i < s.zoneLevel.length; i++) if (s.zoneType[i] !== ZONE.NONE && s.zoneLevel[i] > 0) lots.push(i);
+      for (let i = lots.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [lots[i], lots[j]] = [lots[j], lots[i]];
+      }
+      const burnt = lots.slice(0, Math.max(lots.length ? 1 : 0, Math.round(lots.length * 0.15)));
+      let levels = 0;
+      for (const i of burnt) {
+        const lost = Math.min(s.zoneLevel[i], 1 + Math.floor(rand() * 2));
+        s.zoneLevel[i] -= lost;
+        levels += lost;
+      }
+      const targets = s.buildings.filter((b) => !b.damaged && b.type !== "road" && !isHall(b));
+      for (let i = targets.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [targets[i], targets[j]] = [targets[j], targets[i]];
+      }
+      const hit = targets.slice(0, Math.min(2, targets.length));
+      for (const b of hit) b.damaged = true;
       news.push({
         id,
         tone: "bad",
-        title: "Surto de gripe",
-        body: loss > 0 ? `Sem atendimento suficiente, ${loss} moradores deixaram a cidade. Hospitais evitam isso.` : "Os hospitais deram conta: ninguém precisou deixar a cidade.",
+        title: "INCÊNDIO sem controle!",
+        body: `Sem corpo de bombeiros, o fogo se espalhou: ${burnt.length} lote(s) perderam ${levels} nível(is) e ${hit.length} construção(ões) ficaram danificadas até o reparo. Um quartel de bombeiros evita isso.`,
       });
       break;
     }
     case "greve":
-      news.push({ id, tone: "bad", title: "Greve dos operários", body: "A indústria produz metade dos bens nesta estação. Moradores insatisfeitos." });
+      news.push({ id, tone: "bad", title: "Greve dos operários", body: "A população está triste e cruzou os braços: a indústria produz metade dos bens nesta estação. Melhore o humor da cidade." });
       break;
     case "onda_calor":
       news.push({ id, tone: "bad", title: "Onda de calor", body: "Poços e bombas rendem 25% menos nesta estação. Caixas d'água ajudam." });
@@ -195,6 +250,8 @@ export const EVENT_LABEL: Record<EventId, string> = {
   festival: "Festival",
   imigracao: "Imigração",
   gripe: "Surto de gripe",
+  peste: "Peste",
+  incendio: "Incêndio",
   greve: "Greve",
   onda_calor: "Onda de calor",
   ratos: "Ratos",

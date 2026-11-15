@@ -108,7 +108,10 @@ ampliam o estoque.
   pré-requisitos, dá bônus permanentes (comida, energia, impostos, saúde…) e algumas liberam
   construções: usina solar, usina nuclear, centro de reciclagem e reator de fusão. Botão ⚛ na barra.
 - **Eventos aleatórios**: a cada ciclo há 15% de chance de um evento (feira, mecenas, jazida,
-  festival, imigração, gripe, greve, onda de calor, ratos) ou de um desafio com prazo e prêmio.
+  festival, imigração, onda de calor, ratos) ou de um desafio com prazo e prêmio. Três eventos têm
+  causa e só acontecem quando falta algo: **incêndio** sem bombeiros (lotes perdem níveis e prédios
+  ficam danificados), **gripe e peste** sem hospital (moradores morrem ou se mudam) e **greve** quando
+  a população está triste (mais provável quanto mais triste).
   São determinísticos (semente da cidade) e saem no jornal.
 - **Ranking online** (🏆): as 50 cidades mais avançadas. Pontos = tecnologias + população + valor da
   cidade. **Só disputa a cidade que nunca sofreu catástrofe (ciclo quebrado)**: depois da primeira,

@@ -235,3 +235,80 @@ describe("palácio da prefeitura e níveis por era", () => {
     expect(zoneMaxLevel(s, "I", 0)).toBe(2);
   });
 });
+
+describe("eventos de causa (incêndio, doenças, greve)", () => {
+  const sorteados = (s: CityState, info: Parameters<typeof rollEvents>[2]) => {
+    const out = new Set<string>();
+    for (let k = 0; k < 600; k++) {
+      const c = structuredClone(s);
+      const r = rng(k + 11);
+      let first = true;
+      const rand = () => (first ? ((first = false), 0.01) : r());
+      for (const n of rollEvents(c, rand, info)) out.add(n.id);
+    }
+    return out;
+  };
+  const lotes = () => {
+    const s = city();
+    for (let i = 0; i < 12; i++) {
+      s.zoneType[i] = 1;
+      s.zoneLevel[i] = 2;
+    }
+    return s;
+  };
+
+  it("incêndio só acontece sem bombeiros, e queima lotes", () => {
+    const s = lotes();
+    expect(sorteados(s, { healthServed: 1, hasFire: true }).has("incendio")).toBe(false);
+    expect(sorteados(s, { healthServed: 1, hasFire: false }).has("incendio")).toBe(true);
+    let burned = false;
+    for (let k = 0; k < 600 && !burned; k++) {
+      const c = lotes();
+      const r = rng(k + 3);
+      let first = true;
+      const news = rollEvents(c, () => (first ? ((first = false), 0.01) : r()), { healthServed: 1, hasFire: false });
+      if (news[0]?.id === "incendio") {
+        burned = true;
+        expect(c.zoneLevel.reduce((a, b) => a + b, 0)).toBeLessThan(24);
+      }
+    }
+    expect(burned).toBe(true);
+  });
+
+  it("gripe e peste só acontecem sem hospital e levam moradores", () => {
+    const s = lotes();
+    const com = sorteados(s, { healthServed: 1, hasHospital: true });
+    expect(com.has("gripe") || com.has("peste")).toBe(false);
+    const sem = sorteados(s, { healthServed: 0, hasHospital: false });
+    expect(sem.has("gripe")).toBe(true);
+    expect(sem.has("peste")).toBe(true);
+    for (let k = 0; k < 600; k++) {
+      const c = lotes();
+      const r = rng(k + 5);
+      let first = true;
+      const n = rollEvents(c, () => (first ? ((first = false), 0.01) : r()), { healthServed: 0, hasHospital: false });
+      if (n[0]?.id === "peste") {
+        expect(c.population).toBeLessThan(100);
+        return;
+      }
+    }
+    throw new Error("peste não sorteada");
+  });
+
+  it("greve só com a população triste (e fica mais provável quanto mais triste)", () => {
+    const s = lotes();
+    expect(sorteados(s, { healthServed: 1, approval: 0.3 }).has("greve")).toBe(false);
+    expect(sorteados(s, { healthServed: 1, approval: -0.4 }).has("greve")).toBe(true);
+    const freq = (approval: number) => {
+      let n = 0;
+      for (let k = 0; k < 800; k++) {
+        const c = lotes();
+        const r = rng(k + 9);
+        let first = true;
+        if (rollEvents(c, () => (first ? ((first = false), 0.01) : r()), { healthServed: 1, approval })[0]?.id === "greve") n++;
+      }
+      return n;
+    };
+    expect(freq(-0.8)).toBeGreaterThan(freq(-0.05));
+  });
+});

@@ -442,7 +442,13 @@ const researchSystem: CycleSystem = ({ s, report, rank }) => {
 /** 9c) Eventos aleatórios (e desafios com prazo). Antes dos moradores: a gripe pode levar gente. */
 const eventsSystem: CycleSystem = ({ s, report, rand, services }) => {
   const before = s.money;
-  const news = rollEvents(s, rand, { healthServed: services?.healthServed ?? 0 });
+  const works = (t: string) => s.buildings.some((b) => b.type === t && !b.damaged);
+  const news = rollEvents(s, rand, {
+    healthServed: services?.healthServed ?? 0,
+    hasFire: works("fire_station"),
+    hasHospital: works("hospital"),
+    approval: moodSummary(citizensView(s)).approval,
+  });
   report.finance.events = s.money - before;
   if (news.length) report.events = news;
   report.populationAfter = s.population;
