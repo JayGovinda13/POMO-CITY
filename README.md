@@ -134,6 +134,11 @@ ampliam o estoque.
   (zoom de rua, com um marcador amarelo sobre quem é seguido). O botão 🎥 ao lado do cronômetro alterna
   Carro → Pedestre → Livre; tocar, arrastar ou dar zoom no mapa solta a câmera. Ao fim do foco a câmera
   volta ao zoom de antes. A escolha fica salva.
+- **Moradores com vida própria** (durante o foco): cada morador de verdade (até 160) tem casa, emprego,
+  nome e profissão, e segue uma rotina pelas ruas: sai de casa, vai ao trabalho (a pé, ou de carro se a
+  rota for longa), trabalha dentro do prédio, e depois volta para casa ou passeia no parque, praça,
+  zoológico, estádio, museu, biblioteca ou comércio. Sem emprego, ele passeia e volta para casa.
+  O passeio da câmera mostra uma legenda com o nome e o que a pessoa faz agora.
 - **Animações de ambiente** (sempre ligadas): o vento passa em rajadas pelas copas das árvores, a
   água ondula (4 quadros) e o litoral ganhou faixa de areia com espuma que vai e volta.
 

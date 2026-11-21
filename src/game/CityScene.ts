@@ -116,6 +116,7 @@ export class CityScene extends Phaser.Scene {
   private life?: CityLife;
   /** Passeio: zoom guardado para voltar quando a câmera é solta. */
   private touring = false;
+  private tourInfo: string | null = null;
   private tourZoomIdx = 0;
 
   constructor() {
@@ -247,6 +248,8 @@ export class CityScene extends Phaser.Scene {
     if (!want) {
       if (this.touring) {
         this.touring = false;
+        this.tourInfo = null;
+        bus.emit("tour:info", null);
         this.life?.setFollow(null);
         this.zoomIdx = this.tourZoomIdx;
         cam.setZoom(ZOOMS[this.zoomIdx]);
@@ -260,6 +263,11 @@ export class CityScene extends Phaser.Scene {
       cam.setZoom(ZOOMS[this.zoomIdx]);
     }
     this.life?.setFollow(s.tour === "off" ? null : s.tour);
+    const info = this.life?.followInfo() ?? null;
+    if (info !== this.tourInfo) {
+      this.tourInfo = info;
+      bus.emit("tour:info", info);
+    }
     const p = this.life?.followPos;
     if (!p) return;
     // Suaviza: a câmera persegue o alvo (sem trancos nas curvas).

@@ -7,6 +7,8 @@ type Events = {
   "area:select": { x0: number; y0: number; x1: number; y1: number };
   /** Girar a câmera 90°: −1 = anti-horário, 1 = horário. */
   "camera:rotate": number;
+  /** Legenda do passeio: quem a câmera acompanha e o que faz (null = sem passeio). */
+  "tour:info": string | null;
 };
 
 type Handler<K extends keyof Events> = (payload: Events[K]) => void;
