@@ -158,6 +158,21 @@ Botão 🔨 na barra superior. Por setor (campo, oficinas e fábricas) o jogador
   QE alvo +10 e mais gente realocada da automação (+10%), ao custo de 8% da produção das fábricas.
 - Fora do escopo desta etapa: poder de compra como humor (precisa de preços que variem no mercado).
 
+## Capital e tempo (inspirado em *O Capital*, Livro 2)
+
+- **Obras longas:** construções caras levam ciclos para ficar prontas — usina hidrelétrica 1, solar e
+  porto 2, aeroporto e usina nuclear 3, reator de fusão 4 (o tempo segue o custo). Em obra o prédio
+  não opera nem contrata, aparece translúcido e o dinheiro fica **parado**: em vez de manutenção,
+  paga juros de 2% do custo por ciclo.
+- **Desgaste e renovação:** fazendas, madeireiras, minas, serraria, fundição, usinas e instalações de
+  água têm vida útil (de 60 a 160 ciclos; 4 ciclos = 1 ano). Depois dela o rendimento cai até 50% em
+  1,5× a vida útil. **Renovar** (clique na construção) custa 35% do preço e zera a idade. Saves antigos
+  começam com tudo novo.
+- **Custo de guardar:** o estoque que passa de um estoque de trabalho de $300 paga 1% do valor por
+  ciclo (linha "Armazenagem" no livro-caixa). Quem produz só o necessário não paga nada.
+- **Frete:** porto (8%), aeroporto (5%), até 2 estações de trem (3% cada) e rodovias (até 5%)
+  baixam o preço de importar e sobem o de vender, até 20%. Aparece no painel do Mercado.
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

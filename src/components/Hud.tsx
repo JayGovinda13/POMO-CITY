@@ -17,6 +17,13 @@ import {
   computeDemand,
   zoneMaxLevel,
   repairCost,
+  LIFE,
+  ageOf,
+  carryingCost,
+  cyclesToReady,
+  renewCost,
+  underConstruction,
+  wearFactor,
   RESOURCE_NAMES,
   citizensView,
   moodSummary,
@@ -325,9 +332,31 @@ function TileInfo({
                     </button>
                   </div>
                 )}
-                {BUILDINGS[b.type].needsRoad && !st.connected && <p className="text-red-300">Sem estrada ligada à prefeitura</p>}
-                {!st.powered && <p className="text-yellow-300">Sem energia: operando a 50%</p>}
-                {st.required > 0 && (
+                {underConstruction(b, city) && (
+                  <p className="text-amber-300">
+                    🚧 Em obra: pronta em {cyclesToReady(b, city)} ciclo(s). Até lá o dinheiro fica parado e rende juros de ${carryingCost(b.type)} por ciclo.
+                  </p>
+                )}
+                {LIFE[b.type] && !underConstruction(b, city) && !b.damaged && (
+                  <div className="space-y-1">
+                    <p className={wearFactor(b, city) < 1 ? "text-amber-300" : "text-zinc-400"}>
+                      Idade {ageOf(b, city)}/{LIFE[b.type]} ciclos
+                      {wearFactor(b, city) < 1 ? ` — desgastada, rende ${Math.round(wearFactor(b, city) * 100)}%` : ""}
+                    </p>
+                    {(wearFactor(b, city) < 1 || ageOf(b, city) >= (LIFE[b.type] ?? 0) * 0.75) && (
+                      <button
+                        type="button"
+                        className="retro-button retro-button-primary w-full"
+                        onClick={() => useGame.getState().queue({ type: "renew", x: b.x, y: b.y })}
+                      >
+                        Renovar (${renewCost(b.type)})
+                      </button>
+                    )}
+                  </div>
+                )}
+                {!underConstruction(b, city) && BUILDINGS[b.type].needsRoad && !st.connected && <p className="text-red-300">Sem estrada ligada à prefeitura</p>}
+                {!underConstruction(b, city) && !st.powered && <p className="text-yellow-300">Sem energia: operando a 50%</p>}
+                {!underConstruction(b, city) && st.required > 0 && (
                   <p>
                     Trabalhadores: {st.staffed}/{st.required}
                   </p>

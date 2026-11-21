@@ -104,6 +104,11 @@ export function parseCommands(raw: unknown): Command[] | null {
       out.push({ type: "ordinance", id: r.id as OrdinanceId, active: r.active });
       continue;
     }
+    if (r.type === "renew") {
+      if (!Number.isInteger(r.x) || !Number.isInteger(r.y)) return null;
+      out.push({ type: "renew", x: r.x as number, y: r.y as number });
+      continue;
+    }
     if (r.type === "labor") {
       if (typeof r.sector !== "string" || !SECTOR_IDS.includes(r.sector as Sector)) return null;
       if (r.hours !== undefined && !HOURS_OPTIONS.includes(r.hours as Hours)) return null;

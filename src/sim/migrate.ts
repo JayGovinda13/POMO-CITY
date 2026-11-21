@@ -107,6 +107,11 @@ export function migrateState(raw: CityState): CityState {
     s.labor = structuredClone(DEFAULT_LABOR);
   }
 
+  if (from < 14) {
+    // v13 → v14: desgaste e obras longas. As construções que já existem começam novas.
+    for (const b of s.buildings) b.builtAt ??= s.cyclesCompleted;
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

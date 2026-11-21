@@ -5,6 +5,7 @@ import {
   GOODS_MIN_POPULATION,
   GOODS_PER_INDUSTRY_JOB,
   GOODS_PER_RESIDENT,
+  RANK_YIELD,
   HEATING_WOOD_PER_RESIDENT,
   SESSION_GAP_MS,
   STREAK_PENALTY,
@@ -16,10 +17,12 @@ import { addTo, averageRank, getQty, minRank, take } from "./inventory";
 import { effectsOf, weatherAt, type Weather } from "./climate";
 import {
   RESOURCE_IDS,
+  BASE_PRICE,
   consumeEquivalent,
   importQuote,
   payMaterials,
   quoteMaterials,
+  tradeDiscount,
   sellUnits,
   stockOf,
   storageCapacity,
@@ -49,6 +52,7 @@ import { computeServices, landValueTaxFactor, updateQuality, type ServiceFields 
 import { computeTraffic, type TrafficResult } from "./traffic";
 import { advanceResearch, researchPerCycle, techMods } from "./tech";
 import { SECTOR_OF_BUILDING, jobFactor, outputFactor } from "./labor";
+import { carryingCost, isDown, storageCostOf, stockValue, underConstruction } from "./lifecycle";
 import { cityFatigue } from "./laborload";
 import { eventMods, rollEvents } from "./events";
 
@@ -336,8 +340,9 @@ const upkeepSystem: CycleSystem = ({ s, report }) => {
   let other = 0;
   let services = 0;
   for (const b of s.buildings) {
-    const cost = BUILDINGS[b.type].upkeep;
-    const dept = departmentOf(b.type);
+    // Em obra: sem manutenção, mas o dinheiro parado rende juros (capital parado).
+    const cost = underConstruction(b, s) ? carryingCost(b.type) : BUILDINGS[b.type].upkeep;
+    const dept = underConstruction(b, s) ? null : departmentOf(b.type);
     if (dept === "transport") transport += cost;
     else if (dept === "energy") energy += cost;
     else if (dept) services += (cost * (s.funding[dept] ?? 100)) / 100;
@@ -367,7 +372,9 @@ const upkeepSystem: CycleSystem = ({ s, report }) => {
     f.upkeepAdmin = Math.ceil(f.upkeepAdmin * tu);
   }
   report.upkeep = f.upkeepTransport + f.upkeepEnergy + f.upkeepServices + f.upkeepOther + f.upkeepAdmin;
-  s.money -= report.upkeep;
+  // Guardar estoque custa: 1% do valor que passa do estoque de trabalho (ver lifecycle.ts).
+  f.storage = storageCostOf(stockValue(s.inventory, BASE_PRICE, RANK_YIELD));
+  s.money -= report.upkeep + f.storage;
 };
 
 /** 7b) Conservação das estradas: verba integral recupera; verba reduzida desgasta até danificar. */
@@ -449,7 +456,7 @@ const researchSystem: CycleSystem = ({ s, report, rank }) => {
 /** 9c) Eventos aleatórios (e desafios com prazo). Antes dos moradores: a gripe pode levar gente. */
 const eventsSystem: CycleSystem = ({ s, report, rand, services }) => {
   const before = s.money;
-  const works = (t: string) => s.buildings.some((b) => b.type === t && !b.damaged);
+  const works = (t: string) => s.buildings.some((b) => b.type === t && !isDown(b, s));
   const news = rollEvents(s, rand, {
     healthServed: services?.healthServed ?? 0,
     hasFire: works("fire_station"),
@@ -509,6 +516,7 @@ const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
     report.upkeep -
     f.interest -
     f.insurance -
+    f.storage -
     report.importCost +
     report.salesRevenue +
     f.events;
@@ -614,6 +622,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       upkeepOther: 0,
       upkeepAdmin: 0,
       events: 0,
+      storage: 0,
       interest: 0,
       insurance: 0,
     },
@@ -638,7 +647,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
   const startStock = Object.fromEntries(RESOURCE_IDS.map((r) => [r, stockOf(s.inventory, r)])) as Record<ResourceId, number>;
   // Seed por cidade + ciclo: o mesmo ciclo sempre gera o mesmo resultado (cliente = servidor).
   const rand = rng((next.seed ^ Math.imul(next.cyclesCompleted, 0x9e3779b1)) >>> 0);
-  const ctx: CycleContext = { s: next, report, rank, rand, weather, effects: effectsOf(weather), startStock };
+  const ctx: CycleContext = { s: next, report, rank, rand, weather, effects: { ...effectsOf(weather), trade: tradeDiscount(next) }, startStock };
   for (const system of CYCLE_SYSTEMS) system(ctx);
   return { state: next, report };
 }

@@ -145,7 +145,7 @@ describe("economia do ciclo", () => {
     expect(report.upkeep).toBe(8 * 1 + 3 + 5 + 2);
     expect(report.taxes).toBe(Math.floor(16 * TAX_BASE.R));
     expect(state.money).toBe(s.money + report.netMoney);
-    expect(report.netMoney).toBe(report.taxes - report.upkeep - report.importCost + report.salesRevenue);
+    expect(report.netMoney).toBe(report.taxes - report.upkeep - report.finance.storage - report.importCost + report.salesRevenue);
   });
 
   it("insumo de baixa pureza gera desperdício", () => {

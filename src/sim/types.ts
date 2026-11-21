@@ -76,6 +76,10 @@ export interface Building {
   damaged?: boolean;
   /** Caixa d'água: água guardada (Fase 6). */
   water?: number;
+  /** Em obra até este ciclo (cyclesCompleted): não opera antes disso. */
+  readyAt?: number;
+  /** Ciclo em que foi construída ou renovada (desgaste). */
+  builtAt?: number;
 }
 
 export interface Bond {
@@ -90,7 +94,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 13;
+export const CURRENT_SCHEMA_VERSION = 14;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -194,6 +198,7 @@ export type Command =
   | { type: "insurance"; plan: "none" | "basico" | "completo" }
   | { type: "repair"; x: number; y: number }
   | { type: "research"; tech: string | null }
+  | { type: "renew"; x: number; y: number }
   | { type: "labor"; sector: import("./labor").Sector; hours?: import("./labor").Hours; pay?: import("./labor").Pay }
   | { type: "terraform"; action: "raise" | "lower" | "water" | "land" | "tree"; x: number; y: number }
   | {
@@ -277,6 +282,8 @@ export interface ClimateEffects {
   demand: number;
   /** Água que as bombas conseguem tirar (chuva e seca). */
   water: number;
+  /** Frete: desconto nas importações (e metade disso a mais nas vendas), de 0 a 0,2. Opcional. */
+  trade?: number;
 }
 
 export interface FinanceBreakdown {
@@ -295,6 +302,8 @@ export interface FinanceBreakdown {
   upkeepAdmin: number;
   /** Dinheiro de eventos aleatórios (mecenas, festival, prêmios de desafios). */
   events: number;
+  /** Custo de guardar o estoque. */
+  storage: number;
   interest: number;
   insurance: number;
 }

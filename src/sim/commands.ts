@@ -1,5 +1,6 @@
 import { BUILDINGS, PIPE_COST, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
+import { LIFE, ageOf, buildCyclesOf, renewCost, underConstruction } from "./lifecycle";
 import { DEFAULT_LABOR, HOURS_OPTIONS, SECTOR_IDS, rulesOf } from "./labor";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
 import { BOND_VALUE, DEPARTMENTS, MAX_TAX, ORDINANCES, creditRating, type Department } from "./finance";
@@ -157,6 +158,16 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
 
   if (!isInt(cmd.x) || !isInt(cmd.y) || !inBounds(s, cmd.x, cmd.y)) return "Fora do mapa";
 
+  if (cmd.type === "renew") {
+    const b = buildingAt(s, cmd.x, cmd.y);
+    if (!b || !LIFE[b.type]) return "Só máquinas e usinas se renovam";
+    if (b.damaged) return "Repare antes de renovar";
+    if (underConstruction(b, s)) return "Ainda em obra";
+    if (ageOf(b, s) <= 0) return "Já está nova";
+    const cost = renewCost(b.type);
+    if (s.money < cost) return `Renovar custa $${cost}`;
+    return null;
+  }
   if (cmd.type === "repair") {
     const b = buildingAt(s, cmd.x, cmd.y);
     if (!b?.damaged) return "Nada danificado aqui";
@@ -273,6 +284,10 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
   } else if (cmd.type === "insurance") {
     // Contratar ou trocar de plano reinicia a carência; o bônus/malus acompanha a cidade.
     next.insurance = { ...next.insurance, plan: cmd.plan, since: next.cyclesCompleted };
+  } else if (cmd.type === "renew") {
+    const b = next.buildings.find((x) => x.x === cmd.x && x.y === cmd.y)!;
+    next.money -= renewCost(b.type);
+    b.builtAt = next.cyclesCompleted;
   } else if (cmd.type === "repair") {
     const b = next.buildings.find((x) => x.x === cmd.x && x.y === cmd.y)!;
     next.money -= repairCost(b.type);
@@ -348,7 +363,15 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     // Obras públicas desfazem o zoneamento do tile (como no modelo clássico).
     next.zoneType[i] = ZONE.NONE;
     next.zoneDensity[i] = 0;
-    next.buildings.push({ id: next.nextId++, type: cmd.building, x: cmd.x, y: cmd.y });
+    const wait = buildCyclesOf(cmd.building);
+    next.buildings.push({
+      id: next.nextId++,
+      type: cmd.building,
+      x: cmd.x,
+      y: cmd.y,
+      builtAt: next.cyclesCompleted + wait,
+      ...(wait > 0 ? { readyAt: next.cyclesCompleted + wait } : {}),
+    });
   } else {
     // Demolição em camadas: construção → prédio do lote → linha → zoneamento.
     const i = idx(next, cmd.x, cmd.y);

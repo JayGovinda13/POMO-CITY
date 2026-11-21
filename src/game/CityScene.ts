@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeServices, computeTraffic, computeWater, type CityState } from "@/sim";
+import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeServices, computeTraffic, computeWater, underConstruction, type CityState } from "@/sim";
 import { isAreaTool, useGame } from "@/store/game";
 import { bus } from "./bus";
 import { CityLife } from "./CityLife";
@@ -645,7 +645,11 @@ export class CityScene extends Phaser.Scene {
           const st = status.get(b.id);
           const top = baseY - img.height;
           // Danificada por desastre: escurecida e com alerta cinza até o reparo.
-          if (b.damaged) {
+          if (underConstruction(b, city)) {
+            // Obra longa: translúcida até ficar pronta.
+            img.setAlpha(0.5);
+            this.alert(fx, sx, top, 0x8fb8e8);
+          } else if (b.damaged) {
             img.setTint(0x6a5a5a);
             this.alert(fx, sx, top, 0xb0b0b0);
           } else if (st && !st.connected) this.alert(fx, sx, top, 0xe03030);

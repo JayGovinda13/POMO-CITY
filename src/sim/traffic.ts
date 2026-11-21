@@ -14,6 +14,7 @@ import { ROAD_ACCESS_DISTANCE } from "./config";
 import { ZONE, type Building, type CityState } from "./types";
 import { viaLinks } from "./terrain";
 import { techMods } from "./tech";
+import { isDown } from "./lifecycle";
 
 /** Tempo-limite da viagem (em "quadras de estrada"). */
 export const MAX_TRIP = 14;
@@ -327,7 +328,7 @@ export function trafficDemand(s: CityState, t: TrafficResult): { R: number; C: n
   let I = 0;
   for (const b of s.buildings) {
     const d = BUILDINGS[b.type].transport?.demand;
-    if (!d || b.damaged) continue;
+    if (!d || isDown(b, s)) continue;
     C += d.C ?? 0;
     I += d.I ?? 0;
   }

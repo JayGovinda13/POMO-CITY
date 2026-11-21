@@ -2,6 +2,7 @@ import { BUILDINGS, ZONES } from "./catalog";
 import { UNPOWERED_EFFICIENCY } from "./config";
 import { ZONE, type CityState } from "./types";
 import { SECTOR_OF_BUILDING, industrialLotJobs, jobFactor } from "./labor";
+import { isDown, wearFactor } from "./lifecycle";
 import { connectedRoads, isRoadConnected } from "./world";
 
 export interface BuildingStatus {
@@ -31,14 +32,15 @@ export function buildingStatus(s: CityState, powered?: Uint8Array): Map<number, 
     const required = def.workers > 0 && SECTOR_OF_BUILDING[b.type] ? Math.max(1, Math.ceil(def.workers * jobs)) : def.workers;
     let staffed = 0;
     // Construção danificada por desastre não opera nem contrata até ser reparada.
-    if (connected && required > 0 && !b.damaged) {
+    if (connected && required > 0 && !isDown(b, s)) {
       staffed = Math.min(required, freeWorkers);
       freeWorkers -= staffed;
     }
     const needsPower = (def.powerUse ?? 0) > 0;
     const hasPower = !powered || !needsPower || powered[b.y * s.width + b.x] === 1;
     const staffRatio = required === 0 ? 1 : staffed / required;
-    const efficiency = !connected || b.damaged ? 0 : staffRatio * (hasPower ? 1 : UNPOWERED_EFFICIENCY);
+    // Desgaste: máquinas velhas rendem menos até serem renovadas.
+    const efficiency = !connected || isDown(b, s) ? 0 : staffRatio * (hasPower ? 1 : UNPOWERED_EFFICIENCY) * wearFactor(b, s);
     out.set(b.id, { connected, staffed, required, powered: hasPower, efficiency });
   }
   return out;

@@ -39,6 +39,8 @@ function flat(): CityState {
 const apply = (s: CityState, cmds: Command[]) => {
   const r = applyCommands(s, cmds);
   expect(r.rejected).toEqual([]);
+  // Estes testes olham o efeito da construção pronta: dá a obra por concluída (as obras longas têm teste próprio).
+  for (const b of r.state.buildings) delete b.readyAt;
   return r.state;
 };
 

@@ -11,6 +11,7 @@ import {
   exportPrice,
   getQty,
   importPrice,
+  tradeDiscount,
   stockOf,
   storageCapacity,
   validatePolicy,
@@ -57,6 +58,11 @@ function MarketModal({ onClose }: { onClose: () => void }) {
             pela política; eles valem mais no consumo e nas obras (A rende 1,3×, S 1,4×).
           </p>
           <div className="overflow-x-auto">
+            <p className="mb-1 text-zinc-400">
+              Frete: <strong className={tradeDiscount(city) > 0 ? "text-emerald-300" : ""}>{Math.round(tradeDiscount(city) * 100)}%</strong> mais barato para importar e{" "}
+              {Math.round((tradeDiscount(city) / 2) * 100)}% a mais ao vender. Porto, aeroporto, estações de trem e rodovias baixam o custo do comércio (máx. 20%).
+              Estoque acima de $300 paga 1% por ciclo para ficar guardado.
+            </p>
             <table className="w-full min-w-[40rem] border-collapse text-left">
               <thead className="text-zinc-400">
                 <tr>

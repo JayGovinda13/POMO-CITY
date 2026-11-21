@@ -31,13 +31,29 @@ export function basePrice(res: ResourceId, effects: ClimateEffects): number {
 }
 
 export const importPrice = (res: ResourceId, rank: Rank, effects: ClimateEffects) =>
-  round2(basePrice(res, effects) * IMPORT_MARKUP * RANK_YIELD[rank]);
+  round2(basePrice(res, effects) * IMPORT_MARKUP * RANK_YIELD[rank] * (1 - (effects.trade ?? 0)));
 
 /** O mercado externo paga no máximo o valor de B. */
 export const exportPrice = (res: ResourceId, rank: Rank, effects: ClimateEffects) =>
-  round2(basePrice(res, effects) * EXPORT_FACTOR * RANK_YIELD[rankIndex(rank) > rankIndex(MARKET_MAX_RANK) ? MARKET_MAX_RANK : rank]);
+  round2(basePrice(res, effects) * EXPORT_FACTOR * (1 + (effects.trade ?? 0) / 2) * RANK_YIELD[rankIndex(rank) > rankIndex(MARKET_MAX_RANK) ? MARKET_MAX_RANK : rank]);
 
-export const currentEffects = (s: CityState) => effectsOf(weatherAt(s));
+/** Desconto de frete por infraestrutura: porto, aeroporto, estações de trem e rodovias (máx. 20%). */
+export function tradeDiscount(s: Pick<CityState, "buildings" | "cyclesCompleted">): number {
+  let d = 0;
+  let stations = 0;
+  let highways = 0;
+  for (const b of s.buildings) {
+    if (b.damaged || (b.readyAt !== undefined && s.cyclesCompleted < b.readyAt)) continue;
+    if (b.type === "seaport") d += 0.08;
+    else if (b.type === "airport") d += 0.05;
+    else if (b.type === "train_station") stations++;
+    else if (b.type === "highway") highways++;
+  }
+  d += Math.min(2, stations) * 0.03 + Math.min(0.05, highways / 1000);
+  return Math.round(Math.min(0.2, d) * 1000) / 1000;
+}
+
+export const currentEffects = (s: CityState): ClimateEffects => ({ ...effectsOf(weatherAt(s)), trade: tradeDiscount(s) });
 
 // ───────────────────────── rendimento equivalente ─────────────────────────
 

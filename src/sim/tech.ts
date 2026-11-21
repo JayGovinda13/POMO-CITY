@@ -7,6 +7,7 @@
 
 import type { BuildingType, CityState, Rank } from "./types";
 import { RANK_YIELD } from "./config";
+import { isDown } from "./lifecycle";
 import { cityYear } from "./world";
 
 /** Modificadores somados de todas as tecnologias pesquisadas (frações: 0,15 = +15%). */
@@ -146,7 +147,7 @@ export function techLock(s: CityState, id: string): string | null {
  * museus, multiplicados pelo Rank do foco e pelas tecnologias de pesquisa.
  */
 export function researchPerCycle(s: CityState, rank: Rank = "D"): number {
-  const count = (t: BuildingType) => s.buildings.filter((b) => b.type === t && !b.damaged).length;
+  const count = (t: BuildingType) => s.buildings.filter((b) => b.type === t && !isDown(b, s)).length;
   const base =
     1 +
     s.population * ((s.eq ?? 40) / 100) * 0.04 +
