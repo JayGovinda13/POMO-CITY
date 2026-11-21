@@ -130,6 +130,10 @@ ampliam o estoque.
   prédios próprios de cada época (R, C e I). Zonas leves continuam até o nível 2.
 - **Girar a câmera**: dois botões na barra de ferramentas giram a vista em passos de 90° (4 ângulos),
   mantendo o mesmo ponto do mapa no centro; estradas, barrancos, espuma e o palácio acompanham.
+- **Passeio no foco**: durante o foco a câmera acompanha um **carro** ou um **pedestre** pelas ruas
+  (zoom de rua, com um marcador amarelo sobre quem é seguido). O botão 🎥 ao lado do cronômetro alterna
+  Carro → Pedestre → Livre; tocar, arrastar ou dar zoom no mapa solta a câmera. Ao fim do foco a câmera
+  volta ao zoom de antes. A escolha fica salva.
 - **Animações de ambiente** (sempre ligadas): o vento passa em rajadas pelas copas das árvores, a
   água ondula (4 quadros) e o litoral ganhou faixa de areia com espuma que vai e volta.
 

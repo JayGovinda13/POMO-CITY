@@ -114,6 +114,9 @@ export class CityScene extends Phaser.Scene {
   private unsubscribe?: () => void;
   /** Carros, pedestres, trens e fumaça durante o foco. */
   private life?: CityLife;
+  /** Passeio: zoom guardado para voltar quando a câmera é solta. */
+  private touring = false;
+  private tourZoomIdx = 0;
 
   constructor() {
     super("city");
@@ -169,6 +172,7 @@ export class CityScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unsubscribe?.());
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
+      this.releaseTour();
       if (p.rightButtonDown() || p.middleButtonDown() || useGame.getState().tool === "pan") {
         const cam = this.cameras.main;
         this.panFrom = { x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY };
@@ -215,6 +219,7 @@ export class CityScene extends Phaser.Scene {
     this.input.on("pointerup", stop);
     this.input.on("pointerupoutside", stop);
     this.input.on("wheel", (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+      this.releaseTour();
       this.zoomIdx = Phaser.Math.Clamp(this.zoomIdx + (dy > 0 ? -1 : 1), 0, ZOOMS.length - 1);
       this.cameras.main.setZoom(ZOOMS[this.zoomIdx]); // zoom inteiro mantém o pixel art nítido
     });
@@ -223,11 +228,51 @@ export class CityScene extends Phaser.Scene {
 
   /** Quadro a quadro: a cidade só se mexe durante o foco (e não na visão subterrânea). */
   update(time: number, delta: number) {
+    this.tour(delta);
     this.cull();
     this.ambient(time);
     const s = useGame.getState();
     const active = s.phase === "focus" && !!s.city && s.overlay !== "water";
     this.life?.update(delta, active);
+  }
+
+  /**
+   * Passeio: durante o foco a câmera acompanha um carro ou pedestre (zoom de rua) e solta quando o foco
+   * acaba, o jogador desliga ou toca no mapa.
+   */
+  private tour(delta: number) {
+    const s = useGame.getState();
+    const want = s.phase === "focus" && s.tour !== "off" && !!s.city && s.overlay !== "water";
+    const cam = this.cameras.main;
+    if (!want) {
+      if (this.touring) {
+        this.touring = false;
+        this.life?.setFollow(null);
+        this.zoomIdx = this.tourZoomIdx;
+        cam.setZoom(ZOOMS[this.zoomIdx]);
+      }
+      return;
+    }
+    if (!this.touring) {
+      this.touring = true;
+      this.tourZoomIdx = this.zoomIdx;
+      this.zoomIdx = this.scale.width < 640 ? 3 : 4;
+      cam.setZoom(ZOOMS[this.zoomIdx]);
+    }
+    this.life?.setFollow(s.tour === "off" ? null : s.tour);
+    const p = this.life?.followPos;
+    if (!p) return;
+    // Suaviza: a câmera persegue o alvo (sem trancos nas curvas).
+    const k = 1 - Math.exp(-Math.min(0.1, delta / 1000) * 5);
+    const cx = cam.scrollX + cam.width / 2;
+    const cy = cam.scrollY + cam.height / 2;
+    cam.centerOn(cx + (p.sx - cx) * k, cy + (p.sy - cy) * k);
+  }
+
+  /** O jogador pegou a câmera (arrastou, deu zoom ou tocou): solta o passeio. */
+  private releaseTour() {
+    const s = useGame.getState();
+    if (this.touring && s.tour !== "off") s.setTour("off");
   }
 
   private cullKey = "";

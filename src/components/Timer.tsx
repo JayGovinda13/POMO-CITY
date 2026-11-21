@@ -97,6 +97,7 @@ export function Timer() {
   const city = useGame((s) => s.city);
   const pending = useGame((s) => s.pending.length);
   const nextRank = city ? rankForStreak(effectiveStreak(city, now) + 1) : null;
+  const tour = useGame((s) => s.tour);
   const doneToday = city ? cyclesDoneToday(city, now) : 0;
   const capped = doneToday >= DAILY_REWARD_CAP;
 
@@ -109,6 +110,16 @@ export function Timer() {
         {phase === "idle" || phase === "loading" ? fmt((config?.focusSeconds ?? 1500) * 1000) : fmt(remaining)}
       </span>
       {phase === "focus" ? (
+        <>
+        <button
+          type="button"
+          className="retro-button"
+          onClick={() => useGame.getState().setTour(tour === "car" ? "ped" : tour === "ped" ? "off" : "car")}
+          title="Passeio: a câmera acompanha um carro ou pedestre pelas ruas (toque no mapa para soltar)"
+          aria-label="Passeio da câmera"
+        >
+          🎥 {tour === "car" ? "Carro" : tour === "ped" ? "Pedestre" : "Livre"}
+        </button>
         <button
           type="button"
           className="retro-button"
@@ -119,6 +130,7 @@ export function Timer() {
         >
           Abandonar
         </button>
+        </>
       ) : (
         <>
           <button

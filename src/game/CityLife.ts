@@ -43,6 +43,9 @@ export class CityLife {
   private smokers: { x: number; y: number; rate: number; acc: number }[] = [];
   private width = 0;
   private seedKey = "";
+  /** Passeio: o carro ou pedestre que a câmera acompanha e a posição dele na tela. */
+  private followed: Mover | null = null;
+  followPos: { sx: number; sy: number } | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -119,6 +122,7 @@ export class CityLife {
     }
     // Quem ficou sem caminho (rua demolida) é removido; depois completa até a quantidade desejada.
     this.movers = this.movers.filter((m) => (m.kind === "train" ? this.railNb : this.roadNb).has(m.to));
+    if (this.followed && !this.movers.includes(this.followed)) this.followed = null;
     const count = (k: Mover["kind"]) => this.movers.filter((m) => m.kind === k).length;
     const spawn = (kind: Mover["kind"], pool: number[], n: number) => {
       for (let k = count(kind); k < n && pool.length; k++) {
@@ -148,6 +152,20 @@ export class CityLife {
     spawn("train", rails, wantTrains);
   }
 
+  /** Escolhe o carro ou pedestre a seguir (se não houver do tipo pedido, usa o outro). null = sem passeio. */
+  setFollow(kind: "car" | "ped" | null) {
+    if (!kind) {
+      this.followed = null;
+      this.followPos = null;
+      return;
+    }
+    if (this.followed && this.movers.includes(this.followed) && this.followed.kind === kind) return;
+    const pool = (k: Mover["kind"]) => this.movers.filter((m) => m.kind === k);
+    const list = pool(kind).length ? pool(kind) : pool(kind === "car" ? "ped" : "car");
+    this.followed = list.length ? list[Math.floor(Math.random() * list.length)] : null;
+    if (!this.followed) this.followPos = null;
+  }
+
   private next(m: Mover) {
     const nb = (m.kind === "train" ? this.railNb : this.roadNb).get(m.to) ?? [];
     const options = nb.filter((n) => n !== m.from);
@@ -166,6 +184,7 @@ export class CityLife {
     const sm = this.smoke.clear();
     if (!active) {
       this.puffs = [];
+      this.followPos = null;
       return;
     }
     const dt = Math.min(0.1, dtMs / 1000);
@@ -188,6 +207,17 @@ export class CityLife {
       const py = ux;
       const x = a.sx + dx * m.t;
       const y = a.sy + dy * m.t;
+      if (m === this.followed) {
+        const lift = m.kind === "car" ? 2 : 3;
+        this.followPos = { sx: x + (m.kind === "car" ? px * 2.5 : px * 6 * m.side), sy: y + (m.kind === "car" ? py * 2.5 : py * 6 * m.side) - lift };
+        // Marcador sobre quem a câmera acompanha.
+        const mx = Math.round(this.followPos.sx);
+        const my = Math.round(this.followPos.sy) - 9;
+        g.fillStyle(0x1b1630, 1);
+        g.fillTriangle(mx - 3, my - 1, mx + 3, my - 1, mx, my + 4);
+        g.fillStyle(0xffe14a, 1);
+        g.fillTriangle(mx - 2, my, mx + 2, my, mx, my + 3);
+      }
       if (m.kind === "car") {
         const cx = x + px * 2.5;
         const cy = y + py * 2.5;

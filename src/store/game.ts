@@ -20,6 +20,9 @@ import {
   quoteMaterials,
 } from "@/sim";
 
+/** Modo do passeio: acompanhar um carro, um pedestre, ou câmera livre. */
+export type Tour = "car" | "ped" | "off";
+
 /** Ferramentas de zona: "zone-R-light", "zone-I-dense", "zone-none-light" (remover zona). */
 export type ZoneTool = `zone-${ZoneKind | "none"}-${"light" | "dense"}`;
 /** "pan" = ✋ Mover: arrastar com clique normal move a câmera. */
@@ -110,6 +113,9 @@ interface GameStore {
   /** Troca de conta: descarta a fila local e recarrega a cidade do novo usuário. */
   reset(): Promise<void>;
   setTool(tool: Tool): void;
+  /** Passeio durante o foco: a câmera acompanha um carro ou pedestre pelas ruas. */
+  tour: Tour;
+  setTour(tour: Tour): void;
   setOverlay(overlay: Overlay): void;
   clickTile(x: number, y: number): void;
   selectArea(x0: number, y0: number, x1: number, y1: number): void;
@@ -319,6 +325,10 @@ export const useGame = create<GameStore>()(
           await get().load();
         },
 
+        tour: "car",
+        setTour(tour) {
+          set({ tour });
+        },
         setTool(tool) {
           // O cano mostra a visão subterrânea automaticamente.
           if (tool === "pipe") set({ tool, overlay: "water" });
@@ -494,6 +504,7 @@ export const useGame = create<GameStore>()(
         tool: s.tool,
         overlay: s.overlay,
         confirmMode: s.confirmMode,
+        tour: s.tour,
       }),
     },
   ),
