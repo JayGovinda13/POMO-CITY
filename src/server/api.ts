@@ -104,6 +104,12 @@ export function parseCommands(raw: unknown): Command[] | null {
       out.push({ type: "ordinance", id: r.id as OrdinanceId, active: r.active });
       continue;
     }
+    if (r.type === "pension") {
+      const patch: Record<string, unknown> = {};
+      for (const k of ["retireAge", "publicOn", "publicRate", "publicLevel", "privateOn", "privateSubsidy"]) if (r[k] !== undefined) patch[k] = r[k];
+      out.push({ type: "pension", ...patch } as Command);
+      continue;
+    }
     if (r.type === "renew") {
       if (!Number.isInteger(r.x) || !Number.isInteger(r.y)) return null;
       out.push({ type: "renew", x: r.x as number, y: r.y as number });

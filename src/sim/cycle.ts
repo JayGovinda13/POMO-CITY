@@ -55,6 +55,7 @@ import { SECTOR_OF_BUILDING, jobFactor, outputFactor } from "./labor";
 import { computeStrike } from "./strikes";
 import { taxableResidents } from "./people";
 import { demographyStep } from "./demography";
+import { pensionStep } from "./pensionsystem";
 import { carryingCost, isDown, storageCostOf, stockValue, underConstruction } from "./lifecycle";
 import { cityFatigue } from "./laborload";
 import { eventMods, rollEvents } from "./events";
@@ -505,6 +506,13 @@ const citizensSystem: CycleSystem = ({ s, report }) => {
   };
 };
 
+/** 10b) Aposentadoria: contribuições, benefícios, déficit público e previdência privada. */
+const pensionSystem: CycleSystem = ({ s, report, rand }) => {
+  const r = pensionStep(s, rand, report.jobs.filled);
+  report.pension = r;
+  report.finance.pension = r.cost;
+};
+
 /** 11) Balanço por recurso e saldo final do ciclo. */
 const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
   const sum = (inv: Inventory, res: ResourceId) => RANKS.reduce((acc, r) => acc + getQty(inv, res, r), 0);
@@ -532,6 +540,7 @@ const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
     f.interest -
     f.insurance -
     f.storage -
+    f.pension -
     report.importCost +
     report.salesRevenue +
     f.events;
@@ -581,6 +590,7 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   researchSystem,
   eventsSystem,
   citizensSystem,
+  pensionSystem,
   ledgerSystem,
 ];
 
@@ -640,6 +650,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       upkeepAdmin: 0,
       events: 0,
       storage: 0,
+      pension: 0,
       interest: 0,
       insurance: 0,
     },

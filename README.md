@@ -202,6 +202,20 @@ Cada morador tem idade (4 ciclos = 1 ano), gênero, família e pode ser visto na
   enquanto houver parentes vivos na cidade (depois some dos registros).
 - **Nas ruas** (durante o foco): crianças vão à escola mais próxima, aposentados só passeiam e têm cabelo branco.
 
+## Aposentadoria (botão ⏳)
+
+A prefeitura decide se oferece aposentadoria e como:
+- **Idade de aposentar** (60 a 70): quem passa dela sai do trabalho.
+- **Previdência pública**: os trabalhadores empregados contribuem com 0 a 15% de um salário de referência
+  ($10/ciclo); a prefeitura paga um benefício a cada aposentado (básico $2, médio $4, generoso $6 por
+  ciclo). O fundo acumula o que sobra; se faltar, o **déficit sai do caixa** (linha "Previdência" do
+  livro-caixa). O painel mostra a previsão por ciclo.
+- **Previdência privada** (oferecida aos moradores): cada trabalhador pode aderir (8% por ciclo), poupa
+  $0,6/ciclo com rendimento de 1,5% e se aposenta vivendo da própria poupança, **sem custo para a
+  prefeitura**; a prefeitura pode **subsidiar** de 0 a 100% do aporte (isso sai do caixa).
+- **Humor:** aposentado com renda (benefício público ou poupança) +1; **sem renda −3**; contribuição acima
+  de 10% pesa nos trabalhadores. Tudo vem desligado por padrão.
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

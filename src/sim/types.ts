@@ -205,6 +205,7 @@ export type Command =
   | { type: "repair"; x: number; y: number }
   | { type: "research"; tech: string | null }
   | { type: "renew"; x: number; y: number }
+  | { type: "pension"; retireAge?: number; publicOn?: boolean; publicRate?: number; publicLevel?: 1 | 2 | 3; privateOn?: boolean; privateSubsidy?: number }
   | { type: "labor"; sector: import("./labor").Sector; hours?: import("./labor").Hours; pay?: import("./labor").Pay }
   | { type: "terraform"; action: "raise" | "lower" | "water" | "land" | "tree"; x: number; y: number }
   | {
@@ -264,6 +265,8 @@ export interface CycleReport {
   events?: import("./events").EventNews[];
   /** Nascimentos, mortes e casamentos do ciclo (ver demography.ts). */
   demography?: import("./demography").DemographyReport;
+  /** Aposentadoria do ciclo (ver pensionsystem.ts). */
+  pension?: import("./pensionsystem").PensionReport;
   /** Greve que valeu neste ciclo (ver strikes.ts). */
   strike?: import("./strikes").StrikeState;
   /** Humor dos moradores ao fim do ciclo, e quem chegou/saiu. */
@@ -316,4 +319,6 @@ export interface FinanceBreakdown {
   storage: number;
   interest: number;
   insurance: number;
+  /** Previdência: déficit público e subsídio privado. */
+  pension: number;
 }

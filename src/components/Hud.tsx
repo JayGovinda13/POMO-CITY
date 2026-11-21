@@ -61,6 +61,7 @@ import { GameMenu } from "./GameMenu";
 import { MarketButton } from "./MarketPanel";
 import { BudgetButton } from "./BudgetPanel";
 import { LaborButton } from "./LaborPanel";
+import { PensionButton } from "./PensionPanel";
 import { TechButton } from "./TechPanel";
 import { LeaderboardButton } from "./LeaderboardPanel";
 import { EventsChip } from "./EventsChip";
@@ -221,6 +222,7 @@ export function Hud() {
           <MarketButton />
           <BudgetButton />
           <LaborButton />
+          <PensionButton />
           <TechButton />
           <LeaderboardButton />
           <MusicButton />
