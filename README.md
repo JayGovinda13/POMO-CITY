@@ -330,6 +330,8 @@ acompanhamentos) e `player.ts` (agendador).
 - **Ciclo econômico decenal** (`src/sim/ecocycle.ts`): 40 ciclos (10 anos) em quatro fases de 10: *Estagnação*, *Prosperidade*, *Superprodução* e *Crise*. Cada fase mexe no preço de tábuas, metal e bens (×0,65 na crise, ×1,15 na prosperidade), nos juros dos títulos novos (−1 a +3 pontos) e na demanda de comércio e indústria. A fase inicial vem da semente da cidade e a previsão das próximas fases aparece no painel **Mercado**. Na crise os adultos e aposentados perdem humor ("Crise econômica"). Dica: emita títulos na prosperidade; os juros ficam travados na emissão.
 - **Renda do solo (IPTU)**: novo controle em Orçamento → Impostos (0 a 10%). Rende sobre o valor da terra dos lotes residenciais (bairros valorizados rendem mais), mas acima de 2% o aluguel pesa: a demanda residencial cai e os moradores de baixa renda (e, acima de 6%, a classe média) ficam tristes ("Aluguel pesado"). O decreto **Habitação popular** troca isso por "Moradia popular" para quem tem pouco e divide o efeito na demanda por dois.
 - **Poder de compra**: quando a comida encarece (colheita ruim) ≥30%, moradores de baixa renda ficam tristes ("Comida cara"); ≥50%, também a classe média.
+- **Eleição extraordinária**: em crise grave (3 ou mais sinais, os mesmos que põem o Fascista na urna), depois de 1 ano de mandato, há 15% de chance por ciclo de o povo exigir novas eleições. A câmara é refeita antes dos 4 anos e o risco de golpe cresce.
+- **Clique no morador**: com a ferramenta vazia (ou ✋ Mover), toque num morador andando pela rua para abrir a ficha dele, com a árvore genealógica.
 - Não há indicador numérico da taxa de lucro; o efeito da queda tendencial aparece na crise do ciclo.
 
 ## Balanceamento

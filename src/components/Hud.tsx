@@ -56,6 +56,7 @@ import { hex } from "./ranks";
 import { Timer } from "./Timer";
 import { ConfirmBar } from "./ConfirmBar";
 import { TourCaption } from "./TourCaption";
+import { PersonPopup } from "./PersonPopup";
 import { GameOver } from "./GameOver";
 import { CycleReportModal } from "./CycleReportModal";
 import { GameMenu } from "./GameMenu";
@@ -271,6 +272,7 @@ export function Hud() {
       </div>
 
       <TourCaption />
+      <PersonPopup />
       <GameOver />
       <ConfirmBar />
       <Timer />

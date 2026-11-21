@@ -8,6 +8,9 @@ import { ageYears } from "./people";
 import type { CityState } from "./types";
 
 /** Mandato: 4 anos. */
+/** Eleição extraordinária: só depois de 1 ano de mandato e com 15% de chance por ciclo de crise. */
+export const EARLY_MIN_CYCLES = CYCLES_PER_YEAR;
+export const EARLY_CHANCE = 0.15;
 export const TERM_CYCLES = 4 * CYCLES_PER_YEAR;
 /** Só há câmara em cidades com pelo menos esta população. */
 export const MIN_COUNCIL_POPULATION = 30;
@@ -318,7 +321,7 @@ function proposeBill(s: CityState, rand: () => number, g: Signals): Bill | null 
 export interface CouncilReport {
   /** O Fascista conquistou 2/3 da câmara: golpe e fim de jogo. */
   coup?: boolean;
-  election?: { seats: Record<PartyId, number>; members: { name: string; party: PartyId }[]; crisis: number };
+  election?: { seats: Record<PartyId, number>; members: { name: string; party: PartyId }[]; crisis: number; extraordinary?: boolean };
   /** Lei proposta neste ciclo. */
   proposal?: { id: number; law: LawId; party: PartyId; proposer: string };
   /** Propostas arquivadas por falta de decisão. */
@@ -339,13 +342,19 @@ export function councilStep(s: CityState, rand: () => number): CouncilReport {
   const now = s.cyclesCompleted;
   if (s.population < MIN_COUNCIL_POPULATION || !s.citizens.length) return out;
 
-  const due = !c.members.length || now - c.electedAt >= TERM_CYCLES;
+  const termOver = !c.members.length || now - c.electedAt >= TERM_CYCLES;
+  // Eleição extraordinária: em crise grave, depois de um ano de mandato, o povo pode exigir novas urnas.
+  let early = false;
+  if (!termOver && now - c.electedAt >= EARLY_MIN_CYCLES) {
+    early = crisisLevel(s, signalsOf(citizensView(s), s)) >= 3 && rand() < EARLY_CHANCE;
+  }
+  const due = termOver || early;
   if (due) {
     const r = holdElection(s, rand);
     if (r) {
       c.members = r.members.map((m) => ({ id: m.id, party: m.party }));
       c.electedAt = now;
-      out.election = { seats: r.seats, members: r.members.map((m) => ({ name: m.name, party: m.party })), crisis: r.crisis };
+      out.election = { seats: r.seats, members: r.members.map((m) => ({ name: m.name, party: m.party })), crisis: r.crisis, extraordinary: early || undefined };
       const first = c.history.length === 0 && c.laws.length === 0;
       if (isCoup(c)) {
         // Dois terços da câmara: os fascistas tomam a prefeitura e o jogo termina.
@@ -353,7 +362,7 @@ export function councilStep(s: CityState, rand: () => number): CouncilReport {
         out.coup = true;
         note(c, now, "GOLPE: o Fascista tem 2/3 da câmara e toma o poder");
       }
-      note(c, now, `${first ? "Primeira eleição" : "Eleição"}${r.crisis >= 3 ? " (em crise)" : ""}: ${PARTY_IDS.filter((p) => r.seats[p]).map((p) => `${PARTIES[p].short} ${r.seats[p]}`).join(", ")}`);
+      note(c, now, `${first ? "Primeira eleição" : early ? "Eleição extraordinária" : "Eleição"}${r.crisis >= 3 ? " (em crise)" : ""}: ${PARTY_IDS.filter((p) => r.seats[p]).map((p) => `${PARTIES[p].short} ${r.seats[p]}`).join(", ")}`);
     }
     return out;
   }

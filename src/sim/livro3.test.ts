@@ -7,6 +7,7 @@ import {
   applyCommands,
   basePrice,
   citizensView,
+  councilStep,
   createCity,
   currentEffects,
   demandModifiers,
@@ -160,5 +161,31 @@ describe("renda do solo (IPTU)", () => {
     old.schemaVersion = 19;
     delete old.landTax;
     expect(migrateState(old as CityState).landTax).toBe(0);
+  });
+});
+
+describe("eleição extraordinária", () => {
+  it("em crise grave, depois de um ano de mandato, o povo exige novas urnas", () => {
+    const s = town();
+    s.population = 100;
+    const first = councilStep(s, () => 0.99);
+    expect(first.election).toBeDefined();
+    const elected = s.council.electedAt;
+    s.cyclesCompleted = elected + 5;
+    // Caixa no vermelho, greve geral, desastre recente e desemprego: crise.
+    s.money = -500;
+    s.lastDisasterCycle = s.cyclesCompleted - 1;
+    s.strike = { share: 0.5 } as CityState["strike"];
+    const r = councilStep(s, () => 0);
+    expect(r.election?.extraordinary).toBe(true);
+    expect(s.council.electedAt).toBe(s.cyclesCompleted);
+    expect(elected).toBeLessThan(s.council.electedAt);
+    // Antes de um ano, nem em crise.
+    const t = town();
+    t.population = 100;
+    councilStep(t, () => 0.99);
+    t.cyclesCompleted = t.council.electedAt + 2;
+    t.money = -500;
+    expect(councilStep(t, () => 0).election).toBeUndefined();
   });
 });

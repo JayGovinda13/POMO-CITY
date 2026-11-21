@@ -9,6 +9,8 @@ type Events = {
   "camera:rotate": number;
   /** Legenda do passeio: quem a câmera acompanha e o que faz (null = sem passeio). */
   "tour:info": string | null;
+  /** Clique num morador na rua: abre a ficha dele. */
+  "person:click": number;
 };
 
 type Handler<K extends keyof Events> = (payload: Events[K]) => void;

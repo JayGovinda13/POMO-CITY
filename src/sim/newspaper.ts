@@ -156,7 +156,7 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
   if (cr?.election) {
     const seats = (Object.keys(cr.election.seats) as (keyof typeof cr.election.seats)[]).filter((p) => cr.election!.seats[p] > 0);
     stories.push({
-      title: "Eleição para a Câmara de Vereadores",
+      title: cr.election.extraordinary ? "Eleição extraordinária: o povo exige novas urnas" : "Eleição para a Câmara de Vereadores",
       body: `Os moradores foram às urnas: ${seats.map((p) => `${PARTIES[p].short} ${cr.election!.seats[p]}`).join(", ")}. Mandato de 4 anos.`,
       tone: "neutral",
     });

@@ -46,6 +46,10 @@ interface Person {
   mode: "walk" | "car";
   /** Destino do passeio. */
   spot: { road: number; label: string } | null;
+  /** Posição na tela do mundo quando está na rua (para o clique). */
+  sx: number;
+  sy: number;
+  outside: boolean;
 }
 
 interface Puff {
@@ -326,6 +330,9 @@ export class CityLife {
         t: 0,
         mode: "walk",
         spot: null,
+        sx: 0,
+        sy: 0,
+        outside: false,
       };
       // Cada um começa num ponto diferente do dia: em casa, no trabalho, a caminho ou passeando.
       const r = Math.random();
@@ -590,6 +597,7 @@ export class CityLife {
       }
       // Quem entrou num prédio some; quem estava sendo seguido e entrou em casa ou no trabalho é trocado.
       const outside = p.state === "walk" || p.state === "leisure";
+      p.outside = outside;
       if (!outside) {
         if (this.followed === p) {
           this.followed = null;
@@ -638,6 +646,8 @@ export class CityLife {
         quad(3, 1.6, 0x1b1630);
         quad(2.6, 1.2, p.shirt, 1);
         quad(1.2, 0.9, 0x9ad0ff, 2);
+        p.sx = cx;
+        p.sy = cy - 2;
         if (this.followed === p) this.followPos = { sx: cx, sy: cy - 2 };
       } else {
         const side = p.id % 2 ? 1 : -1;
@@ -654,6 +664,8 @@ export class CityLife {
         g.fillRect(sx - 1, sy - (kid ? 4 : 5), 2, 2);
         g.fillStyle(p.stage === "aposentado" ? 0xe8e8f0 : HAIR[p.hair % HAIR.length], 1);
         g.fillRect(sx - 1, sy - (kid ? 5 : 6), 2, 1);
+        p.sx = sx;
+        p.sy = sy - 3;
         if (this.followed === p) this.followPos = { sx, sy: sy - 3 };
       }
       if (this.followed === p && this.followPos) {
@@ -665,6 +677,21 @@ export class CityLife {
         g.fillTriangle(mx - 2, my, mx + 2, my, mx, my + 3);
       }
     }
+  }
+
+  /** Morador na rua perto do ponto (coordenadas do mundo), ou null. `reach` é o raio em pixels do mundo. */
+  personAt(wx: number, wy: number, reach: number): number | null {
+    let best: Person | null = null;
+    let bestD = reach;
+    for (const p of this.persons) {
+      if (!p.outside) continue;
+      const d = Math.hypot(p.sx - wx, p.sy - wy);
+      if (d <= bestD) {
+        best = p;
+        bestD = d;
+      }
+    }
+    return best ? best.id : null;
   }
 
   setVisible(v: boolean) {

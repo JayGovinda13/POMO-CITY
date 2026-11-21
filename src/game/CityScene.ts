@@ -174,6 +174,16 @@ export class CityScene extends Phaser.Scene {
 
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       this.releaseTour();
+      const picker = useGame.getState().tool;
+      if ((picker === null || picker === "pan") && !p.rightButtonDown() && !p.middleButtonDown()) {
+        const cam = this.cameras.main;
+        const w = cam.getWorldPoint(p.x, p.y);
+        const who = this.life?.personAt(w.x, w.y, 9 / cam.zoom);
+        if (who != null) {
+          bus.emit("person:click", who);
+          return;
+        }
+      }
       if (p.rightButtonDown() || p.middleButtonDown() || useGame.getState().tool === "pan") {
         const cam = this.cameras.main;
         this.panFrom = { x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY };
