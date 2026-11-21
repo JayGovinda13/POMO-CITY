@@ -104,11 +104,12 @@ export type OrdinanceId =
   | "conservacao_energia"
   | "embelezamento"
   | "festival"
-  | "premio_produtividade";
+  | "premio_produtividade"
+  | "escola_fabrica";
 
 export interface OrdinanceDef {
   name: string;
-  category: "Finanças" | "Energia" | "Comunidade" | "Foco";
+  category: "Finanças" | "Energia" | "Comunidade" | "Foco" | "Trabalho";
   description: string;
   /** Receita (+) ou custo (−) por ciclo, em função do estado. */
   money: (s: CityState) => number;
@@ -163,6 +164,12 @@ export const ORDINANCES: Record<OrdinanceId, OrdinanceDef> = {
     money: (s) => -Math.ceil(pop(s) * 0.15),
     demand: { C: 0.1 },
     mood: { delta: 1, text: "Festival da cidade" },
+  },
+  escola_fabrica: {
+    name: "Escola-fábrica",
+    category: "Trabalho",
+    description: "Aprendizes dividem o dia entre a escola e a oficina: o QE alvo sobe 10 pontos e a cidade realoca mais gente da automação, mas as fábricas produzem 8% menos.",
+    money: (s) => -Math.ceil(pop(s) * 0.12),
   },
   premio_produtividade: {
     name: "Prêmio de produtividade",

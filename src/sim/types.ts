@@ -32,6 +32,7 @@ export type BuildingType =
   | "fire_station"
   | "prison"
   | "hospital"
+  | "labor_office"
   | "school"
   | "college"
   | "library"
@@ -158,7 +159,7 @@ export interface CityState {
   bonds: Bond[];
   nextBondId: number;
   /** Decretos ativos → ciclo em que foram ativados. */
-  ordinances: Partial<Record<"imposto_vendas" | "imposto_renda" | "jogos" | "conservacao_energia" | "embelezamento" | "festival" | "premio_produtividade", number>>;
+  ordinances: Partial<Record<"imposto_vendas" | "imposto_renda" | "jogos" | "conservacao_energia" | "embelezamento" | "festival" | "premio_produtividade" | "escola_fabrica", number>>;
   difficulty: "facil" | "medio" | "dificil";
   // ── Fase 5: riscos ──
   insurance: { plan: "none" | "basico" | "completo"; since: number; bonusMalus: number; lastClaimCycle: number | null };

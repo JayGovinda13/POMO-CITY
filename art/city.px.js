@@ -985,6 +985,23 @@ building("hospital", 46, (c, oy) => {
   c.rect(b.cx - 1, ty - 3, 3, 7, "N")
   c.rect(b.cx - 3, ty - 1, 7, 3, "N")
 })
+// Fiscalização do Trabalho: sobrado cinza-azulado com placa, relógio de ponto e bandeira.
+building("labor_office", 36, (c, oy) => {
+  c.poly(ground(oy, 2), "p")
+  const b = block(c, { oy, hw: 12, H: 14, top: "i", left: "q", right: "Q" })
+  windows(c, b, { floors: 2, fh: 6, col: "u", lit: "Y", every: 3 })
+  parapet(c, b, "J")
+  door(c, b, 0.5, "d")
+  // Placa sobre a porta e relógio na fachada direita.
+  const [dx, dy] = [Math.round(b.L[0] + (b.cx - b.L[0]) * 0.5), Math.round(b.L[1] + ((b.cx - b.L[0]) * 0.5) / 2)]
+  c.rect(dx - 1, dy - 8, 5, 2, "Y")
+  c.circ(b.cx + 6, b.B[1] - b.H + 6, 2, "Y")
+  c.px(b.cx + 6, b.B[1] - b.H + 5, "d")
+  c.px(b.cx + 7, b.B[1] - b.H + 6, "d")
+  // Bandeira vermelha no topo.
+  c.vline(b.cx, b.cy - b.H - 9, 9, "J")
+  c.rect(b.cx + 1, b.cy - b.H - 9, 4, 3, "N")
+})
 building("school", 34, (c, oy) => {
   c.poly(ground(oy, 0), "g")
   const b = block(c, { oy, hw: 13, H: 9, left: "L", right: "o" })
@@ -1259,4 +1276,4 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "foam_*", "beach_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "foam_*", "beach_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "labor_office", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })

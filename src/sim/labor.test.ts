@@ -13,6 +13,15 @@ import {
   laborStats,
   migrateState,
   outputFactor,
+  lockReason,
+  BUILDINGS,
+  inspected,
+  ORDINANCES,
+  laborMood,
+  sectorFatigue,
+  schoolFactory,
+  updateQuality,
+  computeServices,
   resolveCycle,
   rollEvents,
   rng,
@@ -207,5 +216,68 @@ describe("migração v13", () => {
     delete old.labor;
     const m = migrateState(old as CityState);
     expect(m.labor).toEqual(DEFAULT_LABOR);
+  });
+});
+
+describe("fiscal de fábrica", () => {
+  const office = (s: CityState): CityState => {
+    const c = structuredClone(s);
+    c.buildings.push({ id: c.nextId++, type: "labor_office", x: 20, y: 20 });
+    return c;
+  };
+  it("só abre com 60 moradores", () => {
+    const s = createCity(1, T0);
+    expect(lockReason(BUILDINGS.labor_office.requires, s)).toMatch(/60/);
+    s.population = 60;
+    expect(lockReason(BUILDINGS.labor_office.requires, s)).toBeNull();
+  });
+  it("corta o ganho de produção acima de 8 h pela metade e não mexe na jornada curta", () => {
+    const s = withLabor(createCity(1, T0), "campo", 12);
+    expect(inspected(s)).toBe(false);
+    expect(outputFactor(s, "campo")).toBeCloseTo(1.22);
+    expect(outputFactor(office(s), "campo")).toBeCloseTo(1.11);
+    const curta = withLabor(createCity(1, T0), "campo", 6);
+    expect(outputFactor(office(curta), "campo")).toBeCloseTo(0.88);
+  });
+  it("segura o desgaste e o humor pela metade", () => {
+    const s = withLabor(createCity(1, T0), "campo", 12, "peca");
+    const sum = (c: CityState) => laborMood(c, "campo").reduce((a, m) => a + m.delta, 0);
+    expect(sum(s)).toBe(-4);
+    expect(sum(office(s))).toBe(-1); // −3 → −1 (arredonda para o zero) e a peça some
+    expect(sectorFatigue(office(s), "campo")).toBeCloseTo(sectorFatigue(s, "campo") / 2);
+  });
+  it("prédio danificado não fiscaliza", () => {
+    const c = office(createCity(1, T0));
+    c.buildings[c.buildings.length - 1].damaged = true;
+    expect(inspected(c)).toBe(false);
+  });
+});
+
+describe("decreto Escola-fábrica", () => {
+  const on = (s: CityState): CityState => applyCommands(s, [{ type: "ordinance", id: "escola_fabrica", active: true }]).state;
+  it("derruba 8% das fábricas, sobe o QE alvo e realoca mais gente da automação", () => {
+    const s = createCity(1, T0);
+    s.techs = ["automacao"];
+    s.eq = 40;
+    const d = on(s);
+    expect(schoolFactory(d)).toBe(true);
+    expect(outputFactor(d, "fabrica")).toBeCloseTo(0.92);
+    expect(outputFactor(d, "campo")).toBe(1);
+    expect(educationRelief(d)).toBeCloseTo(0.1);
+    expect(displacedJobs(d)).toBeLessThan(displacedJobs(s));
+    // QE: com o decreto, o alvo sobe 10 pontos (a cidade sem escolas fica em 0 + 10).
+    const e0 = createCity(1, T0);
+    e0.eq = 0;
+    const e1 = on(e0);
+    updateQuality(e0, computeServices(e0));
+    updateQuality(e1, computeServices(e1));
+    expect(e1.eq).toBeGreaterThan(e0.eq);
+  });
+  it("não pode ser ligado duas vezes e custa por ciclo", () => {
+    const s = createCity(1, T0);
+    s.population = 100;
+    const d = on(s);
+    expect(applyCommands(d, [{ type: "ordinance", id: "escola_fabrica", active: true }]).rejected).toHaveLength(1);
+    expect(ORDINANCES.escola_fabrica.money?.(d)).toBeLessThan(0);
   });
 });

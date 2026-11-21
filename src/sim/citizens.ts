@@ -119,6 +119,7 @@ const BUILDING_JOBS: Partial<Record<BuildingType, { title: { m: string; f: strin
   prison: { title: g("Agente penitenciário", "Agente penitenciária"), category: "servicos" },
   fire_station: { title: g("Bombeiro", "Bombeira"), category: "servicos" },
   hospital: { title: g("Médico", "Enfermeira"), category: "servicos" },
+  labor_office: { title: g("Fiscal do trabalho", "Fiscal do trabalho"), category: "servicos" },
   school: { title: g("Professor", "Professora"), category: "servicos" },
   college: { title: g("Professor universitário", "Professora universitária"), category: "servicos" },
   library: { title: g("Bibliotecário", "Bibliotecária"), category: "servicos" },

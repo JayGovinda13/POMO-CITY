@@ -151,6 +151,11 @@ Botão 🔨 na barra superior. Por setor (campo, oficinas e fábricas) o jogador
 - **Automação**: as tecnologias linha de montagem, contêineres, computadores, automação industrial e
   inteligência artificial **eliminam parte dos empregos industriais** (até 55%) mantendo a produção.
   A educação (QE acima de 40) realoca até metade do efeito; o resto vira desemprego.
+- **Fiscalização do Trabalho** (prédio em Serviços, a partir de 60 moradores): os fiscais seguram o dano
+  das jornadas longas e do pagamento por peça (humor e desgaste pela metade), mas o ganho de produção
+  acima de 8 h também cai pela metade. Prédio danificado não fiscaliza.
+- **Escola-fábrica** (decreto, Orçamento → Decretos): aprendizes dividem o dia entre a escola e a oficina:
+  QE alvo +10 e mais gente realocada da automação (+10%), ao custo de 8% da produção das fábricas.
 - Fora do escopo desta etapa: poder de compra como humor (precisa de preços que variem no mercado).
 
 ## Orçamento

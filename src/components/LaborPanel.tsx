@@ -10,6 +10,8 @@ import {
   cityFatigue,
   displacedJobs,
   educationRelief,
+  inspected,
+  schoolFactory,
   laborMood,
   laborStats,
   outputFactor,
@@ -115,6 +117,20 @@ function LaborModal({ onClose }: { onClose: () => void }) {
               </div>
             );
           })}
+
+          <div className="space-y-1 border border-zinc-700 p-2">
+            <strong>Fiscalização e escola-fábrica</strong>
+            <p className={inspected(city) ? "text-emerald-300" : "text-zinc-400"}>
+              {inspected(city)
+                ? "Fiscais de fábrica ativos: humor e desgaste dos trabalhadores pela metade, mas o ganho de produção acima de 8 h também cai pela metade."
+                : "Sem fiscalização. Construa a Fiscalização do Trabalho (Serviços, a partir de 60 moradores) para proteger os trabalhadores."}
+            </p>
+            <p className={schoolFactory(city) ? "text-emerald-300" : "text-zinc-400"}>
+              {schoolFactory(city)
+                ? "Escola-fábrica em vigor: QE alvo +10, mais gente realocada da automação, fábricas −8% de produção."
+                : "Decreto Escola-fábrica (Orçamento → Decretos): sobe o QE e ajuda a absorver o desemprego da automação, ao custo de 8% da produção das fábricas."}
+            </p>
+          </div>
 
           <div className="space-y-1 border border-zinc-700 p-2">
             <strong>Desgaste da cidade</strong>

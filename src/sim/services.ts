@@ -294,7 +294,8 @@ export function eqTarget(f: Pick<ServiceFields, "schoolServed" | "collegeServed"
 
 /** Atualiza QE e expectativa de vida (mudam devagar). Muta `s`. */
 export function updateQuality(s: CityState, f: ServiceFields): void {
-  const target = eqTarget(f);
+  // Escola-fábrica: aprendizes sobem o QE alvo em 10 pontos.
+  const target = eqTarget(f) + (s.ordinances?.escola_fabrica !== undefined ? 10 : 0);
   const eq = s.eq ?? START_EQ;
   let next: number;
   if (target >= eq) next = eq + (target - eq) * 0.25;

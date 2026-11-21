@@ -41,8 +41,17 @@ export const DEFAULT_LABOR: LaborRules = {
   fabrica: { hours: 8, pay: "tempo" },
 };
 
+/** O que as regras de trabalho leem da cidade. */
+export type LaborCity = Pick<CityState, "labor" | "buildings" | "ordinances">;
+
 /** Regras do setor (saves antigos sem o campo usam o padrão). */
 export const rulesOf = (s: Pick<CityState, "labor">, sector: Sector): SectorRules => s.labor?.[sector] ?? DEFAULT_LABOR[sector];
+
+/** Há fiscais de fábrica trabalhando? (Fiscalização do Trabalho que não foi danificada.) */
+export const inspected = (s: Pick<CityState, "buildings">): boolean => s.buildings.some((b) => b.type === "labor_office" && !b.damaged);
+
+/** Decreto "Escola-fábrica" em vigor? */
+export const schoolFactory = (s: Pick<CityState, "ordinances">): boolean => s.ordinances?.escola_fabrica !== undefined;
 
 const HOURS_OUTPUT: Record<Hours, number> = { 6: 0.88, 8: 1, 10: 1.12, 12: 1.22 };
 /** Quem é pago por peça produz mais (e é mais pressionado). */
@@ -51,26 +60,33 @@ const HOURS_MOOD: Record<Hours, number> = { 6: 1, 8: 0, 10: -1, 12: -3 };
 const PIECE_MOOD = -1;
 
 /** Multiplicador da produção do setor (jornada × forma de pagamento). */
-export function outputFactor(s: Pick<CityState, "labor">, sector: Sector): number {
+export function outputFactor(s: LaborCity, sector: Sector): number {
   const r = rulesOf(s, sector);
-  return HOURS_OUTPUT[r.hours] * (r.pay === "peca" ? PIECE_OUTPUT : 1);
+  const raw = HOURS_OUTPUT[r.hours] * (r.pay === "peca" ? PIECE_OUTPUT : 1);
+  // Fiscais cortam pela metade o ganho de produção acima do normal (a jornada curta não muda).
+  const f = raw > 1 && inspected(s) ? 1 + (raw - 1) / 2 : raw;
+  // Aprendizes na escola-fábrica: a indústria perde 8% da produção.
+  return sector === "fabrica" && schoolFactory(s) ? f * 0.92 : f;
 }
 
 /** Motivos de humor dos trabalhadores do setor (somam ao humor de cada um). */
-export function laborMood(s: Pick<CityState, "labor">, sector: Sector): { text: string; delta: number }[] {
+export function laborMood(s: LaborCity, sector: Sector): { text: string; delta: number }[] {
   const r = rulesOf(s, sector);
   const out: { text: string; delta: number }[] = [];
-  if (HOURS_MOOD[r.hours] !== 0) {
-    out.push({ text: r.hours < 8 ? "Jornada curta" : r.hours === 10 ? "Jornada longa" : "Jornada exaustiva", delta: HOURS_MOOD[r.hours] });
-  }
-  if (r.pay === "peca") out.push({ text: "Pagamento por peça (ritmo puxado)", delta: PIECE_MOOD });
+  // Fiscais seguram o dano: os pesos negativos caem pela metade (o arredondamento é para o lado do zero).
+  const shield = (d: number) => (d < 0 && inspected(s) ? Math.trunc(d / 2) : d);
+  const hours = shield(HOURS_MOOD[r.hours]);
+  if (hours !== 0) out.push({ text: r.hours < 8 ? "Jornada curta" : r.hours === 10 ? "Jornada longa" : "Jornada exaustiva", delta: hours });
+  const piece = r.pay === "peca" ? shield(PIECE_MOOD) : 0;
+  if (piece !== 0) out.push({ text: "Pagamento por peça (ritmo puxado)", delta: piece });
   return out;
 }
 
 /** Desgaste do setor, de 0 (descansado) a 1 (exaustão): horas acima de 8 e pagamento por peça. */
-export function sectorFatigue(s: Pick<CityState, "labor">, sector: Sector): number {
+export function sectorFatigue(s: LaborCity, sector: Sector): number {
   const r = rulesOf(s, sector);
-  return Math.min(1, Math.max(0, r.hours - 8) / 4 + (r.pay === "peca" ? 0.15 : 0));
+  const raw = Math.min(1, Math.max(0, r.hours - 8) / 4 + (r.pay === "peca" ? 0.15 : 0));
+  return inspected(s) ? raw / 2 : raw;
 }
 
 // ───────────────────────── automação ─────────────────────────
@@ -81,16 +97,17 @@ export const MAX_DISPLACED = 0.55;
 const EQ_BASE = 40;
 
 /** Quanto da automação a educação da cidade consegue compensar (0..0,5). */
-export const educationRelief = (s: Pick<CityState, "eq">): number => Math.min(0.5, Math.max(0, ((s.eq ?? EQ_BASE) - EQ_BASE) / 200));
+export const educationRelief = (s: Pick<CityState, "eq"> & Partial<Pick<CityState, "ordinances">>): number =>
+  Math.min(0.5, Math.max(0, ((s.eq ?? EQ_BASE) - EQ_BASE) / 200) + (s.ordinances && schoolFactory({ ordinances: s.ordinances }) ? 0.1 : 0));
 
 /** Fração dos empregos industriais eliminada pelas máquinas (0..MAX_DISPLACED). */
-export function displacedJobs(s: Pick<CityState, "techs" | "eq">): number {
+export function displacedJobs(s: Pick<CityState, "techs" | "eq"> & Partial<Pick<CityState, "ordinances">>): number {
   return Math.min(MAX_DISPLACED, techMods(s).automation * (1 - educationRelief(s)));
 }
 
 /** Fator dos empregos que sobram (1 = nenhuma automação). */
-export const jobFactor = (s: Pick<CityState, "techs" | "eq">): number => 1 - displacedJobs(s);
+export const jobFactor = (s: Pick<CityState, "techs" | "eq"> & Partial<Pick<CityState, "ordinances">>): number => 1 - displacedJobs(s);
 
 /** Empregos de um lote industrial, já descontada a automação. */
-export const industrialLotJobs = (s: Pick<CityState, "techs" | "eq">, level: number, perLevel: number): number =>
+export const industrialLotJobs = (s: Pick<CityState, "techs" | "eq"> & Partial<Pick<CityState, "ordinances">>, level: number, perLevel: number): number =>
   Math.round(level * perLevel * jobFactor(s));
