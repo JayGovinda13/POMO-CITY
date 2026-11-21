@@ -186,7 +186,13 @@ describe("Fase 8 — rodovias, trilhos e portos", () => {
       }
       st.zoneType[at(st, 13, 11)] = ZONE.R;
       st.zoneLevel[at(st, 13, 11)] = 2;
-      st.population = 60;
+      // Mais moradia: com greve por falta de hospital e escola sobram poucos operários, e o bônus de frete
+      // sumiria no arredondamento de uma produção minúscula.
+      for (let x = 13; x <= 18; x++) {
+        st.zoneType[at(st, x, 10)] = ZONE.R;
+        st.zoneLevel[at(st, x, 10)] = 4;
+      }
+      st.population = 100;
       syncCitizens(st);
       st.inventory = { "food:C": 500, "planks:C": 100 };
       return resolveCycle(st, T0).report.ledger.goods?.produced ?? 0;

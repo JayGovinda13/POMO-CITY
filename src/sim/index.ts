@@ -28,3 +28,4 @@ export * from "./events";
 export * from "./labor";
 export * from "./laborload";
 export * from "./lifecycle";
+export * from "./strikes";

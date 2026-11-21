@@ -4,6 +4,7 @@
 
 import type { BuildingType, CityState } from "./types";
 import { techMods } from "./tech";
+import { educationProductivity } from "./strikes";
 
 /** Setores com regras próprias de trabalho. */
 export type Sector = "campo" | "oficina" | "fabrica";
@@ -42,7 +43,7 @@ export const DEFAULT_LABOR: LaborRules = {
 };
 
 /** O que as regras de trabalho leem da cidade. */
-export type LaborCity = Pick<CityState, "labor" | "buildings" | "ordinances"> & Partial<Pick<CityState, "cyclesCompleted">>;
+export type LaborCity = Pick<CityState, "labor" | "buildings" | "ordinances"> & Partial<Pick<CityState, "cyclesCompleted" | "eq">>;
 
 /** Regras do setor (saves antigos sem o campo usam o padrão). */
 export const rulesOf = (s: Pick<CityState, "labor">, sector: Sector): SectorRules => s.labor?.[sector] ?? DEFAULT_LABOR[sector];
@@ -67,7 +68,9 @@ export function outputFactor(s: LaborCity, sector: Sector): number {
   // Fiscais cortam pela metade o ganho de produção acima do normal (a jornada curta não muda).
   const f = raw > 1 && inspected(s) ? 1 + (raw - 1) / 2 : raw;
   // Aprendizes na escola-fábrica: a indústria perde 8% da produção.
-  return sector === "fabrica" && schoolFactory(s) ? f * 0.92 : f;
+  const school = sector === "fabrica" && schoolFactory(s) ? f * 0.92 : f;
+  // Trabalhadores mais educados produzem mais (até +25%).
+  return school * educationProductivity(s.eq);
 }
 
 /** Motivos de humor dos trabalhadores do setor (somam ao humor de cada um). */

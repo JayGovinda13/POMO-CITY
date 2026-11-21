@@ -8,6 +8,9 @@ import {
   SECTORS,
   buildingStatus,
   cityFatigue,
+  computeStrike,
+  educationProductivity,
+  educationStrikeFactor,
   displacedJobs,
   educationRelief,
   inspected,
@@ -50,6 +53,7 @@ function LaborModal({ onClose }: { onClose: () => void }) {
   const labor = laborStats(city, status);
   const fatigue = cityFatigue(city, status);
   const displaced = displacedJobs(city);
+  const strike = computeStrike(city);
   const relief = educationRelief(city);
   const automation = techMods(city).automation;
   const set = (sector: Sector, patch: { hours?: Hours; pay?: Pay }) => useGame.getState().queue({ type: "labor", sector, ...patch });
@@ -117,6 +121,33 @@ function LaborModal({ onClose }: { onClose: () => void }) {
               </div>
             );
           })}
+
+          <div className="space-y-1 border border-zinc-700 p-2">
+            <strong>Greve</strong>
+            {(() => {
+              const st = strike;
+              if (st.share <= 0)
+                return <p className="text-emerald-300">Nenhuma greve prevista: os trabalhadores têm caminho, serviços e energia.</p>;
+              return (
+                <>
+                  <p className="text-red-300">
+                    Se nada mudar, <strong>{Math.round(st.share * 100)}%</strong> dos trabalhadores ({Math.round(city.population * st.share)} pessoas) cruzam os braços no próximo ciclo.
+                  </p>
+                  <ul className="list-disc pl-5">
+                    {st.causes.map((c) => (
+                      <li key={c.id}>
+                        {c.text}: {Math.round(c.share * 100)}%
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              );
+            })()}
+            <p className="text-zinc-400">
+              Educação (QE {Math.round(city.eq)}): produtividade {pct(educationProductivity(city.eq))}, mas a chance de greve é {educationStrikeFactor(city.eq).toFixed(2)}× a base. Quem estuda
+              produz mais e cobra mais da prefeitura.
+            </p>
+          </div>
 
           <div className="space-y-1 border border-zinc-700 p-2">
             <strong>Fiscalização e escola-fábrica</strong>

@@ -287,7 +287,8 @@ export function runBot(o: BotOptions, onEnd?: (s: CityState) => void): CycleRow[
     want(pop >= 60 && count("school") < 1 + Math.floor(pop / 150), "school");
     want(pop >= 90 && count("police") < 1 + Math.floor(pop / 200), "police");
     want(pop >= 90 && count("fire_station") < 1 + Math.floor(pop / 250), "fire_station");
-    want(pop >= 120 && count("hospital") < Math.floor(pop / 150), "hospital");
+    // Hospital é prioridade como um jogador faria (sem ele há greve e a vida média não sobe).
+    urgent(pop >= 100 && count("hospital") < 1 + Math.floor(pop / 200), "hospital");
     want(pop >= 60 && count("park") < Math.floor(pop / 80), "park");
     // Linhas: liga tudo com fio ao longo das ruas (barato).
     for (const b of s.buildings) {

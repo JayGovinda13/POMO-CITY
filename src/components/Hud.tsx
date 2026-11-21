@@ -64,6 +64,7 @@ import { LaborButton } from "./LaborPanel";
 import { TechButton } from "./TechPanel";
 import { LeaderboardButton } from "./LeaderboardPanel";
 import { EventsChip } from "./EventsChip";
+import { StrikeChip } from "./StrikeChip";
 import { CitizensButton } from "./CitizensPanel";
 import { DonateButton } from "./DonateButton";
 import { Logo } from "./Logo";
@@ -191,6 +192,7 @@ export function Hud() {
           <Coins /> ${city.money}
         </span>
         <ResourcesButton />
+        <StrikeChip />
         <EventsChip />
         <span title={`Moradores / moradia · ${labor.publicFilled + labor.zoneFilled}/${labor.totalJobs} empregos ocupados${labor.unemployed ? ` · ${labor.unemployed} sem emprego` : ""}`}>
           <Group /> {city.population}/{labor.housing}

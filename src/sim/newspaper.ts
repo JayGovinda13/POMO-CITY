@@ -86,6 +86,16 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
   if (report.starving) {
     candidates.push({ priority: 90, tone: "bad", title: "FOME! Moradores deixam a cidade", body: "Sem comida nem dinheiro para comprá-la, famílias fazem as malas. Fazendas são urgentes." });
   }
+  if (report.strike && report.strike.share >= 0.08) {
+    const pct = Math.round(report.strike.share * 100);
+    const why = report.strike.causes.slice(0, 3).map((c) => c.text.toLowerCase()).join(", ");
+    candidates.push({
+      priority: pct >= 25 ? 95 : 78,
+      tone: "bad",
+      title: pct >= 25 ? `GREVE GERAL: ${pct}% dos trabalhadores param` : `Greve: ${pct}% dos trabalhadores cruzam os braços`,
+      body: `Motivos: ${why}. A produção da cidade cai enquanto as causas não forem resolvidas.`,
+    });
+  }
   if (report.power.brownout) {
     candidates.push({ priority: 80, tone: "bad", title: "APAGÃO atinge bairros inteiros", body: `A cidade pediu ${report.power.demand} MW, mas só há ${report.power.capacity} MW. A população cobra novas usinas e linhas.` });
   }

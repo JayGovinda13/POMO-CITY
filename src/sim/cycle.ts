@@ -52,6 +52,7 @@ import { computeServices, landValueTaxFactor, updateQuality, type ServiceFields 
 import { computeTraffic, type TrafficResult } from "./traffic";
 import { advanceResearch, researchPerCycle, techMods } from "./tech";
 import { SECTOR_OF_BUILDING, jobFactor, outputFactor } from "./labor";
+import { computeStrike } from "./strikes";
 import { carryingCost, isDown, storageCostOf, stockValue, underConstruction } from "./lifecycle";
 import { cityFatigue } from "./laborload";
 import { eventMods, rollEvents } from "./events";
@@ -124,6 +125,12 @@ function consumeOrImport(ctx: CycleContext, res: ResourceId, need: number): numb
   addTo(report.consumed, res, q.rank, units);
   return Math.max(0, shortfall - units);
 }
+
+/** 0) Greve do ciclo: calculada com as condições que o jogador deixou na pausa. */
+const strikeSystem: CycleSystem = ({ s, report }) => {
+  s.strike = computeStrike(s);
+  report.strike = s.strike;
+};
 
 /** 1) Lotes crescem/declinam (energia, acesso viário, demanda). Cada nível novo consome materiais. */
 const zoneGrowthSystem: CycleSystem = (ctx) => {
@@ -547,6 +554,7 @@ const insuranceSystem: CycleSystem = ({ s, report }) => {
 };
 
 export const CYCLE_SYSTEMS: CycleSystem[] = [
+  strikeSystem,
   zoneGrowthSystem,
   moveInSystem,
   powerSystem,

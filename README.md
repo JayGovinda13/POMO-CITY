@@ -165,6 +165,11 @@ Botão 🔨 na barra superior. Por setor (campo, oficinas e fábricas) o jogador
   acima de 8 h também cai pela metade. Prédio danificado não fiscaliza.
 - **Escola-fábrica** (decreto, Orçamento → Decretos): aprendizes dividem o dia entre a escola e a oficina:
   QE alvo +10 e mais gente realocada da automação (+10%), ao custo de 8% da produção das fábricas.
+- **Greves por causa** (começo de cada ciclo): uma fração dos trabalhadores para quando **não há caminho
+  até o emprego**, o **trânsito está parado sem transporte público**, falta **hospital**, **escola**,
+  **segurança** ou **energia**, o **ar é poluído** ou a **jornada é exaustiva**. Os grevistas não preenchem
+  vagas (máx. 70%). **Quanto mais educação, maior a chance de greve e maior a produtividade** (até +25%
+  com QE 140). O painel de Trabalho mostra a greve prevista e as causas; o jornal e a barra (✊) avisam.
 - Fora do escopo desta etapa: poder de compra como humor (precisa de preços que variem no mercado).
 
 ## Capital e tempo (inspirado em *O Capital*, Livro 2)

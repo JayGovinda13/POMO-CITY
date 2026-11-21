@@ -112,6 +112,11 @@ export function migrateState(raw: CityState): CityState {
     for (const b of s.buildings) b.builtAt ??= s.cyclesCompleted;
   }
 
+  if (from < 15) {
+    // v14 → v15: greves por causa.
+    s.strike = { share: 0, causes: [] };
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

@@ -3,6 +3,7 @@ import { UNPOWERED_EFFICIENCY } from "./config";
 import { ZONE, type CityState } from "./types";
 import { SECTOR_OF_BUILDING, industrialLotJobs, jobFactor } from "./labor";
 import { isDown, wearFactor } from "./lifecycle";
+import { activeWorkers } from "./strikes";
 import { connectedRoads, isRoadConnected } from "./world";
 
 export interface BuildingStatus {
@@ -22,7 +23,7 @@ export interface BuildingStatus {
 export function buildingStatus(s: CityState, powered?: Uint8Array): Map<number, BuildingStatus> {
   const network = connectedRoads(s);
   const out = new Map<number, BuildingStatus>();
-  let freeWorkers = s.population;
+  let freeWorkers = activeWorkers(s);
   const ordered = [...s.buildings].sort((a, b) => a.id - b.id);
   const jobs = jobFactor(s);
   for (const b of ordered) {
@@ -59,6 +60,8 @@ export interface LaborStats {
   industrialFilled: number;
   totalJobs: number;
   unemployed: number;
+  /** Trabalhadores em greve (não contam como desempregados). */
+  striking: number;
 }
 
 export function laborStats(s: CityState, status = buildingStatus(s)): LaborStats {
@@ -83,7 +86,8 @@ export function laborStats(s: CityState, status = buildingStatus(s)): LaborStats
     publicFilled += st.staffed;
   }
   const zoneJobs = commercialJobs + industrialJobs;
-  const zoneFilled = Math.min(zoneJobs, Math.max(0, s.population - publicFilled));
+  const workers = activeWorkers(s);
+  const zoneFilled = Math.min(zoneJobs, Math.max(0, workers - publicFilled));
   const commercialFilled = Math.min(commercialJobs, zoneFilled);
   return {
     housing,
@@ -95,6 +99,7 @@ export function laborStats(s: CityState, status = buildingStatus(s)): LaborStats
     commercialFilled,
     industrialFilled: zoneFilled - commercialFilled,
     totalJobs: publicJobs + zoneJobs,
-    unemployed: Math.max(0, s.population - publicFilled - zoneFilled),
+    unemployed: Math.max(0, workers - publicFilled - zoneFilled),
+    striking: Math.max(0, s.population - workers),
   };
 }

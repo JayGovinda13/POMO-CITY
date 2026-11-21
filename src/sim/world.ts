@@ -112,6 +112,7 @@ export function createCity(
     terrain,
     elevation,
     trees,
+    strike: { share: 0, causes: [] },
     labor: structuredClone(DEFAULT_LABOR),
     techs: [],
     research: { target: null, progress: 0 },
