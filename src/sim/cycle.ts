@@ -44,6 +44,7 @@ import {
 } from "./finance";
 import { buildingStatus, laborStats } from "./status";
 import { ecoMarket } from "./ecocycle";
+import { businessStep } from "./business";
 import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Inventory, type Rank, type ResourceId } from "./types";
 import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
@@ -528,6 +529,14 @@ const councilSystem: CycleSystem = ({ s, report, rand }) => {
   report.finance.laws = cost;
 };
 
+/** 10d) Negócios próprios: quem está sem vaga abre empresa ou cooperativa (conforme as leis). */
+const businessSystem: CycleSystem = ({ s, report, rand }) => {
+  const r = businessStep(s, report.jobs.unemployed, rand);
+  report.business = r;
+  report.finance.business = r.tax;
+  s.money += r.tax;
+};
+
 /** 11) Balanço por recurso e saldo final do ciclo. */
 const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
   const sum = (inv: Inventory, res: ResourceId) => RANKS.reduce((acc, r) => acc + getQty(inv, res, r), 0);
@@ -559,7 +568,8 @@ const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
     f.laws -
     report.importCost +
     report.salesRevenue +
-    f.events;
+    f.events +
+    f.business;
 };
 
 /**
@@ -608,6 +618,7 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   citizensSystem,
   pensionSystem,
   councilSystem,
+  businessSystem,
   ledgerSystem,
 ];
 
@@ -670,6 +681,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       storage: 0,
       pension: 0,
       laws: 0,
+      business: 0,
       interest: 0,
       insurance: 0,
     },

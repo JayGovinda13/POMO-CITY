@@ -334,6 +334,12 @@ acompanhamentos) e `player.ts` (agendador).
 - **Clique no morador**: com a ferramenta vazia (ou ✋ Mover), toque num morador andando pela rua para abrir a ficha dele, com a árvore genealógica.
 - Não há indicador numérico da taxa de lucro; o efeito da queda tendencial aparece na crise do ciclo.
 
+## Negócios próprios e banco de leis
+
+- **Empreendedores (direita) e cooperativas (esquerda)**: leis votadas na câmara abrem esse caminho para moradores **sem vaga**. Leis de empreendedorismo (Liberal, Conservador, Centro e Social Democrata: *Microempreendedor individual*, *Crédito para pequenos negócios*, *Polo de startups*, *Imposto simplificado*, *Feira de empreendedores*, *Negócio de família*, *Incubadora municipal*, *Microcrédito solidário*…) criam empreendedores: pagam mais imposto (US$1,5 por ciclo) e aumentam a demanda de comércio, mas quebram fácil (8% por ciclo, o dobro na crise econômica). Leis de cooperativismo (Esquerda: *Cooperativas de trabalhadores*, *Fábricas recuperadas*, *Banco cooperativo*…) criam cooperados: rendem menos (US$0,8) e resistem melhor (3%). As leis marcadas com 🏪 e 🤝 no painel da Câmara somam a força de cada caminho (`src/sim/business.ts`).
+- **Quem vota em quem**: empreendedor vota Liberal/Conservador; cooperado vota Esquerda/Social Democrata. Assim as leis que o prefeito aprova mudam a base eleitoral e a câmara da próxima eleição.
+- **76 leis** (eram 25): 14 da Esquerda, 15 Social Democrata, 13 Centro, 13 Liberal, 12 Conservador e 9 Fascista (só na crise), cada uma ligada a uma mecânica (trabalho, impostos, saúde, crime, família, comércio, pesquisa, poluição…).
+
 ## Balanceamento
 
 ```bash

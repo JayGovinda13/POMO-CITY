@@ -1,3 +1,4 @@
+import { newBusiness } from "./business";
 import { BIOMES } from "./catalog";
 import { CYCLES_PER_YEAR, DEFAULT_POLICIES, LEGACY_MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_INVENTORY, STARTING_MONEY, START_EQ, START_LIFE } from "./config";
 import { bfsDistances } from "./grid";
@@ -118,6 +119,7 @@ export function createCity(
     council: newCouncil(),
     ended: null,
     landTax: 0,
+    business: newBusiness(),
     pension: { ...DEFAULT_PENSION },
     strike: { share: 0, causes: [] },
     labor: structuredClone(DEFAULT_LABOR),

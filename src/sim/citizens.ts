@@ -54,6 +54,8 @@ export interface CitizenView extends CitizenProfile {
   /** Faixa de idade e as necessidades dela (atendidas ou não). */
   group: AgeGroup;
   needs: Need[];
+  /** Negócio próprio: empreendedor ou cooperado (só quem está sem vaga). */
+  business: "empreendedor" | "cooperado" | null;
   /** Companheiro(a) vivo(a), se casado(a). */
   partner: { id: number; name: string } | null;
   /** Número de filhos vivos. */
@@ -242,6 +244,8 @@ export function citizensView(s: CityState): CitizenView[] {
     for (const par of [l.mother, l.father]) if (par !== undefined) kidsOf.set(par, (kidsOf.get(par) ?? 0) + 1);
   }
   let workerRank = 0;
+  let bizE = s.business?.entrepreneurs ?? 0;
+  let bizC = s.business?.coops ?? 0;
 
   const fed = foodSecure(s);
   const recentDisaster = s.lastDisasterCycle !== null && s.cyclesCompleted - s.lastDisasterCycle <= 2;
@@ -257,7 +261,20 @@ export function citizensView(s: CityState): CitizenView[] {
     // Só quem está em idade de trabalhar disputa as vagas (na ordem da lista).
     const slot = stage === "adulto" ? slots[workerRank++] : undefined;
     const reasons: CitizenView["reasons"] = [];
+    // Quem está sem vaga pode ter o próprio negócio (leis de empreendedorismo) ou uma cooperativa.
+    let business: CitizenView["business"] = null;
+    if (!slot && stage === "adulto") {
+      if (bizE > 0) {
+        bizE--;
+        business = "empreendedor";
+      } else if (bizC > 0) {
+        bizC--;
+        business = "cooperado";
+      }
+    }
     if (slot) reasons.push({ text: "Tem emprego", delta: 2 });
+    else if (business === "empreendedor") reasons.push({ text: "Tem o próprio negócio", delta: 1 });
+    else if (business === "cooperado") reasons.push({ text: "Sócio(a) de uma cooperativa", delta: 2 });
     else if (stage === "adulto") reasons.push({ text: "Desempregado(a)", delta: -2 });
     // Família: casal junto anima; luto pesa por 4 ciclos.
     if (life?.partner !== undefined && s.people[life.partner]?.died === undefined) reasons.push({ text: "Vive em família", delta: 1 });
@@ -271,7 +288,7 @@ export function citizensView(s: CityState): CitizenView[] {
       safe: at !== undefined && svc.crime[at] <= 45,
       health: at !== undefined && svc.health[at] > 0,
       transport: !(at !== undefined && s.population >= TRIP_LIMIT_POPULATION && traffic.failed[at]),
-      job: !!slot,
+      job: !!slot || business !== null,
       income: hasPensionIncome(s, id),
     });
     for (const n of needs) {
@@ -340,6 +357,7 @@ export function citizensView(s: CityState): CitizenView[] {
       stage,
       group,
       needs,
+      business,
       partner: life?.partner !== undefined && s.people[life.partner] ? { id: life.partner, name: citizenProfile(s, life.partner).name } : null,
       children: kidsOf.get(id) ?? 0,
       home: homeIdx === undefined ? null : { x: homeIdx % s.width, y: Math.floor(homeIdx / s.width) },

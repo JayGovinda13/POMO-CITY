@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LAWS, PARTIES, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, fascistSeats, type LawId, type PartyId } from "@/sim";
+import { LAWS, PARTIES, lawCoop, lawEntrepreneur, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, fascistSeats, type LawId, type PartyId } from "@/sim";
 import { useGame } from "@/store/game";
 import { Gavel, Xmark } from "./icons";
 
@@ -64,6 +64,17 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
               (em {left} ciclo(s)).
             </p>
           )}
+          <div className="space-y-1 border border-zinc-700 p-2">
+            <strong>Negócios dos moradores</strong>
+            <p>
+              🏪 <strong>{city.business?.entrepreneurs ?? 0}</strong> empreendedores (imposto, mas quebram fácil; a direita os apoia) · 🤝{" "}
+              <strong>{city.business?.coops ?? 0}</strong> cooperados (rendem menos, resistem à crise; a esquerda os apoia)
+            </p>
+            <p className="text-zinc-400">
+              Só quem está sem vaga abre negócio. Força das leis em vigor: empreendedorismo {lawEntrepreneur(city).toFixed(1)} · cooperativismo {lawCoop(city).toFixed(1)}. Leis
+              marcadas com 🏪 ou 🤝 aumentam esses números.
+            </p>
+          </div>
           {c.members.length === 0 ? (
             <p className="text-zinc-400">A cidade ainda é pequena demais para ter câmara. Com 30 moradores acontece a primeira eleição.</p>
           ) : (
@@ -105,7 +116,7 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
             {c.bills.map((b) => (
               <div key={b.id} className="space-y-1 border border-zinc-600 bg-zinc-900/50 p-2">
                 <p>
-                  <Tag party={b.party} /> <strong>{LAWS[b.law].name}</strong>
+                  <Tag party={b.party} /> <strong>{LAWS[b.law].name}</strong>{LAWS[b.law].entrepreneur ? " 🏪" : ""}{LAWS[b.law].coop ? " 🤝" : ""}
                 </p>
                 <p className="text-zinc-300">{LAWS[b.law].description}</p>
                 <p className="text-zinc-500">
@@ -131,7 +142,7 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
               <div key={id} className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <p>
-                    <Tag party={LAWS[id].party} /> <strong>{LAWS[id].name}</strong>
+                    <Tag party={LAWS[id].party} /> <strong>{LAWS[id].name}</strong>{LAWS[id].entrepreneur ? " 🏪" : ""}{LAWS[id].coop ? " 🤝" : ""}
                   </p>
                   <p className="text-zinc-400">{LAWS[id].description}</p>
                 </div>

@@ -264,6 +264,7 @@ const FIN_ROWS: { key: keyof CycleReport["finance"]; label: string; sign: 1 | -1
   { key: "upkeepServices", label: "Manutenção: serviços", sign: -1 },
   { key: "upkeepOther", label: "Manutenção: outros", sign: -1 },
   { key: "upkeepAdmin", label: "Administração (cresce com a cidade)", sign: -1 },
+  { key: "business", label: "Negócios próprios (empreendedores e cooperativas)", sign: 1 },
   { key: "events", label: "Eventos (mecenas, festival, prêmios)", sign: 1 },
   { key: "ordinanceCost", label: "Decretos (custo)", sign: -1 },
   { key: "imports", label: "Compras automáticas", sign: -1 },

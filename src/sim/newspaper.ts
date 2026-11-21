@@ -168,6 +168,22 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
       tone: "neutral",
     });
   }
+  // Negócios próprios: abertura e quebradeira.
+  const bz = report.business;
+  if (bz && bz.opened >= 2) {
+    stories.push({
+      title: `${bz.opened} moradores abrem o próprio negócio`,
+      body: `${bz.entrepreneurs} empreendedores e ${bz.coops} cooperados tocam negócios na cidade, graças às leis em vigor.`,
+      tone: "good",
+    });
+  }
+  if (bz && bz.failed >= 3) {
+    stories.push({
+      title: `Quebradeira: ${bz.failed} negócios fecharam`,
+      body: "Pequenos negócios não aguentaram a estação. Cooperativas costumam resistir melhor às crises.",
+      tone: "bad",
+    });
+  }
   // Vida na cidade: nascimentos, casamentos e despedidas.
   const dm = report.demography;
   if (dm && dm.births > 0) {

@@ -226,6 +226,8 @@ export function demandModifiers(s: CityState): Record<ZoneKind, number> {
   }
   out.I += DIFFICULTY[s.difficulty].industryDemand;
   out.R -= rentPressure(s) * 0.02 * (isActive(s, "habitacao_popular") ? 0.5 : 1);
+  // Empreendedores abrem lojas e oficinas: mais demanda de comércio.
+  out.C += Math.min(0.15, (s.business?.entrepreneurs ?? 0) * 0.005);
   const eco = ecoDemand(s);
   out.C += eco;
   out.I += eco;

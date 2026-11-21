@@ -75,7 +75,7 @@ export function signalsOf(views: CitizenView[], s: Pick<CityState, "money" | "st
   const retirees = views.filter((v) => v.stage === "aposentado");
   const kids = share(views, (v) => v.stage === "crianca");
   return {
-    unemployed: adults.length ? adults.filter((v) => !v.job).length / adults.length : 0,
+    unemployed: adults.length ? adults.filter((v) => !v.job && !v.business).length / adults.length : 0,
     fatigue: share(views, (v) => has(v, "Jornada exaustiva") || has(v, "Pagamento por peça")),
     poor: share(views, (v) => v.wealth === "baixa"),
     unsafe: share(views, (v) => has(v, "Bairro perigoso")),
@@ -118,7 +118,7 @@ export function leaning(v: CitizenView, s: Pick<CityState, "council">, crisis = 
   const has = (t: string) => v.reasons.some((r) => r.text.startsWith(t));
   const unmet = v.needs.filter((n) => !n.met).length;
   // Dificuldade econômica: esquerda e social-democratas.
-  if ((v.stage === "adulto" || v.group === "jovem") && !v.job) {
+  if ((v.stage === "adulto" || v.group === "jovem") && !v.job && !v.business) {
     w.esquerda += 2;
     w.socialdemocrata += 1;
   }
@@ -142,6 +142,14 @@ export function leaning(v: CitizenView, s: Pick<CityState, "council">, crisis = 
   if (v.group === "idoso") {
     w.socialdemocrata += 1.5;
     w.conservador += 0.8;
+  }
+  // Negócio próprio: o empreendedor vota à direita; o cooperado, à esquerda.
+  if (v.business === "empreendedor") {
+    w.liberal += 2.5;
+    w.conservador += 1.2;
+  } else if (v.business === "cooperado") {
+    w.esquerda += 2.2;
+    w.socialdemocrata += 1.2;
   }
   // Riqueza e negócios: liberais e conservadores.
   if (v.wealth === "alta") {
@@ -168,7 +176,7 @@ export function leaning(v: CitizenView, s: Pick<CityState, "council">, crisis = 
     w.esquerda += 0.4;
     w.fascista += 1.2 * crisis;
   }
-  if (!v.job && v.stage === "adulto") w.fascista += 0.6 * crisis;
+  if (!v.job && !v.business && v.stage === "adulto") w.fascista += 0.6 * crisis;
   // Prestígio: quem teve leis aprovadas pelo prefeito sai mais forte; quem foi vetado, mais fraco.
   for (const p of PARTY_IDS) w[p] += (s.council?.standing[p] ?? 0) * 0.25;
   if (!crisis) w.fascista = 0;
@@ -259,6 +267,40 @@ function available(s: CityState, party: PartyId): LawId[] {
 /** Que indicadores da cidade cada lei responde (quanto mais alto o indicador, mais o partido a propõe). */
 const ANSWERS: Partial<Record<LawId, keyof Signals>> = {
   jornada_8h: "fatigue",
+  cooperativas_trabalhadores: "unemployed",
+  fabricas_recuperadas: "unemployed",
+  banco_cooperativo: "unemployed",
+  microempreendedor: "unemployed",
+  credito_pequenos_negocios: "unemployed",
+  polo_startups: "unemployed",
+  imposto_simplificado: "unemployed",
+  feira_empreendedores: "unemployed",
+  incubadora_municipal: "unemployed",
+  microcredito_solidario: "unemployed",
+  negocio_familiar: "unemployed",
+  seguro_desemprego: "unemployed",
+  moradia_publica: "poor",
+  habitacao_social: "poor",
+  restaurante_popular: "poor",
+  grandes_fortunas: "poor",
+  participacao_lucros: "fatigue",
+  descanso_remunerado: "fatigue",
+  creche_publica: "kids",
+  escola_integral: "kids",
+  licenca_parental: "fewkids",
+  auxilio_casamento: "fewkids",
+  vacinacao_massa: "nohospital",
+  coleta_seletiva: "polluted",
+  ciclovias: "polluted",
+  reforco_policial: "unsafe",
+  conselhos_bairro: "unsafe",
+  protecao_propriedade: "unsafe",
+  guarda_nacional: "unsafe",
+  vigilancia_total: "unsafe",
+  responsabilidade_fiscal: "deficit",
+  privatizacao_servicos: "deficit",
+  conciliacao_trabalhista: "strike",
+  corporativismo_estado: "strike",
   salario_minimo: "poor",
   fiscalizacao: "fatigue",
   taxar_grandes_empresas: "poor",

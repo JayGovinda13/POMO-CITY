@@ -94,7 +94,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 20;
+export const CURRENT_SCHEMA_VERSION = 21;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -119,6 +119,8 @@ export interface CityState {
   elevation: number[];
   /** 1 = árvore no tile (Fase 9). */
   trees: number[];
+  /** Negócios próprios dos moradores: empreendedores e cooperativas (ver business.ts). */
+  business: import("./business").BusinessState;
   /** IPTU: imposto sobre o valor do solo dos lotes residenciais, 0 a 10 (%). */
   landTax: number;
   /** Fim de jogo (golpe fascista): a cidade deixa de funcionar. null = o jogo segue. */
@@ -277,6 +279,8 @@ export interface CycleReport {
   council?: import("./council").CouncilReport;
   /** Aposentadoria do ciclo (ver pensionsystem.ts). */
   pension?: import("./pensionsystem").PensionReport;
+  /** Negócios próprios no ciclo (ver business.ts). */
+  business?: import("./business").BusinessReport;
   /** Greve que valeu neste ciclo (ver strikes.ts). */
   strike?: import("./strikes").StrikeState;
   /** Humor dos moradores ao fim do ciclo, e quem chegou/saiu. */
@@ -337,4 +341,6 @@ export interface FinanceBreakdown {
   pension: number;
   /** Verbas das leis municipais em vigor. */
   laws: number;
+  /** Imposto dos negócios próprios (empreendedores e cooperativas). */
+  business: number;
 }

@@ -35,5 +35,6 @@ export * from "./pension";
 export * from "./pensionsystem";
 export * from "./needs";
 export * from "./ecocycle";
+export * from "./business";
 export * from "./laws";
 export * from "./council";

@@ -156,6 +156,11 @@ export function migrateState(raw: CityState): CityState {
     s.landTax = 0;
   }
 
+  if (from < 21) {
+    // v20 → v21: negócios próprios (empreendedores e cooperativas).
+    s.business = { entrepreneurs: 0, coops: 0 };
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }
