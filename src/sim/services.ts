@@ -11,6 +11,7 @@ import { computeTraffic, type TrafficResult } from "./traffic";
 import { isWater } from "./terrain";
 import { techMods } from "./tech";
 import { cityFatigue } from "./laborload";
+import { demographics } from "./people";
 import { START_EQ, START_LIFE } from "./config";
 import { ZONE, type CityState } from "./types";
 
@@ -262,7 +263,8 @@ export function computeServices(
     leisure,
     school,
     health,
-    healthServed: Math.min(1, healthCap / pop),
+    // Aposentados usam mais o hospital: pesam em dobro na demanda.
+    healthServed: Math.min(1, healthCap / (pop + demographics(s).retirees)),
     schoolServed,
     collegeServed,
     eqProtected,

@@ -94,7 +94,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 15;
+export const CURRENT_SCHEMA_VERSION = 16;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -119,6 +119,10 @@ export interface CityState {
   elevation: number[];
   /** 1 = árvore no tile (Fase 9). */
   trees: number[];
+  /** Vida de cada morador: idade, família e poupança (ver people.ts). */
+  people: Record<number, import("./people").Life>;
+  /** Idade de aposentar e previdência pública e privada (ver pension.ts). */
+  pension: import("./pension").PensionPolicy;
   /** Greve do ciclo: fração dos trabalhadores parada e as causas (ver strikes.ts). */
   strike: import("./strikes").StrikeState;
   /** Jornada e pagamento por setor (ver labor.ts). */
@@ -258,6 +262,8 @@ export interface CycleReport {
   research?: { points: number; done: string[] };
   /** Eventos aleatórios do ciclo (e desafios cumpridos ou vencidos). */
   events?: import("./events").EventNews[];
+  /** Nascimentos, mortes e casamentos do ciclo (ver demography.ts). */
+  demography?: import("./demography").DemographyReport;
   /** Greve que valeu neste ciclo (ver strikes.ts). */
   strike?: import("./strikes").StrikeState;
   /** Humor dos moradores ao fim do ciclo, e quem chegou/saiu. */

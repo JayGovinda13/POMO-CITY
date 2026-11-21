@@ -29,3 +29,6 @@ export * from "./labor";
 export * from "./laborload";
 export * from "./lifecycle";
 export * from "./strikes";
+export * from "./people";
+export * from "./demography";
+export * from "./pension";

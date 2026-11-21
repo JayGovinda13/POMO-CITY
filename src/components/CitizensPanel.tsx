@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { WEALTH_NAMES, citizensView, moodSummary, type CitizenView, type Mood } from "@/sim";
+import { FamilyTreeModal } from "./FamilyTree";
 import { useGame } from "@/store/game";
 import { MOOD_ICON, Portrait } from "./Portrait";
 import { EmojiQuite, EmojiSad, EmojiSatisfied, Xmark } from "./icons";
 
-type Filter = "todos" | Mood | "sem emprego";
+type Filter = "todos" | Mood | "sem emprego" | "crianças" | "aposentados";
 
 /** Botão da barra superior com o humor da cidade; abre a lista de moradores. */
 export function CitizensButton() {
@@ -37,9 +38,14 @@ function CitizensModal({ views, onClose }: { views: CitizenView[]; onClose: () =
   const [selected, setSelected] = useState<CitizenView | null>(null);
   const m = moodSummary(views);
 
+  const matches = (v: CitizenView) =>
+    !query || v.name.toLowerCase().includes(query.toLowerCase()) || v.job?.title.toLowerCase().includes(query.toLowerCase());
   const list = views.filter((v) => {
-    if (filter === "sem emprego" ? v.job : filter !== "todos" && v.mood !== filter) return false;
-    return !query || v.name.toLowerCase().includes(query.toLowerCase()) || v.job?.title.toLowerCase().includes(query.toLowerCase());
+    if (filter === "crianças") return v.stage === "crianca" && matches(v);
+    if (filter === "aposentados") return v.stage === "aposentado" && matches(v);
+    if (filter === "sem emprego") return v.stage === "adulto" && !v.job && matches(v);
+    if (filter !== "todos" && v.mood !== filter) return false;
+    return matches(v);
   });
 
   return (
@@ -55,9 +61,9 @@ function CitizensModal({ views, onClose }: { views: CitizenView[]; onClose: () =
           <span>
             Aprovação: <strong className={m.approval >= 0 ? "text-emerald-300" : "text-red-300"}>{Math.round(m.approval * 100)}%</strong>
           </span>
-          {(["todos", "feliz", "ok", "triste", "sem emprego"] as Filter[]).map((f) => (
+          {(["todos", "feliz", "ok", "triste", "sem emprego", "crianças", "aposentados"] as Filter[]).map((f) => (
             <button key={f} type="button" className={`retro-button ${filter === f ? "retro-button-active" : ""}`} onClick={() => setFilter(f)}>
-              {f === "todos" ? "Todos" : f === "sem emprego" ? "Sem emprego" : `${MOOD_ICON[f]} ${f}`}
+              {f === "todos" ? "Todos" : f === "sem emprego" ? "Sem emprego" : f === "crianças" ? "Crianças" : f === "aposentados" ? "Aposentados" : `${MOOD_ICON[f]} ${f}`}
             </button>
           ))}
           <input
@@ -80,7 +86,7 @@ function CitizensModal({ views, onClose }: { views: CitizenView[]; onClose: () =
                   <Portrait citizen={v} scale={2} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-bold">{v.name}</span>
-                    <span className="block truncate text-zinc-400">{v.job ? `${v.job.title} · ${v.job.place}` : v.gender === "f" ? "Desempregada" : "Desempregado"}</span>
+                    <span className="block truncate text-zinc-400">{v.age} anos · {v.stage === "crianca" ? "Criança" : v.stage === "aposentado" ? "Aposentado(a)" : v.job ? `${v.job.title} · ${v.job.place}` : v.gender === "f" ? "Desempregada" : "Desempregado"}</span>
                   </span>
                   <span title={v.mood}>{MOOD_ICON[v.mood]}</span>
                 </button>
@@ -97,8 +103,10 @@ function CitizensModal({ views, onClose }: { views: CitizenView[]; onClose: () =
 }
 
 export function CitizenCard({ citizen: v }: { citizen: CitizenView }) {
+  const [tree, setTree] = useState(false);
   return (
     <div className="space-y-2">
+      {tree && <FamilyTreeModal id={v.id} onClose={() => setTree(false)} />}
       <div className="flex items-center gap-2">
         <Portrait citizen={v} scale={4} />
         <div>
@@ -108,7 +116,17 @@ export function CitizenCard({ citizen: v }: { citizen: CitizenView }) {
           </p>
         </div>
       </div>
-      <p>💼 {v.job ? `${v.job.title} — ${v.job.place} (${v.job.x}, ${v.job.y})` : v.gender === "f" ? "Desempregada" : "Desempregado"}</p>
+      <p>
+        🎂 {v.age} anos — {v.stage === "crianca" ? "criança" : v.stage === "aposentado" ? "aposentado(a)" : "em idade de trabalhar"}
+      </p>
+      <p>
+        💞 {v.partner ? `Casado(a) com ${v.partner.name}` : "Solteiro(a)"}
+        {v.children > 0 && ` · ${v.children} filho${v.children > 1 ? "s" : ""}`}
+      </p>
+      <button type="button" className="retro-button w-full" onClick={() => setTree(true)}>
+        🌳 Árvore genealógica
+      </button>
+      <p>💼 {v.stage === "crianca" ? "Estuda (ainda não trabalha)" : v.stage === "aposentado" ? "Aposentado(a)" : v.job ? `${v.job.title} — ${v.job.place} (${v.job.x}, ${v.job.y})` : v.gender === "f" ? "Desempregada" : "Desempregado"}</p>
       <p>
         🏠 {v.home ? `Mora no lote (${v.home.x}, ${v.home.y})` : "Sem moradia"}
         {v.wealth && <span className="text-zinc-400"> · {WEALTH_NAMES[v.wealth]}</span>}

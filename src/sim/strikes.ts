@@ -7,6 +7,7 @@ import { computeServices } from "./services";
 import { buildingStatus } from "./status";
 import { computeTraffic, type TrafficResult } from "./traffic";
 import { cityFatigue } from "./laborload";
+import { workingPopulation } from "./people";
 import type { CityState } from "./types";
 
 export interface StrikeCause {
@@ -35,7 +36,8 @@ export const educationStrikeFactor = (eq: number): number => 0.75 + Math.max(0, 
 export const educationProductivity = (eq: number | undefined): number => 1 + Math.max(0, (eq ?? 40) - 40) / 400;
 
 /** Trabalhadores que estão trabalhando (os grevistas ficam de fora). */
-export const activeWorkers = (s: Pick<CityState, "population" | "strike">): number => Math.max(0, Math.floor(s.population * (1 - (s.strike?.share ?? 0))));
+export const activeWorkers = (s: Pick<CityState, "population" | "strike" | "citizens" | "people" | "cyclesCompleted" | "pension">): number =>
+  Math.max(0, Math.floor(workingPopulation(s) * (1 - (s.strike?.share ?? 0))));
 
 /**
  * Calcula a greve do ciclo a partir das condições atuais da cidade. Função pura: serve ao ciclo (que

@@ -53,6 +53,8 @@ import { computeTraffic, type TrafficResult } from "./traffic";
 import { advanceResearch, researchPerCycle, techMods } from "./tech";
 import { SECTOR_OF_BUILDING, jobFactor, outputFactor } from "./labor";
 import { computeStrike } from "./strikes";
+import { taxableResidents } from "./people";
+import { demographyStep } from "./demography";
 import { carryingCost, isDown, storageCostOf, stockValue, underConstruction } from "./lifecycle";
 import { cityFatigue } from "./laborload";
 import { eventMods, rollEvents } from "./events";
@@ -130,6 +132,12 @@ function consumeOrImport(ctx: CycleContext, res: ResourceId, need: number): numb
 const strikeSystem: CycleSystem = ({ s, report }) => {
   s.strike = computeStrike(s);
   report.strike = s.strike;
+};
+
+/** 0b) Vida dos moradores: mortes, casamentos e nascimentos (antes da mudança, para liberar e ocupar moradia). */
+const demographySystem: CycleSystem = ({ s, report, rand }) => {
+  const d = demographyStep(s, rand);
+  report.demography = d;
 };
 
 /** 1) Lotes crescem/declinam (energia, acesso viário, demanda). Cada nível novo consome materiais. */
@@ -324,7 +332,7 @@ const economySystem: CycleSystem = (ctx) => {
   const m = (1 + taxBonus) * (1 + techMods(s).tax + eventMods(s).tax);
   // Valor do solo define a riqueza dos moradores e o imposto residencial (Fase 7).
   const lv = ctx.services && ctx.services.avg.landValue > 0 ? landValueTaxFactor(ctx.services.avg.landValue) : 1;
-  f.taxR = Math.floor(taxRevenue("R", pop * (report.starving ? 0.5 : 1), s.taxes.R) * m * lv);
+  f.taxR = Math.floor(taxRevenue("R", taxableResidents(s) * (report.starving ? 0.5 : 1), s.taxes.R) * m * lv);
   f.taxC = Math.floor(taxRevenue("C", labor.commercialFilled, s.taxes.C) * m);
   f.taxI = Math.floor(taxRevenue("I", labor.industrialFilled, s.taxes.I) * m);
   report.taxes = f.taxR + f.taxC + f.taxI;
@@ -555,6 +563,7 @@ const insuranceSystem: CycleSystem = ({ s, report }) => {
 
 export const CYCLE_SYSTEMS: CycleSystem[] = [
   strikeSystem,
+  demographySystem,
   zoneGrowthSystem,
   moveInSystem,
   powerSystem,

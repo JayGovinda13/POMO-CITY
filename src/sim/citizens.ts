@@ -17,6 +17,8 @@ import { TRIP_LIMIT_POPULATION, computeTraffic } from "./traffic";
 import { eventMods } from "./events";
 import { ZONE, type BuildingType, type CityState } from "./types";
 import { rng } from "./world";
+import { createArrivalLife } from "./demography";
+import { ageYears, retireAgeOf, stageOf, type Stage } from "./people";
 import { SECTOR_OF_BUILDING, industrialLotJobs, laborMood, type Sector } from "./labor";
 
 export type Gender = "f" | "m";
@@ -32,6 +34,8 @@ export interface Look {
 export interface CitizenProfile {
   id: number;
   name: string;
+  /** Sobrenome (herdado do pai ou da mãe). */
+  last: string;
   gender: Gender;
   look: Look;
   /** Temperamento: −1 (rabugento), 0, +1 (otimista). */
@@ -39,6 +43,13 @@ export interface CitizenProfile {
 }
 
 export interface CitizenView extends CitizenProfile {
+  /** Idade em anos e faixa etária (criança, adulto, aposentado). */
+  age: number;
+  stage: Stage;
+  /** Companheiro(a) vivo(a), se casado(a). */
+  partner: { id: number; name: string } | null;
+  /** Número de filhos vivos. */
+  children: number;
   home: { x: number; y: number } | null;
   job: { title: string; category: JobCategory; place: string; x: number; y: number } | null;
   mood: Mood;
@@ -89,18 +100,25 @@ const POOLS: Record<Continent, Pool> = {
 const pick = <T>(arr: T[], r: () => number) => arr[Math.floor(r() * arr.length)];
 
 /** Perfil fixo de um morador (não depende do estado além da seed e da região). */
-export function citizenProfile(s: Pick<CityState, "seed" | "regionId">, id: number): CitizenProfile {
+export function citizenProfile(s: Pick<CityState, "seed" | "regionId"> & Partial<Pick<CityState, "people">>, id: number): CitizenProfile {
   const r = rng((s.seed ^ Math.imul(id, 0x9e3779b1) ^ 0xc17e) >>> 0);
   const region = s.regionId ? REGION_BY_ID[s.regionId] : undefined;
   const continents = Object.keys(POOLS) as Continent[];
   // Na região da cidade, a maioria dos nomes é local; ~1 em 6 vem de outro lugar (imigração).
   const continent = region && r() > 0.17 ? region.continent : pick(continents, r);
   const pool = POOLS[continent];
-  const gender: Gender = r() < 0.5 ? "f" : "m";
-  const name = `${pick(pool[gender], r)} ${pick(pool.last, r)}`;
+  const drawn: Gender = r() < 0.5 ? "f" : "m";
+  const life = s.people?.[id];
+  // O registro de vida é a fonte do gênero; o sobrenome vem do pai (ou da mãe), como numa família.
+  const gender: Gender = life?.gender ?? drawn;
+  const first = pick(pool[gender], r);
+  let last = pick(pool.last, r);
+  const parent = life?.father ?? life?.mother;
+  if (parent !== undefined && parent !== id) last = citizenProfile(s, parent).last;
+  const name = `${first} ${last}`;
   const look: Look = { skin: Math.floor(r() * 4), hair: Math.floor(r() * 5), hairColor: Math.floor(r() * 4) };
   const t = r();
-  return { id, name, gender, look, trait: t < 0.25 ? -1 : t > 0.75 ? 1 : 0 };
+  return { id, name, last, gender, look, trait: t < 0.25 ? -1 : t > 0.75 ? 1 : 0 };
 }
 
 // ───────────────────────── empregos ─────────────────────────
@@ -207,6 +225,14 @@ export function citizensView(s: CityState): CitizenView[] {
     if (s.zoneType[i] === ZONE.R) for (let k = 0; k < s.zoneLevel[i] * 4; k++) homes.push(i);
   }
 
+  const retire = retireAgeOf(s);
+  const kidsOf = new Map<number, number>();
+  for (const l of Object.values(s.people ?? {})) {
+    if (l.died !== undefined || l.left !== undefined) continue;
+    for (const par of [l.mother, l.father]) if (par !== undefined) kidsOf.set(par, (kidsOf.get(par) ?? 0) + 1);
+  }
+  let workerRank = 0;
+
   const fed = foodSecure(s);
   const recentDisaster = s.lastDisasterCycle !== null && s.cyclesCompleted - s.lastDisasterCycle <= 2;
   const weather = weatherAt(s);
@@ -215,10 +241,17 @@ export function citizensView(s: CityState): CitizenView[] {
   return s.citizens.map((id, n) => {
     const p = citizenProfile(s, id);
     const homeIdx = homes[n];
-    const slot = slots[n];
+    const life = s.people?.[id];
+    const age = life ? ageYears(life, s.cyclesCompleted) : 30;
+    const stage = stageOf(age, retire);
+    // Só quem está em idade de trabalhar disputa as vagas (na ordem da lista).
+    const slot = stage === "adulto" ? slots[workerRank++] : undefined;
     const reasons: CitizenView["reasons"] = [];
     if (slot) reasons.push({ text: "Tem emprego", delta: 2 });
-    else reasons.push({ text: "Desempregado(a)", delta: -2 });
+    else if (stage === "adulto") reasons.push({ text: "Desempregado(a)", delta: -2 });
+    // Família: casal junto anima; luto pesa por 4 ciclos.
+    if (life?.partner !== undefined && s.people[life.partner]?.died === undefined) reasons.push({ text: "Vive em família", delta: 1 });
+    if (life?.widowed !== undefined && s.cyclesCompleted - life.widowed <= 4) reasons.push({ text: "Em luto", delta: -2 });
     // Jornada e forma de pagamento do setor em que trabalha.
     if (slot?.sector) for (const m of laborMood(s, slot.sector)) reasons.push(m);
     if (homeIdx === undefined) reasons.push({ text: "Sem moradia", delta: -3 });
@@ -257,6 +290,10 @@ export function citizensView(s: CityState): CitizenView[] {
     const score = reasons.reduce((acc, r) => acc + r.delta, 0);
     return {
       ...p,
+      age: Math.floor(age),
+      stage,
+      partner: life?.partner !== undefined && s.people[life.partner] ? { id: life.partner, name: citizenProfile(s, life.partner).name } : null,
+      children: kidsOf.get(id) ?? 0,
       home: homeIdx === undefined ? null : { x: homeIdx % s.width, y: Math.floor(homeIdx / s.width) },
       job: slot ? { title: slot.title(p.gender, n), category: slot.category, place: slot.place, x: slot.x, y: slot.y } : null,
       mood: moodOf(score),
@@ -288,8 +325,13 @@ export function moodSummary(views: Pick<CitizenView, "mood">[]): MoodSummary {
  */
 export function syncCitizens(s: CityState): void {
   const target = Math.max(0, s.population);
+  s.people ??= {};
   if (s.citizens.length < target) {
-    while (s.citizens.length < target) s.citizens.push(s.nextCitizenId++);
+    while (s.citizens.length < target) {
+      const id = s.nextCitizenId++;
+      s.citizens.push(id);
+      s.people[id] = createArrivalLife(s, id);
+    }
     return;
   }
   if (s.citizens.length > target) {
@@ -301,5 +343,14 @@ export function syncCitizens(s: CityState): void {
         .map((v) => v.id),
     );
     s.citizens = s.citizens.filter((id) => !leaving.has(id));
+    for (const id of leaving) {
+      const l = s.people[id];
+      if (!l) continue;
+      l.left = s.cyclesCompleted;
+      if (l.partner !== undefined && s.people[l.partner]) {
+        s.people[l.partner].partner = undefined;
+        l.partner = undefined;
+      }
+    }
   }
 }

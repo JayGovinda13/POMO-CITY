@@ -4,6 +4,7 @@ import { ZONE, type CityState } from "./types";
 import { SECTOR_OF_BUILDING, industrialLotJobs, jobFactor } from "./labor";
 import { isDown, wearFactor } from "./lifecycle";
 import { activeWorkers } from "./strikes";
+import { workingPopulation } from "./people";
 import { connectedRoads, isRoadConnected } from "./world";
 
 export interface BuildingStatus {
@@ -100,6 +101,6 @@ export function laborStats(s: CityState, status = buildingStatus(s)): LaborStats
     industrialFilled: zoneFilled - commercialFilled,
     totalJobs: publicJobs + zoneJobs,
     unemployed: Math.max(0, workers - publicFilled - zoneFilled),
-    striking: Math.max(0, s.population - workers),
+    striking: Math.max(0, workingPopulation(s) - workers),
   };
 }

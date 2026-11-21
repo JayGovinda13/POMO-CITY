@@ -187,6 +187,21 @@ Botão 🔨 na barra superior. Por setor (campo, oficinas e fábricas) o jogador
 - **Frete:** porto (8%), aeroporto (5%), até 2 estações de trem (3% cada) e rodovias (até 5%)
   baixam o preço de importar e sobem o de vender, até 20%. Aparece no painel do Mercado.
 
+## Vida dos moradores (demografia e família)
+
+Cada morador tem idade (4 ciclos = 1 ano), gênero, família e pode ser visto na lista de Moradores
+(filtros Crianças e Aposentados) com o botão **🌳 Árvore genealógica**:
+- **Chegam adultos de 18 a 42 anos.** Solteiros de 18 a 50 anos se casam (idade parecida, sem parentesco);
+  casais de até 42 anos têm filhos (3,5% por ciclo) **se houver moradia livre**; os filhos herdam o
+  sobrenome do pai. Morre-se pela idade e pela **expectativa de vida da cidade** (hospitais e poluição
+  mexem nela); o parceiro fica viúvo (luto de 4 ciclos).
+- **Efeito na cidade:** crianças (até 15 anos) e aposentados (65+) **não ocupam vagas** de trabalho, crianças
+  não pagam imposto residencial e aposentados pagam a metade; aposentados **pesam em dobro** na demanda
+  por hospital; nascimentos e mortes mexem na população; famílias unidas e o luto entram no humor.
+- **Árvore genealógica:** avós, pais, irmãos, parceiro(a), filhos e netos; quem morreu aparece apagado
+  enquanto houver parentes vivos na cidade (depois some dos registros).
+- **Nas ruas** (durante o foco): crianças vão à escola mais próxima, aposentados só passeiam e têm cabelo branco.
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

@@ -3,6 +3,8 @@ import { CURRENT_SCHEMA_VERSION, ZONE, type CityState } from "./types";
 import { legacyTrees } from "./terrain";
 import { placeHallWings } from "./world";
 import { DEFAULT_LABOR } from "./labor";
+import { DEFAULT_PENSION } from "./pension";
+import { ensureLives } from "./demography";
 
 /**
  * Atualiza estados salvos em versões antigas para o formato atual.
@@ -115,6 +117,13 @@ export function migrateState(raw: CityState): CityState {
   if (from < 15) {
     // v14 → v15: greves por causa.
     s.strike = { share: 0, causes: [] };
+  }
+
+  if (from < 16) {
+    // v15 → v16: moradores ganham idade e família; previdência desligada.
+    s.pension = { ...DEFAULT_PENSION };
+    s.people = {};
+    ensureLives(s);
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

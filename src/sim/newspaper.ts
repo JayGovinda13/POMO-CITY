@@ -142,6 +142,26 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
 
   // ── Notícias ──
   const stories: NewsStory[] = [...extra];
+  // Vida na cidade: nascimentos, casamentos e despedidas.
+  const dm = report.demography;
+  if (dm && dm.births > 0) {
+    stories.push({
+      title: dm.births === 1 ? "Nasce mais um morador" : `${dm.births} bebês nasceram nesta estação`,
+      body: "A família cresce e pede escolas, hospitais e moradia para quem vem aí.",
+      tone: "good",
+    });
+  }
+  if (dm && dm.marriages > 0) {
+    stories.push({ title: dm.marriages === 1 ? "Casamento na cidade" : `${dm.marriages} casamentos na estação`, body: "Casais novos procuram casa e planejam filhos.", tone: "good" });
+  }
+  if (dm && dm.deaths > 0) {
+    const o = dm.obituaries[0];
+    stories.push({
+      title: dm.deaths === 1 && o ? `Morre ${o.name}, aos ${o.age} anos` : `${dm.deaths} moradores se despedem`,
+      body: o && dm.deaths > 1 ? `Entre eles ${o.name}, aos ${o.age} anos. A população chora e a moradia libera.` : "A cidade se despede de um dos seus. A moradia libera para novos moradores.",
+      tone: "neutral",
+    });
+  }
   // Pesquisa em andamento.
   const target = state.research?.target ? TECHS[state.research.target] : null;
   if (target && report.research) {

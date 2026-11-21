@@ -28,6 +28,8 @@ interface Person {
   skin: number;
   hair: number;
   shirt: number;
+  /** Faixa etária: criança é menor, aposentado tem cabelo branco e só passeia. */
+  stage: "crianca" | "adulto" | "aposentado";
   home: number;
   homeRoad: number;
   job: number | null;
@@ -295,15 +297,21 @@ export class CityLife {
       const home = v.home.y * W + v.home.x;
       const homeRoad = this.accessRoad(home);
       if (homeRoad === null) continue;
-      const job = v.job ? v.job.y * W + v.job.x : null;
+      // Criança vai à escola mais próxima (se houver); aposentado e criança sem escola só passeiam.
+      let job = v.job ? v.job.y * W + v.job.x : null;
+      if (v.stage === "crianca") {
+        const school = city.buildings.find((b) => b.type === "school" && !b.damaged);
+        job = school ? school.y * W + school.x : null;
+      }
       const jobRoad = job !== null ? this.accessRoad(job) : null;
       const p: Person = {
         id: v.id,
         name: v.name,
-        title: v.job?.title ?? null,
-        place: v.job?.place ?? null,
+        title: v.stage === "crianca" ? "Criança" : v.stage === "aposentado" ? "Aposentado(a)" : (v.job?.title ?? null),
+        place: v.stage === "crianca" ? "Escola" : (v.job?.place ?? null),
         skin: v.look.skin,
         hair: v.look.hairColor,
+        stage: v.stage,
         shirt: SHIRT_COLORS[(v.id * 7) % SHIRT_COLORS.length],
         home,
         homeRoad,
@@ -401,12 +409,12 @@ export class CityLife {
   private describe(p: Person): string {
     const car = p.mode === "car" && p.state === "walk" ? "de carro, " : "";
     if (p.state === "walk") {
-      if (p.goal === "work") return `${car}indo para o trabalho${p.place ? ` (${p.place})` : ""}`;
+      if (p.goal === "work") return p.stage === "crianca" ? "indo para a escola" : `${car}indo para o trabalho${p.place ? ` (${p.place})` : ""}`;
       if (p.goal === "home") return `${car}voltando para casa`;
       return `${car}indo para ${p.spot?.label ?? "um passeio"}`;
     }
     if (p.state === "leisure") return `aproveitando ${p.spot?.label ?? "o passeio"}`;
-    if (p.state === "work") return `trabalhando${p.place ? ` (${p.place})` : ""}`;
+    if (p.state === "work") return p.stage === "crianca" ? "na escola" : `trabalhando${p.place ? ` (${p.place})` : ""}`;
     return "em casa";
   }
 
@@ -610,6 +618,8 @@ export class CityLife {
       }
       const px = -uy;
       const py = ux;
+      // Criança não dirige: anda a pé mesmo em rota longa.
+      if (p.stage === "crianca") p.mode = "walk";
       if (p.mode === "car" && p.state === "walk") {
         const cx = x + px * 2.5;
         const cy = y + py * 2.5;
@@ -636,12 +646,14 @@ export class CityLife {
         const step = p.state === "walk" ? Math.floor((p.t * 8) % 2) : 0;
         g.fillStyle(0x1b1630, 1);
         g.fillRect(sx - 1 + step, sy, 1, 1);
+        const kid = p.stage === "crianca";
+        // Criança: um ponto mais baixa. Aposentado: cabelo branco.
         g.fillStyle(p.shirt, 1);
-        g.fillRect(sx - 1, sy - 3, 2, 3);
+        g.fillRect(sx - 1, sy - (kid ? 2 : 3), 2, kid ? 2 : 3);
         g.fillStyle(SKIN[p.skin % SKIN.length], 1);
-        g.fillRect(sx - 1, sy - 5, 2, 2);
-        g.fillStyle(HAIR[p.hair % HAIR.length], 1);
-        g.fillRect(sx - 1, sy - 6, 2, 1);
+        g.fillRect(sx - 1, sy - (kid ? 4 : 5), 2, 2);
+        g.fillStyle(p.stage === "aposentado" ? 0xe8e8f0 : HAIR[p.hair % HAIR.length], 1);
+        g.fillRect(sx - 1, sy - (kid ? 5 : 6), 2, 1);
         if (this.followed === p) this.followPos = { sx, sy: sy - 3 };
       }
       if (this.followed === p && this.followPos) {
