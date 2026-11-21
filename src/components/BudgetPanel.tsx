@@ -89,10 +89,10 @@ const locked = () => useGame.getState().phase === "focus";
 function Slider({ label, value, min, max, step, onChange, hint }: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; hint?: string }) {
   return (
     <label className="flex items-center gap-2">
-      <span className="w-44 shrink-0">{label}</span>
+      <span className="w-28 shrink-0 sm:w-44">{label}</span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1" />
       <span className="w-10 text-right tabular-nums">{value}%</span>
-      {hint && <span className="w-28 text-zinc-400">{hint}</span>}
+      {hint && <span className="hidden w-28 text-zinc-400 sm:inline">{hint}</span>}
     </label>
   );
 }

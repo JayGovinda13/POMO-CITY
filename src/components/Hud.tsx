@@ -132,6 +132,7 @@ export function Hud() {
   const phase = useGame((s) => s.phase);
   const toast = useGame((s) => s.toast);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [guideOff, setGuideOff] = useState(() => {
     try {
       return localStorage.getItem(GUIDE_KEY) === "1";
@@ -240,11 +241,18 @@ export function Hud() {
       {firstStep && (
         <div className="retro-panel pointer-events-auto flex items-start gap-2 px-2 py-1 text-amber-100">
           <span className="shrink-0 font-bold text-amber-300">
-            Primeiros passos {firstStep.index}/{FIRST_STEPS}
+            <span className="hidden sm:inline">Primeiros passos </span>
+            {firstStep.index}/{FIRST_STEPS}
           </span>
-          <span className="min-w-0 flex-1">
+          {/* No celular o texto fica em 2 linhas; tocar nele mostra tudo. */}
+          <button
+            type="button"
+            className={`min-w-0 flex-1 text-left ${guideOpen ? "" : "line-clamp-2"} sm:line-clamp-none`}
+            aria-expanded={guideOpen}
+            onClick={() => setGuideOpen((v) => !v)}
+          >
             <strong>{firstStep.title}.</strong> {firstStep.how}
-          </span>
+          </button>
           <button
             type="button"
             className="shrink-0"

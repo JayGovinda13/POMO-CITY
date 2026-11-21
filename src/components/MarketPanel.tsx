@@ -76,7 +76,8 @@ function MarketModal({ onClose }: { onClose: () => void }) {
               {Math.round((tradeDiscount(city) / 2) * 100)}% a mais ao vender. Porto, aeroporto, estações de trem e rodovias baixam o custo do comércio (máx. 20%).
               Estoque acima de $300 paga 1% por ciclo para ficar guardado.
             </p>
-            <table className="w-full min-w-[40rem] border-collapse text-left">
+            <p className="mb-1 text-[10px] text-zinc-500 sm:hidden">← deslize a tabela para o lado →</p>
+            <table className="w-full min-w-[40rem] border-collapse text-left [&_td]:pr-3 [&_th]:pr-3">
               <thead className="text-zinc-400">
                 <tr>
                   <th className="py-1 font-normal">Recurso</th>

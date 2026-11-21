@@ -104,7 +104,7 @@ export function Timer() {
   return (
     <div className="retro-panel pointer-events-auto mx-auto flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
       <span className="text-zinc-300" title={phase === "break" ? "Planeje a cidade: o foco começa sozinho quando o tempo acabar. Na pausa você pode sair sem prejuízo." : undefined}>
-        {phase === "focus" ? "🍅 Foco" : phase === "break" ? "☕ Pausa · foco em" : "Pronto"}
+        {phase === "focus" ? "🍅 Foco" : phase === "break" ? <>☕ Pausa<span className="hidden sm:inline"> · foco em</span></> : "Pronto"}
       </span>
       <span className="font-mono text-xl tabular-nums text-amber-300 sm:text-2xl">
         {phase === "idle" || phase === "loading" ? fmt((config?.focusSeconds ?? 1500) * 1000) : fmt(remaining)}
@@ -140,7 +140,7 @@ export function Timer() {
             onClick={startFocus}
             title={city?.ended ? "O jogo terminou: golpe fascista" : "O foco começa sozinho quando a pausa acaba; este botão começa agora."}
           >
-            {phase === "break" ? `Focar agora (${focusMin} min)` : `Iniciar foco (${focusMin} min)`}
+            {phase === "break" ? "Focar agora" : "Iniciar foco"}<span className="hidden sm:inline"> ({focusMin} min)</span>
           </button>
 
         </>
@@ -158,7 +158,7 @@ export function Timer() {
           className={capped ? "text-amber-300" : "text-zinc-400"}
           title={`Ciclos de hoje: ${doneToday}/${DAILY_REWARD_CAP}. Depois do ${DAILY_REWARD_CAP}º, o ciclo conta para a sequência mas a cidade não rende (sem dinheiro nem recursos) até a meia-noite, horário de Brasília. O limite é do jogador: começar um novo jogo não o zera.`}
         >
-          {doneToday}/{DAILY_REWARD_CAP} hoje
+          {doneToday}/{DAILY_REWARD_CAP}<span className="hidden sm:inline"> hoje</span>
         </span>
       )}
       {pending > 0 && (
