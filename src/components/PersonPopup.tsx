@@ -18,7 +18,7 @@ export function PersonPopup() {
   const view = useMemo(() => (city && id !== null ? citizensView(city).find((v) => v.id === id) ?? null : null), [city, id]);
   if (!view) return null;
   return (
-    <div className="retro-panel pointer-events-auto mx-auto max-h-[60dvh] w-full max-w-sm overflow-y-auto p-2 text-xs">
+    <div className="retro-panel pointer-events-auto fixed inset-x-2 bottom-32 z-20 mx-auto max-h-[40dvh] max-w-sm overflow-y-auto p-2 text-xs sm:bottom-24">
       <button type="button" className="float-right" aria-label="Fechar" onClick={() => setId(null)}>
         <Xmark />
       </button>
