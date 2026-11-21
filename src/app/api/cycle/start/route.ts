@@ -17,6 +17,7 @@ export const POST = route(async (id, req) => {
     const { disaster, report } = settlePresence(id, rec, Date.now(), tx);
     if (disaster || report) return snapshot(rec, { disaster, report });
     if (rec.presence.status !== "playing") rec.presence = { status: "playing", leftAt: null, cyclesThisSession: 0 };
+    if (rec.state.ended) return snapshot(rec, { ended: rec.state.ended });
     if (rec.activeCycle) return fail(409, "Já existe um ciclo em andamento", { activeCycle: rec.activeCycle });
     const { state, rejected } = applyCommands(rec.state, commands);
     const now = Date.now();

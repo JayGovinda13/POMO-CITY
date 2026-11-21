@@ -136,9 +136,9 @@ export function Timer() {
           <button
             type="button"
             className="retro-button retro-button-primary"
-            disabled={busy}
+            disabled={busy || !!city?.ended}
             onClick={startFocus}
-            title="O foco começa sozinho quando a pausa acaba; este botão começa agora."
+            title={city?.ended ? "O jogo terminou: golpe fascista" : "O foco começa sozinho quando a pausa acaba; este botão começa agora."}
           >
             {phase === "break" ? `Focar agora (${focusMin} min)` : `Iniciar foco (${focusMin} min)`}
           </button>

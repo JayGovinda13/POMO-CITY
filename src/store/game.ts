@@ -171,9 +171,13 @@ export const useGame = create<GameStore>()(
     (set, get) => {
       /** Pausa (planejamento): o próximo foco começa sozinho quando ela acaba. */
       const beginBreak = (cfg: ServerConfig | null, state: CityState | null, long = false) => {
+        // Golpe: o jogo acabou, não há mais pausa nem foco.
+        if (state?.ended) {
+          set({ phase: "idle", endsAt: null });
+          return;
+        }
         const secs = cfg ? (long ? cfg.longBreakSeconds : cfg.breakSeconds) : 300;
         set({ phase: "break", endsAt: Date.now() + secs * 1000 });
-        void state;
       };
 
       const accept = (snap: ServerSnapshot, pending: Command[] = get().pending) => {
@@ -400,7 +404,7 @@ export const useGame = create<GameStore>()(
         },
 
         async startFocus() {
-          if (get().busy) return;
+          if (get().busy || get().serverState?.ended) return;
           if (get().draft.length) {
             get().showToast("Obras não confirmadas foram descartadas.");
             get().cancelDraft();

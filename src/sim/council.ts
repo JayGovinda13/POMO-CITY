@@ -14,6 +14,20 @@ export const MIN_COUNCIL_POPULATION = 30;
 /** Propostas esperando decisão (as mais antigas são arquivadas). */
 export const MAX_PENDING_BILLS = 3;
 
+/** Fração da câmara que dá o golpe. */
+export const COUP_SHARE = 2 / 3;
+
+/** Cadeiras do Fascista e o total. */
+export function fascistSeats(c: Pick<CouncilState, "members">): { fascist: number; total: number } {
+  return { fascist: c.members.filter((m) => m.party === "fascista").length, total: c.members.length };
+}
+
+/** O Fascista tem 2/3 ou mais da câmara? Então dá o golpe e o jogo acaba. */
+export function isCoup(c: Pick<CouncilState, "members">): boolean {
+  const { fascist, total } = fascistSeats(c);
+  return total >= 3 && fascist * 3 >= total * 2;
+}
+
 /** Número de cadeiras pela população. */
 export const seatsFor = (population: number): number => (population < 150 ? 5 : population < 400 ? 7 : population < 1000 ? 9 : 11);
 
@@ -302,6 +316,8 @@ function proposeBill(s: CityState, rand: () => number, g: Signals): Bill | null 
 }
 
 export interface CouncilReport {
+  /** O Fascista conquistou 2/3 da câmara: golpe e fim de jogo. */
+  coup?: boolean;
   election?: { seats: Record<PartyId, number>; members: { name: string; party: PartyId }[]; crisis: number };
   /** Lei proposta neste ciclo. */
   proposal?: { id: number; law: LawId; party: PartyId; proposer: string };
@@ -318,6 +334,7 @@ export interface CouncilReport {
 export function councilStep(s: CityState, rand: () => number): CouncilReport {
   const out: CouncilReport = { expired: 0, replaced: 0 };
   s.council ??= newCouncil();
+  if (s.ended) return out;
   const c = s.council;
   const now = s.cyclesCompleted;
   if (s.population < MIN_COUNCIL_POPULATION || !s.citizens.length) return out;
@@ -330,6 +347,12 @@ export function councilStep(s: CityState, rand: () => number): CouncilReport {
       c.electedAt = now;
       out.election = { seats: r.seats, members: r.members.map((m) => ({ name: m.name, party: m.party })), crisis: r.crisis };
       const first = c.history.length === 0 && c.laws.length === 0;
+      if (isCoup(c)) {
+        // Dois terços da câmara: os fascistas tomam a prefeitura e o jogo termina.
+        s.ended = { cause: "golpe", cycle: now };
+        out.coup = true;
+        note(c, now, "GOLPE: o Fascista tem 2/3 da câmara e toma o poder");
+      }
       note(c, now, `${first ? "Primeira eleição" : "Eleição"}${r.crisis >= 3 ? " (em crise)" : ""}: ${PARTY_IDS.filter((p) => r.seats[p]).map((p) => `${PARTIES[p].short} ${r.seats[p]}`).join(", ")}`);
     }
     return out;

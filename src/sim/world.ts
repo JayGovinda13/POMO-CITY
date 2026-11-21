@@ -116,6 +116,7 @@ export function createCity(
     trees,
     people: {},
     council: newCouncil(),
+    ended: null,
     pension: { ...DEFAULT_PENSION },
     strike: { share: 0, causes: [] },
     labor: structuredClone(DEFAULT_LABOR),

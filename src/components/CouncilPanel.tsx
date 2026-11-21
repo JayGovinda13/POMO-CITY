@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LAWS, PARTIES, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, type LawId, type PartyId } from "@/sim";
+import { LAWS, PARTIES, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, fascistSeats, type LawId, type PartyId } from "@/sim";
 import { useGame } from "@/store/game";
 import { Gavel, Xmark } from "./icons";
 
@@ -40,6 +40,8 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
   const c = city.council;
   const locked = phase === "focus";
   const left = cyclesToElection(city);
+  const fa = fascistSeats(c);
+  const coupAt = Math.ceil((fa.total * 2) / 3);
   const seats = Object.fromEntries(PARTY_IDS.map((p) => [p, c.members.filter((m) => m.party === p).length])) as Record<PartyId, number>;
   const decide = (id: number, approve: boolean) => useGame.getState().queue({ type: "bill", id, approve });
   const repeal = (law: LawId) => useGame.getState().queue({ type: "repeal", law });
@@ -56,6 +58,12 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
         <div className="min-h-0 space-y-3 overflow-y-auto p-3">
           {locked && <p className="text-red-300">Em foco: as decisões só valem na pausa.</p>}
 
+          {fa.fascist > 0 && (
+            <p className={`border p-2 ${fa.fascist * 2 >= fa.total ? "border-red-500 bg-red-950/50 text-red-200" : "border-amber-600 text-amber-200"}`} role="alert">
+              ☠ O Fascista tem <strong>{fa.fascist} de {fa.total}</strong> cadeiras. Com <strong>{coupAt}</strong> (dois terços), dá o golpe e o jogo acaba. Reduza a crise antes da próxima eleição
+              (em {left} ciclo(s)).
+            </p>
+          )}
           {c.members.length === 0 ? (
             <p className="text-zinc-400">A cidade ainda é pequena demais para ter câmara. Com 30 moradores acontece a primeira eleição.</p>
           ) : (

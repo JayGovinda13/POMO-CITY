@@ -87,6 +87,14 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
   if (report.starving) {
     candidates.push({ priority: 90, tone: "bad", title: "FOME! Moradores deixam a cidade", body: "Sem comida nem dinheiro para comprá-la, famílias fazem as malas. Fazendas são urgentes." });
   }
+  if (report.council?.coup) {
+    candidates.push({
+      priority: 100,
+      tone: "bad",
+      title: "GOLPE! Fascistas tomam a prefeitura",
+      body: "Com dois terços da câmara, os fascistas dissolveram o poder civil. Acabaram as eleições, as greves e a liberdade: fim da cidade livre.",
+    });
+  }
   if (report.strike && report.strike.share >= 0.08) {
     const pct = Math.round(report.strike.share * 100);
     const why = report.strike.causes.slice(0, 3).map((c) => c.text.toLowerCase()).join(", ");

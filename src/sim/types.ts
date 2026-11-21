@@ -94,7 +94,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 18;
+export const CURRENT_SCHEMA_VERSION = 19;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -119,6 +119,8 @@ export interface CityState {
   elevation: number[];
   /** 1 = árvore no tile (Fase 9). */
   trees: number[];
+  /** Fim de jogo (golpe fascista): a cidade deixa de funcionar. null = o jogo segue. */
+  ended: { cause: "golpe"; cycle: number } | null;
   /** Câmara de vereadores, propostas e leis em vigor (ver council.ts e laws.ts). */
   council: import("./laws").CouncilState;
   /** Vida de cada morador: idade, família e poupança (ver people.ts). */

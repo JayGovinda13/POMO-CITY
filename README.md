@@ -237,6 +237,9 @@ muda é substituído por um suplente do mesmo partido.
   administrativa, energia limpa), Liberal (isenção industrial, jornada flexível, livre comércio,
   desburocratização), Conservador (toque de recolher, guarda municipal, austeridade, incentivo à família) e
   Fascista (estado de exceção, proibição de greves, milícia urbana). Leis em vigor podem ser **revogadas**.
+- **Golpe e fim de jogo:** se o **Fascista conquistar 2/3 ou mais da câmara** numa eleição, ele dá o golpe: o jogo
+  acaba (manchete no jornal, tela de fim de jogo e a cidade sai do ranking). Nenhum comando vale depois disso;
+  só dá para começar uma nova cidade. O painel da Câmara avisa quando o Fascista tem cadeiras e quantas faltam.
 - **Prestígio:** aprovar uma lei dá +1 ao partido, vetar ou revogar dá −1; quem tem prestígio ganha votos. Algumas
   leis têm **verba por ciclo** (linha "Leis municipais" do livro-caixa).
 

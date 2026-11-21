@@ -146,6 +146,11 @@ export function migrateState(raw: CityState): CityState {
     s.council.laws = (s.council.laws ?? []).filter((l) => l in LAWS);
   }
 
+  if (from < 19) {
+    // v18 → v19: fim de jogo por golpe.
+    s.ended = null;
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

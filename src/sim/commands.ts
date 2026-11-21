@@ -301,6 +301,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
 
 /** Aplica um comando, retornando um NOVO estado (o original não é alterado). */
 export function applyCommand(s: CityState, cmd: Command): CommandResult {
+  if (s.ended) return { ok: false, error: "O jogo terminou: golpe fascista" };
   const error = validateCommand(s, cmd);
   if (error) return { ok: false, error };
   const next = cloneState(s);

@@ -14,6 +14,9 @@ import {
   hasLaw,
   hasPensionIncome,
   holdElection,
+  isCoup,
+  rankEligible,
+  generateNewspaper,
   leaning,
   ballot,
   crisisLevel,
@@ -283,5 +286,53 @@ describe("no ciclo", () => {
     old.schemaVersion = 16;
     delete old.council;
     expect(migrateState(old as CityState).council).toEqual(newCouncil());
+  });
+});
+
+describe("golpe fascista", () => {
+  it("o Fascista com 2/3 da câmara dá o golpe; menos que isso, não", () => {
+    const mk = (fa: number, total: number) => ({ members: Array.from({ length: total }, (_, i) => ({ id: i + 1, party: (i < fa ? "fascista" : "centro") as "fascista" | "centro" })) });
+    expect(isCoup(mk(5, 7))).toBe(true); // 71%
+    expect(isCoup(mk(4, 7))).toBe(false); // 57%
+    expect(isCoup(mk(4, 5))).toBe(true);
+    expect(isCoup(mk(3, 5))).toBe(false); // 60%
+    expect(isCoup(mk(6, 9))).toBe(true); // exatamente 2/3
+    expect(isCoup(mk(5, 9))).toBe(false);
+    expect(isCoup(mk(0, 7))).toBe(false);
+  });
+
+  it("numa crise profunda os fascistas ganham a câmara, o jogo acaba e tudo para", () => {
+    const s = town(120);
+    s.money = -800; // caixa no vermelho
+    s.strike = { share: 0.4, causes: [] }; // greve geral
+    s.lastDisasterCycle = s.cyclesCompleted - 1; // desastre
+    // Todos desempregados, tristes e em bairro perigoso: cenário de crise total.
+    const rep = councilStep(s, rng(11));
+    expect(rep.election?.crisis).toBeGreaterThanOrEqual(5);
+    expect(rep.election!.seats.fascista).toBeGreaterThan(0);
+    expect(rep.coup).toBe(true);
+    expect(s.ended).toEqual({ cause: "golpe", cycle: s.cyclesCompleted });
+    // Depois do golpe, nenhum comando vale e a cidade fica fora do ranking.
+    const r = applyCommands(s, [{ type: "research", tech: "maquina_vapor" }]);
+    expect(r.rejected).toHaveLength(1);
+    expect(r.rejected[0].error).toMatch(/golpe/);
+    expect(rankEligible(s)).toBe(false);
+    expect(councilStep(s, rng(12))).toEqual({ expired: 0, replaced: 0 });
+  });
+
+  it("o golpe sai na manchete do jornal", () => {
+    const s = town(80);
+    s.cyclesCompleted = 101;
+    const { report } = resolveCycle(s, T0);
+    const fake = { ...report, council: { ...report.council!, coup: true } };
+    const n = generateNewspaper({ ...s, ended: { cause: "golpe", cycle: 101 } }, fake);
+    expect(n.headline.title).toMatch(/GOLPE/);
+  });
+
+  it("migração v19 cria o campo de fim de jogo", () => {
+    const old = createCity(1, T0) as Partial<CityState> & { schemaVersion: number };
+    old.schemaVersion = 18;
+    delete old.ended;
+    expect(migrateState(old as CityState).ended).toBeNull();
   });
 });
