@@ -67,10 +67,10 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-1 border border-zinc-700 p-2">
             <strong>Negócios dos moradores</strong>
             <p>
-              🏪 <strong>{city.business?.entrepreneurs ?? 0}</strong> empreendedores (imposto, mas quebram fácil; a direita os apoia) · 🤝{" "}
-              <strong>{city.business?.coops ?? 0}</strong> cooperados (rendem menos, resistem à crise; a esquerda os apoia)
+              🏪 <strong>{city.business?.entrepreneurs ?? 0}</strong> empreendedores<span className="hidden sm:inline"> (imposto, mas quebram fácil; a direita os apoia)</span> · 🤝{" "}
+              <strong>{city.business?.coops ?? 0}</strong> cooperados<span className="hidden sm:inline"> (rendem menos, resistem à crise; a esquerda os apoia)</span>
             </p>
-            <p className="text-zinc-400">
+            <p className="hidden text-zinc-400 sm:block">
               Só quem está sem vaga abre negócio. Força das leis em vigor: empreendedorismo {lawEntrepreneur(city).toFixed(1)} · cooperativismo {lawCoop(city).toFixed(1)}. Leis
               marcadas com 🏪 ou 🤝 aumentam esses números.
             </p>
@@ -122,7 +122,7 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
                 <p className="text-zinc-500">
                   Proposto por {citizenProfile(city, b.proposer).name} · ciclo {b.cycle}
                 </p>
-                <div className="flex gap-1">
+                <div className="flex gap-1 [&>button]:flex-1 sm:[&>button]:flex-none">
                   <button type="button" className="retro-button retro-button-primary" disabled={locked} onClick={() => decide(b.id, true)}>
                     ✔ Aprovar
                   </button>
@@ -139,14 +139,14 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
             <strong>Leis em vigor ({c.laws.length})</strong>
             {c.laws.length === 0 && <p className="text-zinc-400">Nenhuma lei aprovada ainda.</p>}
             {c.laws.map((id) => (
-              <div key={id} className="flex items-start gap-2">
+              <div key={id} className="flex flex-col gap-1 border-t border-zinc-800 pt-1 sm:flex-row sm:items-start sm:gap-2 sm:border-0 sm:pt-0">
                 <div className="min-w-0 flex-1">
                   <p>
                     <Tag party={LAWS[id].party} /> <strong>{LAWS[id].name}</strong>{LAWS[id].entrepreneur ? " 🏪" : ""}{LAWS[id].coop ? " 🤝" : ""}
                   </p>
                   <p className="text-zinc-400">{LAWS[id].description}</p>
                 </div>
-                <button type="button" className="retro-button shrink-0" disabled={locked} onClick={() => repeal(id)} title="Revoga a lei (o partido perde prestígio)">
+                <button type="button" className="retro-button shrink-0 self-start" disabled={locked} onClick={() => repeal(id)} title="Revoga a lei (o partido perde prestígio)">
                   Revogar
                 </button>
               </div>

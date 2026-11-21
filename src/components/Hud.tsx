@@ -201,7 +201,13 @@ export function Hud() {
         <EventsChip />
         <span title={`Moradores / moradia · ${labor.publicFilled + labor.zoneFilled}/${labor.totalJobs} empregos ocupados${labor.unemployed ? ` · ${labor.unemployed} sem emprego` : ""}`}>
           <Group /> {city.population}/{labor.housing}
-          {labor.unemployed > 0 && <span className="text-amber-300"> ({labor.unemployed} s/ emprego)</span>}
+          {labor.unemployed > 0 && (
+            <span className="text-amber-300">
+              {" "}
+              ({labor.unemployed}
+              <span className="hidden sm:inline"> s/ emprego</span>)
+            </span>
+          )}
         </span>
         <PowerMeter used={power.supplied} demand={power.demand} capacity={power.capacity} />
         <span
@@ -209,7 +215,8 @@ export function Hud() {
           className={water.shortage ? "text-red-300" : ""}
         >
           <Droplet /> {water.supplied}/{Math.round(water.produced + water.stored)}
-          {water.shortage && " — falta!"}
+          {water.shortage && <span className="sm:hidden">!</span>}
+          {water.shortage && <span className="hidden sm:inline"> — falta!</span>}
         </span>
         <span
           className="hidden sm:inline"
@@ -602,7 +609,9 @@ function PowerMeter({ used, demand, capacity }: { used: number; demand: number; 
   const short = demand > capacity;
   return (
     <span title={`Consumo ${demand} MW · capacidade ${capacity} MW`} className={short ? "text-red-300" : ""}>
-      <Flash /> {used}/{capacity} MW{short && " — apagão!"}
+      <Flash /> {used}/{capacity}<span className="hidden sm:inline"> MW</span>
+      {short && <span className="sm:hidden">!</span>}
+      {short && <span className="hidden sm:inline"> — apagão!</span>}
     </span>
   );
 }
