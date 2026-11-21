@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BENEFIT, DEFAULT_PENSION, PRIVATE_CONTRIBUTION, WAGE, demographics, retireAgeOf } from "@/sim";
+import { useMemo } from "react";
+import { BENEFIT, DEFAULT_PENSION, PRIVATE_CONTRIBUTION, WAGE, citizensView, demographics, needsSummary, retireAgeOf } from "@/sim";
 import { useGame } from "@/store/game";
 import { Hourglass, Xmark } from "./icons";
 
@@ -30,6 +31,7 @@ function PensionModal({ onClose }: { onClose: () => void }) {
   const report = useGame((s) => s.lastReport);
   if (!city) return null;
   const locked = phase === "focus";
+  const needs = useMemo(() => needsSummary(citizensView(city)), [city]);
   const p = city.pension ?? DEFAULT_PENSION;
   const d = demographics(city);
   const retire = retireAgeOf(city);
@@ -74,6 +76,30 @@ function PensionModal({ onClose }: { onClose: () => void }) {
               </p>
             )}
             <p className="text-zinc-400">Crianças e aposentados não ocupam vagas; aposentados pagam metade do imposto e pesam em dobro no hospital.</p>
+          </div>
+
+          <div className="space-y-1 border border-zinc-700 p-2">
+            <strong>Necessidades de cada idade</strong>
+            <p className="text-zinc-400">Cada faixa de idade precisa de coisas diferentes. O que falta pesa no humor e no voto.</p>
+            {needs
+              .filter((g) => g.total > 0)
+              .map((g) => (
+                <div key={g.group}>
+                  <p className="text-zinc-300">
+                    {g.label} — {g.total}
+                  </p>
+                  <ul className="grid gap-x-3 pl-3 sm:grid-cols-2">
+                    {g.needs.map((n) => {
+                      const pct = Math.round((n.met / g.total) * 100);
+                      return (
+                        <li key={n.id} className={pct >= 70 ? "text-emerald-300" : pct >= 40 ? "text-amber-300" : "text-red-300"}>
+                          {n.text}: {pct}% atendidos
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
           </div>
 
           <div className="space-y-1 border border-zinc-700 p-2">

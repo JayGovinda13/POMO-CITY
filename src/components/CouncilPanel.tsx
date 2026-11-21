@@ -65,6 +65,10 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
                 Mandato de 4 anos ({TERM_CYCLES} ciclos): próxima eleição em <strong className="text-amber-300">{left}</strong> ciclo(s). Os vereadores são moradores da cidade e votam pelas
                 condições em que vivem.
               </p>
+              <p className="flex justify-between text-[10px] uppercase tracking-wider text-zinc-500">
+                <span>← esquerda</span>
+                <span>direita →</span>
+              </p>
               <div className="flex overflow-hidden border border-zinc-700">
                 {PARTY_IDS.filter((p) => seats[p] > 0).map((p) => (
                   <div key={p} className="h-3" style={{ width: `${(seats[p] / c.members.length) * 100}%`, background: PARTIES[p].color }} title={`${PARTIES[p].name}: ${seats[p]} cadeira(s)`} />
@@ -132,12 +136,16 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
 
           <div className="space-y-1 border border-zinc-700 p-2">
             <strong>Partidos e prestígio com o prefeito</strong>
-            {PARTY_IDS.map((p) => (
+            {PARTY_IDS.filter((p) => !PARTIES[p].crisisOnly || seats[p] > 0 || c.standing[p] !== 0).map((p) => (
               <p key={p}>
                 <Tag party={p} /> {PARTIES[p].name}: <span className={c.standing[p] > 0 ? "text-emerald-300" : c.standing[p] < 0 ? "text-red-300" : ""}>{c.standing[p] > 0 ? "+" : ""}{c.standing[p]}</span>
                 <span className="text-zinc-500"> — {PARTIES[p].ideology}</span>
               </p>
             ))}
+            <p className="text-zinc-400">
+              O <strong>Fascista</strong> só disputa a eleição em tempos de crise (greve geral, caixa no vermelho, desastre, desemprego, povo triste ou bairros perigosos). Cada partido propõe
+              leis do próprio espectro, favorecendo o que a cidade está precisando.
+            </p>
             <p className="text-zinc-400">Lei aprovada dá +1 de prestígio ao partido; veto ou revogação dá −1. Quem tem prestígio ganha votos na eleição.</p>
           </div>
 

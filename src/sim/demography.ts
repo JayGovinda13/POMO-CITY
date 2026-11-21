@@ -7,6 +7,7 @@ import { CYCLES_PER_YEAR, START_LIFE } from "./config";
 import { laborStats } from "./status";
 import { WORK_AGE, ageYears, retireAgeOf, stageOf, type Life } from "./people";
 import { rng } from "./world";
+import { lawBirths } from "./laws";
 import type { CityState } from "./types";
 
 /** Chance de morrer num ciclo, pela idade e pela expectativa de vida da cidade (calibrada: a idade média na morte ≈ a expectativa). */
@@ -131,7 +132,7 @@ export function demographyStep(s: CityState, rand: () => number): DemographyRepo
     const ageB = ageYears(p, now);
     const young = Math.min(ageA, ageB);
     if (young < 18 || young > 42) continue;
-    if (rand() >= 0.035) continue;
+    if (rand() >= 0.035 * (1 + lawBirths(s))) continue;
     const childId = s.nextCitizenId++;
     const gA = l.gender ?? "f";
     const mother = gA === "f" ? id : l.partner!;

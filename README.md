@@ -216,22 +216,36 @@ A prefeitura decide se oferece aposentadoria e como:
 - **Humor:** aposentado com renda (benefício público ou poupança) +1; **sem renda −3**; contribuição acima
   de 10% pesa nos trabalhadores. Tudo vem desligado por padrão.
 
-## Câmara de vereadores (botão 🔨 martelo)
+## Câmara de vereadores (botão do martelo)
 
 A partir de 30 moradores a cidade elege uma **câmara de 5 a 11 vereadores** (pela população) para um mandato
-de **4 anos (16 ciclos)**:
-- **Eleição:** cada morador adulto vota pelo que vive: desempregado, trabalho pesado, aposentado sem renda e
-  jornada exaustiva pesam no Partido do Trabalho; os ricos e o comércio, na União Empresarial; ar poluído, no
-  Verde; filhos, aposentados e falta de hospital, na Aliança Social; bairro perigoso, na Ordem e Progresso.
-  As cadeiras saem por D'Hondt e os vereadores são **moradores de verdade** (nome, idade e partido).
-  Vereador que morre ou se muda é substituído por um suplente do mesmo partido.
-- **Uma proposta de lei por ciclo**, de um dos partidos (sorteado pelas cadeiras). Você **aprova ou veta** na
-  pausa; sem decisão, a pauta guarda até 3 projetos e arquiva o mais antigo. 15 leis ligam a mecânicas que já
-  existem: jornada de 8 horas, salário mínimo, fiscalização obrigatória, isenção para a indústria, jornada
-  flexível, livre comércio, taxa de carbono, energia limpa, arborização, saúde universal, merenda escolar,
-  pensão universal, toque de recolher, guarda municipal e austeridade. Leis em vigor podem ser **revogadas**.
-- **Prestígio:** aprovar uma lei dá +1 ao partido, vetar ou revogar dá −1; quem tem prestígio ganha votos.
-  Algumas leis têm **verba por ciclo** (linha "Leis municipais" do livro-caixa).
+de **4 anos (16 ciclos)**. Os vereadores são **moradores de verdade** (nome, idade e partido); quem morre ou se
+muda é substituído por um suplente do mesmo partido.
+- **Seis partidos, da esquerda para a direita:** **Esquerda Radical**, **Social Democrata**, **Centro**,
+  **Liberal**, **Conservador** e o **Fascista**, que **só disputa a eleição em tempos de crise** (greve geral,
+  caixa no vermelho, desastre recente, desemprego alto, povo triste ou bairros perigosos; com 3 ou mais sinais).
+- **Eleição:** cada morador adulto vota pelo que vive e pelas **necessidades da idade** que faltam: desempregado e
+  jornada exaustiva pesam na Esquerda; criança sem escola, idoso sem hospital ou renda, ar poluído, na Social
+  Democracia; ricos e comércio, nos Liberais; bairro perigoso, nos Conservadores; quem está bem, no Centro; na
+  crise, os descontentes e inseguros vão para o Fascista. As cadeiras saem por D'Hondt.
+- **Cada partido propõe leis do próprio espectro** (uma por ciclo, sorteando o partido pelas cadeiras) e escolhe
+  mais as leis que respondem ao que a cidade está passando (crime alto → leis de segurança, poluição → leis
+  ambientais...). Você **aprova ou veta** na pausa; a pauta guarda até 3 projetos e arquiva o mais antigo.
+  **25 leis** ligam a mecânicas que já existem: Esquerda (jornada de 8 h, salário mínimo, fiscalização,
+  imposto sobre grandes empresas), Social Democrata (saúde universal, merenda, pensão universal, renda básica,
+  arborização, taxa de carbono), Centro (orçamento participativo, parcerias público-privadas, reforma
+  administrativa, energia limpa), Liberal (isenção industrial, jornada flexível, livre comércio,
+  desburocratização), Conservador (toque de recolher, guarda municipal, austeridade, incentivo à família) e
+  Fascista (estado de exceção, proibição de greves, milícia urbana). Leis em vigor podem ser **revogadas**.
+- **Prestígio:** aprovar uma lei dá +1 ao partido, vetar ou revogar dá −1; quem tem prestígio ganha votos. Algumas
+  leis têm **verba por ciclo** (linha "Leis municipais" do livro-caixa).
+
+## Necessidades de cada idade
+
+Cada faixa precisa de coisas diferentes (painel ⏳): **crianças** de escola, lugar para brincar e segurança;
+**jovens** (16–24) de estudo ou emprego, lazer e moradia; **adultos** de emprego, hospital, caminho até o
+trabalho e segurança; **idosos** de hospital, renda de aposentadoria e praça. O que falta pesa no humor (criança
+sem escola −1, idoso sem hospital −2, etc., só em cidades de 40 moradores ou mais) e no voto.
 
 ## Orçamento
 

@@ -8,6 +8,7 @@ import { buildingStatus } from "./status";
 import { computeTraffic, type TrafficResult } from "./traffic";
 import { cityFatigue } from "./laborload";
 import { workingPopulation } from "./people";
+import { lawNoStrike } from "./laws";
 import type { CityState } from "./types";
 
 export interface StrikeCause {
@@ -44,7 +45,7 @@ export const activeWorkers = (s: Pick<CityState, "population" | "strike" | "citi
  * grava o resultado) e à tela (que mostra o que vai acontecer se nada mudar).
  */
 export function computeStrike(s: CityState, traffic: TrafficResult = computeTraffic(s)): StrikeState {
-  if (s.population < MIN_POPULATION) return NO_STRIKE;
+  if (s.population < MIN_POPULATION || lawNoStrike(s)) return NO_STRIKE;
   const power = computePower(s);
   const status = buildingStatus(s, power.powered);
   const f = computeServices(s, status, traffic);

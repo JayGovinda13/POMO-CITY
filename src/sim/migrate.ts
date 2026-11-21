@@ -5,7 +5,7 @@ import { placeHallWings } from "./world";
 import { DEFAULT_LABOR } from "./labor";
 import { DEFAULT_PENSION } from "./pension";
 import { ensureLives } from "./demography";
-import { newCouncil } from "./laws";
+import { LAWS, PARTIES, newCouncil, type LawId, type PartyId } from "./laws";
 
 /**
  * Atualiza estados salvos em versões antigas para o formato atual.
@@ -130,6 +130,20 @@ export function migrateState(raw: CityState): CityState {
   if (from < 17) {
     // v16 → v17: câmara de vereadores (a primeira eleição acontece no próximo ciclo).
     s.council = newCouncil();
+  }
+
+  if (from < 18) {
+    // v17 → v18: seis partidos no espectro (esquerda → direita); as leis mudaram de partido.
+    const c = s.council as unknown as { members: { id: number; party: string }[]; bills: { law: LawId; party: string }[]; standing: Record<string, number> };
+    const MAP: Record<string, PartyId> = { trabalho: "esquerda", empresas: "liberal", verde: "socialdemocrata", social: "socialdemocrata", ordem: "conservador" };
+    const fix = (p: string): PartyId => MAP[p] ?? (p in PARTIES ? (p as PartyId) : "centro");
+    for (const m of c.members ?? []) m.party = fix(m.party);
+    for (const b of c.bills ?? []) b.party = LAWS[b.law]?.party ?? fix(b.party);
+    const standing: Record<PartyId, number> = { esquerda: 0, socialdemocrata: 0, centro: 0, liberal: 0, conservador: 0, fascista: 0 };
+    for (const [k, v] of Object.entries(c.standing ?? {})) standing[fix(k)] = Math.max(-5, Math.min(5, standing[fix(k)] + v));
+    c.standing = standing;
+    // Leis em vigor que ficaram sem lei correspondente (não deve ocorrer) são descartadas.
+    s.council.laws = (s.council.laws ?? []).filter((l) => l in LAWS);
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

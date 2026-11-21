@@ -15,6 +15,12 @@ import {
   hasPensionIncome,
   holdElection,
   leaning,
+  ballot,
+  crisisLevel,
+  signalsOf,
+  relevance,
+  PARTIES,
+  citizensView,
   inspected,
   lawMods,
   migrateState,
@@ -89,18 +95,47 @@ describe("eleição", () => {
     expect(s.council.electedAt).toBe(s.cyclesCompleted);
   });
 
-  it("os eleitores votam pelo que vivem: cada situação pesa num partido", () => {
-    const base = { age: 40, stage: "adulto", children: 0, mood: "ok", wealth: "media", job: null, reasons: [] } as unknown as CitizenView;
-    const w = (patch: Partial<CitizenView>) => leaning({ ...base, ...patch } as CitizenView, { council: newCouncil() });
+  it("os eleitores votam pelo que vivem: cada situação pesa num ponto do espectro", () => {
+    const base = { age: 40, stage: "adulto", group: "adulto", needs: [], children: 0, mood: "ok", wealth: "baixa", job: null, reasons: [] } as unknown as CitizenView;
+    const w = (patch: Partial<CitizenView>, crisis = 0) => leaning({ ...base, ...patch } as CitizenView, { council: newCouncil() }, crisis);
     const maior = (x: Record<string, number>) => Object.entries(x).sort((a, b) => b[1] - a[1])[0][0];
-    expect(maior(w({ job: null }))).toBe("trabalho"); // desempregado
-    expect(maior(w({ wealth: "alta", job: { title: "x", category: "comercio", place: "y", x: 0, y: 0 } }))).toBe("empresas");
-    expect(maior(w({ job: { title: "x", category: "servicos", place: "y", x: 0, y: 0 }, reasons: [{ text: "Ar poluído", delta: -2 }] }))).toBe("verde");
-    expect(maior(w({ stage: "aposentado", reasons: [{ text: "Aposentado(a) sem renda", delta: -3 }] }))).toBe("social");
-    expect(maior(w({ job: { title: "x", category: "servicos", place: "y", x: 0, y: 0 }, reasons: [{ text: "Bairro perigoso", delta: -2 }] }))).toBe("ordem");
+    const emprego = { title: "x", category: "servicos", place: "y", x: 0, y: 0 } as CitizenView["job"];
+    expect(maior(w({ job: null }))).toBe("esquerda"); // desempregado
+    expect(maior(w({ wealth: "alta", job: { ...emprego!, category: "comercio" } }))).toBe("liberal");
+    expect(maior(w({ job: emprego, reasons: [{ text: "Aposentado(a) sem renda", delta: -3 }], group: "idoso", stage: "aposentado" }))).toBe("socialdemocrata");
+    expect(maior(w({ job: emprego, reasons: [{ text: "Bairro perigoso", delta: -2 }] }))).toBe("conservador");
+    expect(maior(w({ job: emprego, mood: "feliz", wealth: "media" }))).toBe("centro");
+    // O Fascista não pesa sem crise; na crise, os descontentes e inseguros migram para ele.
+    expect(w({ job: null, mood: "triste", reasons: [{ text: "Bairro perigoso", delta: -2 }] }).fascista).toBe(0);
+    expect(maior(w({ job: emprego, mood: "triste", reasons: [{ text: "Bairro perigoso", delta: -2 }] }, 1.6))).toBe("fascista");
     // O prefeito que aprova leis de um partido o fortalece na eleição.
-    const forte = leaning({ ...base } as CitizenView, { council: { ...newCouncil(), standing: { trabalho: 5, empresas: 0, verde: 0, social: 0, ordem: 0 } } });
-    expect(forte.trabalho).toBeGreaterThan(w({}).trabalho);
+    const forte = leaning({ ...base } as CitizenView, { council: { ...newCouncil(), standing: { ...newCouncil().standing, esquerda: 5 } } });
+    expect(forte.esquerda).toBeGreaterThan(w({}).esquerda);
+  });
+
+  it("o Fascista só disputa a eleição em tempos de crise", () => {
+    expect(ballot(0)).not.toContain("fascista");
+    expect(ballot(1.6)).toContain("fascista");
+    const normal = town(120);
+    expect(holdElection(normal, rng(3))!.votes.fascista).toBe(0);
+    const crise = town(120);
+    crise.money = -500; // caixa no vermelho
+    crise.strike = { share: 0.3, causes: [] }; // greve geral
+    crise.lastDisasterCycle = crise.cyclesCompleted - 2; // desastre recente
+    const e = holdElection(crise, rng(3))!;
+    expect(e.crisis).toBeGreaterThanOrEqual(3);
+    expect(e.votes.fascista).toBeGreaterThan(0);
+    expect(crisisLevel(crise, signalsOf(citizensView(crise), crise))).toBe(e.crisis);
+  });
+
+  it("cada partido propõe leis do próprio espectro, favorecendo o que a cidade precisa", () => {
+    for (const id of LAW_IDS) expect(PARTY_IDS).toContain(LAWS[id].party);
+    // Espectro: cada partido tem ao menos uma lei, da esquerda para a direita.
+    for (const p of PARTY_IDS) expect(LAW_IDS.some((id) => LAWS[id].party === p)).toBe(true);
+    expect(PARTY_IDS.map((p) => PARTIES[p].position)).toEqual([-2, -1, 0, 1, 2, 3]);
+    const sinais = { unemployed: 0, fatigue: 0, poor: 0, unsafe: 1, polluted: 0, nohospital: 0, noincome: 0, kids: 0, fewkids: 0, unhappy: 0, deficit: 0, strike: 0 };
+    expect(relevance("guarda_municipal", sinais)).toBeGreaterThan(relevance("austeridade", sinais));
+    expect(relevance("austeridade", { ...sinais, unsafe: 0, deficit: 1 })).toBeGreaterThan(relevance("guarda_municipal", { ...sinais, unsafe: 0, deficit: 1 }));
   });
 
   it("a eleição reparte exatamente as cadeiras entre os partidos mais votados", () => {
@@ -206,7 +241,7 @@ describe("efeitos das leis", () => {
     s.labor = { campo: { hours: 12, pay: "peca" }, oficina: { hours: 10, pay: "tempo" }, fabrica: { hours: 8, pay: "tempo" } };
     const r = rng(9);
     councilStep(s, r);
-    s.council.bills.push({ id: 99, law: "jornada_8h", party: "trabalho", proposer: s.council.members[0].id, cycle: 100 });
+    s.council.bills.push({ id: 99, law: "jornada_8h", party: "esquerda", proposer: s.council.members[0].id, cycle: 100 });
     const ok = applyCommands(s, [{ type: "bill", id: 99, approve: true }]);
     expect(ok.state.labor.campo).toEqual({ hours: 8, pay: "peca" });
     expect(ok.state.labor.oficina.hours).toBe(8);

@@ -33,38 +33,134 @@ function note(c: CouncilState, cycle: number, text: string) {
 
 // ───────────────────────── eleição ─────────────────────────
 
-/** Para qual partido cada morador tende a votar (pesos por interesses e situação). */
-export function leaning(v: CitizenView, s: Pick<CityState, "council">): Record<PartyId, number> {
-  const w: Record<PartyId, number> = { trabalho: 1, empresas: 1, verde: 1, social: 1, ordem: 1 };
+/** Indicadores da cidade (0..1) lidos dos moradores: o que a câmara enxerga e o que o eleitor sente. */
+export interface Signals {
+  unemployed: number;
+  fatigue: number;
+  poor: number;
+  unsafe: number;
+  polluted: number;
+  nohospital: number;
+  noincome: number;
+  kids: number;
+  fewkids: number;
+  unhappy: number;
+  deficit: number;
+  strike: number;
+}
+
+const share = (views: CitizenView[], pred: (v: CitizenView) => boolean) => (views.length ? views.filter(pred).length / views.length : 0);
+
+/** Lê os indicadores da cidade a partir dos moradores e do estado. */
+export function signalsOf(views: CitizenView[], s: Pick<CityState, "money" | "strike">): Signals {
+  const has = (v: CitizenView, t: string) => v.reasons.some((r) => r.text.startsWith(t));
+  const adults = views.filter((v) => v.stage === "adulto");
+  const retirees = views.filter((v) => v.stage === "aposentado");
+  const kids = share(views, (v) => v.stage === "crianca");
+  return {
+    unemployed: adults.length ? adults.filter((v) => !v.job).length / adults.length : 0,
+    fatigue: share(views, (v) => has(v, "Jornada exaustiva") || has(v, "Pagamento por peça")),
+    poor: share(views, (v) => v.wealth === "baixa"),
+    unsafe: share(views, (v) => has(v, "Bairro perigoso")),
+    polluted: share(views, (v) => has(v, "Ar poluído")),
+    nohospital: share(views, (v) => has(v, "Sem hospital") || has(v, "Idoso sem hospital")),
+    noincome: retirees.length ? retirees.filter((v) => has(v, "Aposentado(a) sem renda")).length / retirees.length : 0,
+    kids,
+    fewkids: 1 - Math.min(1, kids * 5),
+    unhappy: share(views, (v) => v.mood === "triste"),
+    deficit: s.money < 1000 ? 1 : 0,
+    strike: s.strike?.share ?? 0,
+  };
+}
+
+/**
+ * Nível de crise da cidade (0..5): greve geral, caixa no vermelho, desastre recente, desemprego alto,
+ * povo triste e bairros perigosos. Com 3 ou mais, o Fascista entra na disputa.
+ */
+export function crisisLevel(s: Pick<CityState, "money" | "strike" | "lastDisasterCycle" | "cyclesCompleted">, g: Signals): number {
+  let n = 0;
+  if (g.strike >= 0.2) n++;
+  if (s.money < 0) n++;
+  if (s.lastDisasterCycle !== null && s.cyclesCompleted - s.lastDisasterCycle <= 6) n++;
+  if (g.unemployed >= 0.25) n++;
+  if (g.unhappy >= 0.4) n++;
+  if (g.unsafe >= 0.4) n++;
+  return n;
+}
+
+/** Quanto a crise empurra o eleitor para o Fascista (0 = não há crise). */
+export const crisisPull = (level: number): number => (level >= 3 ? 1 + (level - 3) * 0.6 : 0);
+
+/** Partidos na urna: o Fascista só aparece na crise. */
+export const ballot = (crisis: number): PartyId[] => PARTY_IDS.filter((p) => !PARTIES[p].crisisOnly || crisis > 0);
+
+/** Para qual partido cada morador tende a votar: pesos pelo que vive, pelas necessidades da idade e pela crise. */
+export function leaning(v: CitizenView, s: Pick<CityState, "council">, crisis = 0): Record<PartyId, number> {
+  // Na crise o Fascista já parte com algum apoio entre os descontentes em geral.
+  const w: Record<PartyId, number> = { esquerda: 1, socialdemocrata: 1, centro: 1, liberal: 1, conservador: 1, fascista: 0.5 * crisis };
   const has = (t: string) => v.reasons.some((r) => r.text.startsWith(t));
-  if (v.stage === "adulto" && !v.job) w.trabalho += 2;
-  if (v.job && (v.job.category === "agro" || v.job.category === "industria" || v.job.category === "madeira" || v.job.category === "mineracao")) w.trabalho += 1;
-  if (has("Jornada exaustiva") || has("Pagamento por peça")) w.trabalho += 1.5;
-  if (has("Aposentado(a) sem renda")) {
-    w.social += 2;
-    w.trabalho += 1;
+  const unmet = v.needs.filter((n) => !n.met).length;
+  // Dificuldade econômica: esquerda e social-democratas.
+  if ((v.stage === "adulto" || v.group === "jovem") && !v.job) {
+    w.esquerda += 2;
+    w.socialdemocrata += 1;
   }
-  if (v.wealth === "alta") w.empresas += 2;
-  else if (v.wealth === "media") w.empresas += 0.8;
-  if (v.job?.category === "comercio") w.empresas += 1;
-  if (has("Ar poluído")) w.verde += 2;
-  if (v.stage === "adulto" && v.age < 35) w.verde += 0.8;
-  if (has("Parque")) w.verde += 0.5;
-  if (v.children > 0) w.social += 1.2;
-  if (v.stage === "aposentado") w.social += 1.5;
-  if (has("Sem hospital")) w.social += 1.5;
-  if (v.mood === "triste") w.social += 0.7;
-  if (has("Bairro perigoso")) w.ordem += 2;
-  if (v.wealth === "alta") w.ordem += 0.5;
-  if (has("Trânsito parado") || has("Trabalho longe")) w.ordem += 0.5;
+  if (v.job && (v.job.category === "agro" || v.job.category === "industria" || v.job.category === "madeira" || v.job.category === "mineracao")) w.esquerda += 1;
+  if (has("Jornada exaustiva") || has("Pagamento por peça")) {
+    w.esquerda += 1.5;
+    w.socialdemocrata += 0.5;
+  }
+  if (v.wealth === "baixa") w.esquerda += 0.6;
+  if (has("Aposentado(a) sem renda")) {
+    w.socialdemocrata += 2;
+    w.esquerda += 1;
+  }
+  // Necessidades da idade que faltam: o bem-estar social ganha voto.
+  w.socialdemocrata += unmet * 0.8;
+  w.esquerda += unmet * 0.3;
+  if (v.group === "crianca" || v.children > 0) {
+    w.socialdemocrata += 1;
+    w.conservador += 0.8;
+  }
+  if (v.group === "idoso") {
+    w.socialdemocrata += 1.5;
+    w.conservador += 0.8;
+  }
+  // Riqueza e negócios: liberais e conservadores.
+  if (v.wealth === "alta") {
+    w.liberal += 2;
+    w.conservador += 1;
+  } else if (v.wealth === "media") {
+    w.liberal += 0.8;
+    w.centro += 0.5;
+  }
+  if (v.job?.category === "comercio") w.liberal += 1;
+  // Ar, parques e segurança.
+  if (has("Ar poluído")) {
+    w.socialdemocrata += 1.2;
+    w.esquerda += 0.5;
+  }
+  if (has("Bairro perigoso")) {
+    w.conservador += 2;
+    w.fascista += 0.8 * crisis;
+  }
+  // Humor: quem está bem fica no centro e no governo; quem está mal procura os extremos.
+  if (v.mood === "feliz") w.centro += 1.5;
+  else if (v.mood === "ok") w.centro += 0.8;
+  else {
+    w.esquerda += 0.4;
+    w.fascista += 1.2 * crisis;
+  }
+  if (!v.job && v.stage === "adulto") w.fascista += 0.6 * crisis;
   // Prestígio: quem teve leis aprovadas pelo prefeito sai mais forte; quem foi vetado, mais fraco.
   for (const p of PARTY_IDS) w[p] += (s.council?.standing[p] ?? 0) * 0.25;
+  if (!crisis) w.fascista = 0;
   return w;
 }
 
 /** Cadeiras por partido (método D'Hondt) a partir dos votos. */
 function dhondt(votes: Record<PartyId, number>, seats: number): Record<PartyId, number> {
-  const out: Record<PartyId, number> = { trabalho: 0, empresas: 0, verde: 0, social: 0, ordem: 0 };
+  const out: Record<PartyId, number> = { esquerda: 0, socialdemocrata: 0, centro: 0, liberal: 0, conservador: 0, fascista: 0 };
   for (let i = 0; i < seats; i++) {
     let best: PartyId = PARTY_IDS[0];
     let bestQ = -1;
@@ -84,20 +180,26 @@ export interface ElectionResult {
   seats: Record<PartyId, number>;
   votes: Record<PartyId, number>;
   members: { id: number; name: string; party: PartyId }[];
+  /** Nível de crise na hora da eleição (3 ou mais: o Fascista disputa). */
+  crisis: number;
 }
 
 /** Realiza a eleição: cada morador adulto vota; os mais votados de cada partido viram vereadores. */
 export function holdElection(s: CityState, rand: () => number): ElectionResult | null {
-  const views = citizensView(s).filter((v) => v.stage !== "crianca");
+  const all = citizensView(s);
+  const views = all.filter((v) => v.stage !== "crianca");
   if (!views.length) return null;
-  const votes: Record<PartyId, number> = { trabalho: 0, empresas: 0, verde: 0, social: 0, ordem: 0 };
-  const byParty: Record<PartyId, CitizenView[]> = { trabalho: [], empresas: [], verde: [], social: [], ordem: [] };
+  const level = crisisLevel(s, signalsOf(all, s));
+  const crisis = crisisPull(level);
+  const parties = ballot(crisis);
+  const votes: Record<PartyId, number> = { esquerda: 0, socialdemocrata: 0, centro: 0, liberal: 0, conservador: 0, fascista: 0 };
+  const byParty: Record<PartyId, CitizenView[]> = { esquerda: [], socialdemocrata: [], centro: [], liberal: [], conservador: [], fascista: [] };
   for (const v of views) {
-    const w = leaning(v, s);
+    const w = leaning(v, s, crisis);
     // Cada eleitor decide pelo partido de maior peso, com uma pitada de acaso.
-    let best: PartyId = PARTY_IDS[0];
+    let best: PartyId = parties[0];
     let bestW = -1;
-    for (const p of PARTY_IDS) {
+    for (const p of parties) {
       const x = w[p] + rand() * 1.6;
       if (x > bestW) {
         bestW = x;
@@ -112,7 +214,7 @@ export function holdElection(s: CityState, rand: () => number): ElectionResult |
   const members: ElectionResult["members"] = [];
   const used = new Set<number>();
   for (const p of PARTY_IDS) {
-    // Candidatos: adultos (16–70) que votam no partido; sorteia sem repetir.
+    // Candidatos: adultos (18–70) que votam no partido; sorteia sem repetir.
     const pool = byParty[p].filter((v) => v.age >= 18 && v.age <= 70 && !used.has(v.id));
     for (let k = 0; k < seats[p]; k++) {
       let pick = pool.length ? pool.splice(Math.floor(rand() * pool.length), 1)[0] : undefined;
@@ -125,7 +227,7 @@ export function holdElection(s: CityState, rand: () => number): ElectionResult |
       members.push({ id: pick.id, name: pick.name, party: p });
     }
   }
-  return { seats, votes, members };
+  return { seats, votes, members, crisis: level };
 }
 
 // ───────────────────────── propostas ─────────────────────────
@@ -137,8 +239,39 @@ function available(s: CityState, party: PartyId): LawId[] {
   return LAW_IDS.filter((id) => LAWS[id].party === party && !taken.has(id));
 }
 
-/** Sorteia o partido pelas cadeiras e uma lei dele; devolve null se não há nada novo a propor. */
-function proposeBill(s: CityState, rand: () => number): Bill | null {
+/** Que indicadores da cidade cada lei responde (quanto mais alto o indicador, mais o partido a propõe). */
+const ANSWERS: Partial<Record<LawId, keyof Signals>> = {
+  jornada_8h: "fatigue",
+  salario_minimo: "poor",
+  fiscalizacao: "fatigue",
+  taxar_grandes_empresas: "poor",
+  saude_universal: "nohospital",
+  merenda_escolar: "kids",
+  pensao_universal: "noincome",
+  renda_basica: "poor",
+  arborizacao: "polluted",
+  taxa_carbono: "polluted",
+  orcamento_participativo: "unhappy",
+  parceria_publico_privada: "deficit",
+  reforma_administrativa: "deficit",
+  energia_limpa: "polluted",
+  isencao_industria: "unemployed",
+  desburocratizacao: "unemployed",
+  livre_comercio: "deficit",
+  toque_recolher: "unsafe",
+  guarda_municipal: "unsafe",
+  austeridade: "deficit",
+  incentivo_familia: "fewkids",
+  estado_de_excecao: "unsafe",
+  proibicao_greves: "strike",
+  milicia_urbana: "unsafe",
+};
+
+/** Peso da lei na pauta: 1 + 4× o indicador que ela resolve (o partido propõe o que o momento pede). */
+export const relevance = (law: LawId, g: Signals): number => 1 + 4 * (ANSWERS[law] ? g[ANSWERS[law]!] : 0);
+
+/** Sorteia o partido pelas cadeiras e uma lei do espectro dele, favorecendo o que a cidade precisa. */
+function proposeBill(s: CityState, rand: () => number, g: Signals): Bill | null {
   const c = s.council!;
   const parties = PARTY_IDS.filter((p) => c.members.some((m) => m.party === p) && available(s, p).length);
   if (!parties.length) return null;
@@ -153,14 +286,23 @@ function proposeBill(s: CityState, rand: () => number): Bill | null {
     }
   }
   const laws = available(s, party);
-  const law = laws[Math.floor(rand() * laws.length)];
+  const lw = laws.map((l) => relevance(l, g));
+  let y = rand() * lw.reduce((a, b) => a + b, 0);
+  let law = laws[laws.length - 1];
+  for (let i = 0; i < laws.length; i++) {
+    y -= lw[i];
+    if (y <= 0) {
+      law = laws[i];
+      break;
+    }
+  }
   const mine = c.members.filter((m) => m.party === party);
   const proposer = mine[Math.floor(rand() * mine.length)].id;
   return { id: c.nextBillId++, law, party, proposer, cycle: s.cyclesCompleted };
 }
 
 export interface CouncilReport {
-  election?: { seats: Record<PartyId, number>; members: { name: string; party: PartyId }[] };
+  election?: { seats: Record<PartyId, number>; members: { name: string; party: PartyId }[]; crisis: number };
   /** Lei proposta neste ciclo. */
   proposal?: { id: number; law: LawId; party: PartyId; proposer: string };
   /** Propostas arquivadas por falta de decisão. */
@@ -186,9 +328,9 @@ export function councilStep(s: CityState, rand: () => number): CouncilReport {
     if (r) {
       c.members = r.members.map((m) => ({ id: m.id, party: m.party }));
       c.electedAt = now;
-      out.election = { seats: r.seats, members: r.members.map((m) => ({ name: m.name, party: m.party })) };
+      out.election = { seats: r.seats, members: r.members.map((m) => ({ name: m.name, party: m.party })), crisis: r.crisis };
       const first = c.history.length === 0 && c.laws.length === 0;
-      note(c, now, `${first ? "Primeira eleição" : "Eleição"}: ${PARTY_IDS.filter((p) => r.seats[p]).map((p) => `${PARTIES[p].short} ${r.seats[p]}`).join(", ")}`);
+      note(c, now, `${first ? "Primeira eleição" : "Eleição"}${r.crisis >= 3 ? " (em crise)" : ""}: ${PARTY_IDS.filter((p) => r.seats[p]).map((p) => `${PARTIES[p].short} ${r.seats[p]}`).join(", ")}`);
     }
     return out;
   }
@@ -211,7 +353,7 @@ export function councilStep(s: CityState, rand: () => number): CouncilReport {
     out.expired++;
     note(c, now, `Arquivada sem decisão: ${LAWS[old.law].name}`);
   }
-  const bill = proposeBill(s, rand);
+  const bill = proposeBill(s, rand, signalsOf(citizensView(s), s));
   if (bill) {
     c.bills.push(bill);
     out.proposal = { id: bill.id, law: bill.law, party: bill.party, proposer: citizenProfile(s, bill.proposer).name };

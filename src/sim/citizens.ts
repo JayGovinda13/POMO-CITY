@@ -21,6 +21,7 @@ import { createArrivalLife } from "./demography";
 import { hasPensionIncome } from "./pensionsystem";
 import { lawMoods } from "./laws";
 import { ageYears, retireAgeOf, stageOf, type Stage } from "./people";
+import { UNMET_PENALTY, ageGroupOf, needsFor, type AgeGroup, type Need } from "./needs";
 import { SECTOR_OF_BUILDING, industrialLotJobs, laborMood, type Sector } from "./labor";
 
 export type Gender = "f" | "m";
@@ -48,6 +49,9 @@ export interface CitizenView extends CitizenProfile {
   /** Idade em anos e faixa etária (criança, adulto, aposentado). */
   age: number;
   stage: Stage;
+  /** Faixa de idade e as necessidades dela (atendidas ou não). */
+  group: AgeGroup;
+  needs: Need[];
   /** Companheiro(a) vivo(a), se casado(a). */
   partner: { id: number; name: string } | null;
   /** Número de filhos vivos. */
@@ -253,6 +257,26 @@ export function citizensView(s: CityState): CitizenView[] {
     else if (stage === "adulto") reasons.push({ text: "Desempregado(a)", delta: -2 });
     // Família: casal junto anima; luto pesa por 4 ciclos.
     if (life?.partner !== undefined && s.people[life.partner]?.died === undefined) reasons.push({ text: "Vive em família", delta: 1 });
+    // Necessidades de cada idade: o que falta pesa no humor (escola para criança, hospital para idoso…).
+    const group = ageGroupOf(age, retire);
+    const at = homeIdx;
+    const needs = needsFor(group, {
+      hasHome: at !== undefined,
+      school: at !== undefined && svc.school[at] > 0.2,
+      leisure: at !== undefined && svc.leisure[at] > 0,
+      safe: at !== undefined && svc.crime[at] <= 45,
+      health: at !== undefined && svc.health[at] > 0,
+      transport: !(at !== undefined && s.population >= TRIP_LIMIT_POPULATION && traffic.failed[at]),
+      job: !!slot,
+      income: hasPensionIncome(s, id),
+    });
+    for (const n of needs) {
+      // Só pesa em cidades que já têm serviços a oferecer (como o mal-estar por falta de hospital).
+      // (Jovem empregado não sente falta de lazer no humor: só quem está sem ocupação.)
+      const skip = group === "jovem" && !!slot;
+      const pen = !n.met && !skip && s.population >= 40 ? UNMET_PENALTY[group]?.[n.id] : undefined;
+      if (pen) reasons.push(pen);
+    }
     // Leis municipais em vigor (humor de todos e dos trabalhadores).
     for (const m of lawMoods(s, !!slot)) reasons.push(m);
     // Aposentadoria: quem tem renda vive tranquilo; sem renda passa necessidade. Trabalhadores pagam a conta.
@@ -299,6 +323,8 @@ export function citizensView(s: CityState): CitizenView[] {
       ...p,
       age: Math.floor(age),
       stage,
+      group,
+      needs,
       partner: life?.partner !== undefined && s.people[life.partner] ? { id: life.partner, name: citizenProfile(s, life.partner).name } : null,
       children: kidsOf.get(id) ?? 0,
       home: homeIdx === undefined ? null : { x: homeIdx % s.width, y: Math.floor(homeIdx / s.width) },
