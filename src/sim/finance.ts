@@ -4,6 +4,8 @@
 import { BUILDINGS } from "./catalog";
 import { ZONE, type CityState, type ZoneKind } from "./types";
 import { ecoDemand } from "./ecocycle";
+import type { PartyId } from "./laws";
+import type { TechMods } from "./tech";
 
 // ───────────────────────── impostos ─────────────────────────
 
@@ -107,11 +109,28 @@ export type OrdinanceId =
   | "festival"
   | "premio_produtividade"
   | "escola_fabrica"
-  | "habitacao_popular";
+  | "habitacao_popular"
+  | "tarifa_social_energia"
+  | "cozinha_comunitaria"
+  | "feriado_trabalhador"
+  | "mutirao_saude"
+  | "campanha_leitura"
+  | "ciclo_cultural"
+  | "mutirao_limpeza"
+  | "pregao_eletronico"
+  | "balcao_empresas"
+  | "feirao_ofertas"
+  | "isencao_iptu_novos"
+  | "patrulha_escolar"
+  | "dia_da_familia"
+  | "cortes_gabinete"
+  | "parada_civica"
+  | "censura_jornais"
+  | "alistamento_obrigatorio";
 
 export interface OrdinanceDef {
   name: string;
-  category: "Finanças" | "Energia" | "Comunidade" | "Foco" | "Trabalho";
+  category: "Finanças" | "Energia" | "Comunidade" | "Foco" | "Trabalho" | "Segurança" | "Saúde e educação";
   description: string;
   /** Receita (+) ou custo (−) por ciclo, em função do estado. */
   money: (s: CityState) => number;
@@ -119,6 +138,8 @@ export interface OrdinanceDef {
   demand?: Partial<Record<ZoneKind, number>>;
   /** Ajuste no humor dos moradores (motivo exibido na ficha). */
   mood?: { delta: number; text: string };
+  /** Efeitos numéricos (somados aos das tecnologias e leis) enquanto ativo. */
+  mods?: Partial<TechMods>;
 }
 
 const pop = (s: CityState) => s.population;
@@ -185,7 +206,180 @@ export const ORDINANCES: Record<OrdinanceId, OrdinanceDef> = {
     description: "A prefeitura banca moradia para quem tem pouco: o aluguel pesado (IPTU alto) não derruba o humor dos mais pobres e a demanda residencial sofre metade.",
     money: (s) => -Math.ceil(pop(s) * 0.25),
   },
+
+  // ── Esquerda Radical ──
+  tarifa_social_energia: {
+    name: "Tarifa social de energia",
+    category: "Energia",
+    description: "Conta de luz barata para as famílias pobres: moradores mais contentes (+1), com uma verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.15),
+    mood: { delta: 1, text: "Tarifa social de energia" },
+  },
+  cozinha_comunitaria: {
+    name: "Cozinhas comunitárias",
+    category: "Comunidade",
+    description: "Refeição coletiva nos bairros: +1 de humor para todos, com uma verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.2),
+    mood: { delta: 1, text: "Cozinha comunitária" },
+  },
+  feriado_trabalhador: {
+    name: "Feriado do trabalhador",
+    category: "Trabalho",
+    description: "Um dia de folga paga por ciclo: +1 de humor, mas 2% menos bens.",
+    money: () => 0,
+    mood: { delta: 1, text: "Feriado do trabalhador" },
+    mods: { goods: -0.02 },
+  },
+  // ── Social Democrata ──
+  mutirao_saude: {
+    name: "Mutirão de saúde",
+    category: "Saúde e educação",
+    description: "Equipes de saúde nos bairros: os hospitais atendem 8% mais gente, com uma verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.12),
+    mods: { health: 0.08 },
+  },
+  campanha_leitura: {
+    name: "Campanha de leitura",
+    category: "Saúde e educação",
+    description: "Livros e saraus em toda a cidade: 5% mais pesquisa, com uma pequena verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.08),
+    mods: { research: 0.05 },
+  },
+  // ── Centro ──
+  ciclo_cultural: {
+    name: "Ciclo cultural",
+    category: "Comunidade",
+    description: "Cinema, teatro e música em praça pública: +1 de humor e mais comércio (+5% de demanda).",
+    money: (s) => -Math.ceil(pop(s) * 0.1),
+    demand: { C: 0.05 },
+    mood: { delta: 1, text: "Ciclo cultural" },
+  },
+  mutirao_limpeza: {
+    name: "Mutirão de limpeza",
+    category: "Comunidade",
+    description: "Todo mundo limpa o bairro: 6% menos poluição, com uma pequena verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.06),
+    mods: { pollution: -0.06 },
+  },
+  pregao_eletronico: {
+    name: "Pregão eletrônico",
+    category: "Finanças",
+    description: "Compras públicas por leilão: manutenção 3% mais barata.",
+    money: () => 0,
+    mods: { upkeep: -0.03 },
+  },
+  // ── Liberal ──
+  balcao_empresas: {
+    name: "Balcão de empresas",
+    category: "Finanças",
+    description: "Alvará em um dia: +8% de demanda de comércio e +5% de indústria, com uma verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.05),
+    demand: { C: 0.08, I: 0.05 },
+  },
+  feirao_ofertas: {
+    name: "Feirão de ofertas",
+    category: "Finanças",
+    description: "Liquidação na cidade inteira: +10% de demanda de comércio, ao custo da divulgação.",
+    money: (s) => -Math.ceil(pop(s) * 0.1),
+    demand: { C: 0.1 },
+  },
+  isencao_iptu_novos: {
+    name: "Isenção de imposto para novos moradores",
+    category: "Finanças",
+    description: "Quem chega não paga nos primeiros ciclos: +10% de demanda residencial, mas a prefeitura perde receita.",
+    money: (s) => -Math.ceil(pop(s) * 0.15),
+    demand: { R: 0.1 },
+  },
+  // ── Conservador ──
+  patrulha_escolar: {
+    name: "Patrulha escolar",
+    category: "Segurança",
+    description: "Policiais na porta das escolas: 6% menos crime, com uma verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.1),
+    mods: { crime: -0.06 },
+  },
+  dia_da_familia: {
+    name: "Dia da família",
+    category: "Comunidade",
+    description: "Almoço e missa aos domingos: +1 de humor, com uma verba por ciclo.",
+    money: (s) => -Math.ceil(pop(s) * 0.08),
+    mood: { delta: 1, text: "Dia da família" },
+  },
+  cortes_gabinete: {
+    name: "Corte nos gabinetes",
+    category: "Finanças",
+    description: "A prefeitura corta regalias: manutenção 3% mais barata e uma economia por ciclo.",
+    money: (s) => Math.ceil(pop(s) * 0.06),
+    mods: { upkeep: -0.03 },
+  },
+  // ── Fascista ──
+  parada_civica: {
+    name: "Parada cívica",
+    category: "Segurança",
+    description: "Desfile militar com bandeiras: +1 de humor, ao custo de uma verba por ciclo. Os fascistas adoram.",
+    money: (s) => -Math.ceil(pop(s) * 0.15),
+    mood: { delta: 1, text: "Parada cívica" },
+  },
+  censura_jornais: {
+    name: "Censura de jornais",
+    category: "Segurança",
+    description: "Só circula o que o governo aprova: 5% menos crime e 5% menos pesquisa.",
+    money: () => 0,
+    mods: { crime: -0.05, research: -0.05 },
+  },
+  alistamento_obrigatorio: {
+    name: "Alistamento obrigatório",
+    category: "Trabalho",
+    description: "Todo jovem serve ao Estado: 3% mais bens, mas −1 de humor.",
+    money: () => 0,
+    mood: { delta: -1, text: "Alistamento obrigatório" },
+    mods: { goods: 0.03 },
+  },
 };
+
+/**
+ * Política dos decretos: quem se favorece ao assinar (ganha +1 de prestígio com o prefeito) e quem se
+ * desfavorece (−1). Revogar faz o contrário. O prestígio pesa nas eleições (ver council.ts).
+ */
+export const ORDINANCE_POLITICS: Record<OrdinanceId, { party: PartyId; foes?: PartyId[] }> = {
+  imposto_vendas: { party: "conservador", foes: ["liberal"] },
+  imposto_renda: { party: "socialdemocrata", foes: ["liberal"] },
+  jogos: { party: "liberal", foes: ["conservador"] },
+  conservacao_energia: { party: "centro" },
+  embelezamento: { party: "centro" },
+  festival: { party: "socialdemocrata" },
+  premio_produtividade: { party: "liberal", foes: ["esquerda"] },
+  escola_fabrica: { party: "conservador" },
+  habitacao_popular: { party: "esquerda", foes: ["liberal"] },
+  tarifa_social_energia: { party: "esquerda", foes: ["liberal"] },
+  cozinha_comunitaria: { party: "esquerda" },
+  feriado_trabalhador: { party: "esquerda", foes: ["liberal", "conservador"] },
+  mutirao_saude: { party: "socialdemocrata" },
+  campanha_leitura: { party: "socialdemocrata" },
+  ciclo_cultural: { party: "centro" },
+  mutirao_limpeza: { party: "centro" },
+  pregao_eletronico: { party: "centro", foes: ["fascista"] },
+  balcao_empresas: { party: "liberal", foes: ["esquerda"] },
+  feirao_ofertas: { party: "liberal" },
+  isencao_iptu_novos: { party: "liberal", foes: ["esquerda"] },
+  patrulha_escolar: { party: "conservador" },
+  dia_da_familia: { party: "conservador", foes: ["esquerda"] },
+  cortes_gabinete: { party: "conservador", foes: ["socialdemocrata"] },
+  parada_civica: { party: "fascista", foes: ["esquerda", "socialdemocrata"] },
+  censura_jornais: { party: "fascista", foes: ["centro", "socialdemocrata"] },
+  alistamento_obrigatorio: { party: "fascista", foes: ["esquerda"] },
+};
+
+/** Soma dos efeitos numéricos dos decretos ativos. */
+export function ordinanceMods(s: Partial<Pick<CityState, "ordinances">>): Partial<TechMods> {
+  const out: Partial<TechMods> = {};
+  for (const id of Object.keys(s.ordinances ?? {}) as OrdinanceId[]) {
+    const m = ORDINANCES[id]?.mods;
+    if (!m) continue;
+    for (const k of Object.keys(m) as (keyof TechMods)[]) out[k] = (out[k] ?? 0) + (m[k] ?? 0);
+  }
+  return out;
+}
 
 export const ORDINANCE_IDS = Object.keys(ORDINANCES) as OrdinanceId[];
 export const isActive = (s: CityState, id: OrdinanceId) => s.ordinances[id] !== undefined;

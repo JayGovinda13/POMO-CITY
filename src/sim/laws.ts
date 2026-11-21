@@ -137,6 +137,30 @@ export type LawId =
   | "controle_imprensa"
   | "economia_de_guerra"
   | "vigilancia_total"
+  | "teto_salarial"
+  | "comissao_fabrica"
+  | "biblioteca_bairro"
+  | "preco_alimentos"
+  | "nacionalizar_minas"
+  | "bolsa_estudante"
+  | "atencao_basica"
+  | "parques_lineares"
+  | "centro_dia_idoso"
+  | "selo_qualidade"
+  | "hortas_urbanas"
+  | "transporte_integrado"
+  | "ouvidoria_publica"
+  | "importacao_livre"
+  | "liberdade_economica"
+  | "mercado_carbono"
+  | "dados_abertos_mercado"
+  | "valorizacao_professor"
+  | "escola_militar"
+  | "lavoura_familiar"
+  | "previdencia_incentivada"
+  | "registro_cidadaos"
+  | "culto_lider"
+  | "rearmamento"
   | "milicia_urbana";
 
 export interface LawDef {
@@ -716,6 +740,179 @@ export const LAWS: Record<LawId, LawDef> = {
     description: "Delação e câmeras em toda esquina: 30% menos crime, mas o medo derruba o humor de todos (−2).",
     mods: { crime: -0.3 },
     moodAll: { text: "Vigilância total", delta: -2 },
+  },
+
+  // ── Esquerda Radical (mais) ──
+  teto_salarial: {
+    party: "esquerda",
+    name: "Teto salarial dos dirigentes",
+    description: "Ninguém na prefeitura ganha demais: manutenção 3% mais barata e +1 de humor dos trabalhadores.",
+    mods: { upkeep: -0.03 },
+    moodWorkers: { text: "Teto salarial", delta: 1 },
+  },
+  comissao_fabrica: {
+    party: "esquerda",
+    name: "Comissões de fábrica",
+    description: "Os trabalhadores participam da gestão: +1 de humor e 1% menos bens.",
+    mods: { goods: -0.01 },
+    moodWorkers: { text: "Comissão de fábrica", delta: 1 },
+  },
+  biblioteca_bairro: {
+    party: "esquerda",
+    name: "Biblioteca em cada bairro",
+    description: "Livro e internet de graça: QE alvo +4, com uma verba por ciclo.",
+    eq: 4,
+    cost: perPop(0.12),
+  },
+  preco_alimentos: {
+    party: "esquerda",
+    name: "Controle de preço dos alimentos",
+    description: "Comida tabelada: +1 de humor, mas os produtores plantam 3% menos.",
+    mods: { farm: -0.03 },
+    moodAll: { text: "Comida tabelada", delta: 1 },
+    cost: perPop(0.1),
+  },
+  nacionalizar_minas: {
+    party: "esquerda",
+    name: "Nacionalização das minas",
+    description: "As minas passam a ser públicas: 10% mais minério, mas manutenção 3% mais cara.",
+    mods: { ore: 0.1, upkeep: 0.03 },
+  },
+  // ── Social Democrata (mais) ──
+  bolsa_estudante: {
+    party: "socialdemocrata",
+    name: "Bolsa-estudante",
+    description: "Dinheiro para quem estuda: QE alvo +6, com uma verba por ciclo.",
+    eq: 6,
+    cost: perPop(0.18),
+  },
+  atencao_basica: {
+    party: "socialdemocrata",
+    name: "Atenção básica de saúde",
+    description: "Postos de saúde em cada bairro: hospitais atendem 12% mais gente, com uma verba por ciclo.",
+    mods: { health: 0.12 },
+    cost: perPop(0.1),
+  },
+  parques_lineares: {
+    party: "socialdemocrata",
+    name: "Parques lineares",
+    description: "Verde ao longo dos rios: 6% menos poluição e +1 de humor, com uma verba por ciclo.",
+    mods: { pollution: -0.06 },
+    moodAll: { text: "Parques lineares", delta: 1 },
+    cost: perPop(0.15),
+  },
+  centro_dia_idoso: {
+    party: "socialdemocrata",
+    name: "Centro-dia do idoso",
+    description: "Convivência, atividade e refeição para quem se aposentou: +1 de humor, com uma verba por ciclo.",
+    moodAll: { text: "Centro-dia do idoso", delta: 1 },
+    cost: perPop(0.15),
+  },
+  // ── Centro (mais) ──
+  selo_qualidade: {
+    party: "centro",
+    name: "Selo de qualidade",
+    description: "Produtos certificados valem mais: 3% mais bens e 3% menos poluição.",
+    mods: { goods: 0.03, pollution: -0.03 },
+  },
+  hortas_urbanas: {
+    party: "centro",
+    name: "Hortas urbanas",
+    description: "Hortas em lotes vazios: 6% mais comida, com uma pequena verba por ciclo.",
+    mods: { farm: 0.06 },
+    cost: perPop(0.06),
+  },
+  transporte_integrado: {
+    party: "centro",
+    name: "Transporte integrado",
+    description: "Um só bilhete para tudo: vias 10% mais fluidas, com uma verba por ciclo.",
+    mods: { traffic: 0.1 },
+    cost: perPop(0.1),
+  },
+  ouvidoria_publica: {
+    party: "centro",
+    name: "Ouvidoria pública",
+    description: "A população reclama e a prefeitura responde: +1 de humor, com uma pequena verba por ciclo.",
+    moodAll: { text: "Ouvidoria pública", delta: 1 },
+    cost: perPop(0.05),
+  },
+  // ── Liberal (mais) ──
+  importacao_livre: {
+    party: "liberal",
+    name: "Importação livre",
+    description: "Sem tarifas para o que vem de fora: frete 8% mais barato.",
+    trade: 0.08,
+  },
+  liberdade_economica: {
+    party: "liberal",
+    name: "Lei da liberdade econômica",
+    description: "Menos regras e menos imposto para a indústria: 4% mais bens e imposto industrial 10% menor.",
+    mods: { goods: 0.04 },
+    taxIndustry: 0.1,
+  },
+  mercado_carbono: {
+    party: "liberal",
+    name: "Mercado de carbono",
+    description: "Empresas negociam o direito de poluir: 10% menos poluição e 2% mais bens.",
+    mods: { pollution: -0.1, goods: 0.02 },
+  },
+  dados_abertos_mercado: {
+    party: "liberal",
+    name: "Dados abertos para o mercado",
+    description: "Informação pública para quem quer empreender: 5% mais pesquisa e manutenção 2% menor.",
+    mods: { research: 0.05, upkeep: -0.02 },
+  },
+  // ── Conservador (mais) ──
+  valorizacao_professor: {
+    party: "conservador",
+    name: "Valorização do professor",
+    description: "Respeito e salário para quem ensina: QE alvo +5, com uma verba por ciclo.",
+    eq: 5,
+    cost: perPop(0.15),
+  },
+  escola_militar: {
+    party: "conservador",
+    name: "Escola cívico-militar",
+    description: "Disciplina e farda nas escolas: QE alvo +3 e 5% menos crime, com uma verba por ciclo.",
+    eq: 3,
+    mods: { crime: -0.05 },
+    cost: perPop(0.1),
+  },
+  lavoura_familiar: {
+    party: "conservador",
+    name: "Apoio à lavoura familiar",
+    description: "Sítios de família recebem ajuda: 6% mais comida e 10% mais nascimentos.",
+    mods: { farm: 0.06 },
+    births: 0.1,
+  },
+  previdencia_incentivada: {
+    party: "conservador",
+    name: "Previdência privada incentivada",
+    description: "Dedução de imposto para quem poupa: a arrecadação geral sobe 3%.",
+    mods: { tax: 0.03 },
+  },
+  // ── Fascista (mais) ──
+  registro_cidadaos: {
+    party: "fascista",
+    name: "Registro de cidadãos",
+    description: "Todo morador fichado: 15% menos crime, mas −1 de humor para todos.",
+    mods: { crime: -0.15 },
+    moodAll: { text: "Fichado pelo Estado", delta: -1 },
+  },
+  culto_lider: {
+    party: "fascista",
+    name: "Culto ao líder",
+    description: "Retratos, hinos e comícios: +1 de humor, com uma verba por ciclo, mas 5% menos pesquisa.",
+    moodAll: { text: "Culto ao líder", delta: 1 },
+    mods: { research: -0.05 },
+    cost: perPop(0.15),
+  },
+  rearmamento: {
+    party: "fascista",
+    name: "Rearmamento",
+    description: "A indústria vira fábrica de armas: 10% mais bens e manutenção 5% mais cara, mas −1 de humor dos trabalhadores.",
+    mods: { goods: 0.1, upkeep: 0.05 },
+    moodWorkers: { text: "Rearmamento", delta: -1 },
   },
 };
 

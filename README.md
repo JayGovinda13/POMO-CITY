@@ -338,7 +338,13 @@ acompanhamentos) e `player.ts` (agendador).
 
 - **Empreendedores (direita) e cooperativas (esquerda)**: leis votadas na câmara abrem esse caminho para moradores **sem vaga**. Leis de empreendedorismo (Liberal, Conservador, Centro e Social Democrata: *Microempreendedor individual*, *Crédito para pequenos negócios*, *Polo de startups*, *Imposto simplificado*, *Feira de empreendedores*, *Negócio de família*, *Incubadora municipal*, *Microcrédito solidário*…) criam empreendedores: pagam mais imposto (US$1,5 por ciclo) e aumentam a demanda de comércio, mas quebram fácil (8% por ciclo, o dobro na crise econômica). Leis de cooperativismo (Esquerda: *Cooperativas de trabalhadores*, *Fábricas recuperadas*, *Banco cooperativo*…) criam cooperados: rendem menos (US$0,8) e resistem melhor (3%). As leis marcadas com 🏪 e 🤝 no painel da Câmara somam a força de cada caminho (`src/sim/business.ts`).
 - **Quem vota em quem**: empreendedor vota Liberal/Conservador; cooperado vota Esquerda/Social Democrata. Assim as leis que o prefeito aprova mudam a base eleitoral e a câmara da próxima eleição.
-- **76 leis** (eram 25): 14 da Esquerda, 15 Social Democrata, 13 Centro, 13 Liberal, 12 Conservador e 9 Fascista (só na crise), cada uma ligada a uma mecânica (trabalho, impostos, saúde, crime, família, comércio, pesquisa, poluição…).
+- **100 leis** (eram 25): 19 da Esquerda, 19 Social Democrata, 17 Centro, 17 Liberal, 16 Conservador e 12 Fascista (só na crise), cada uma ligada a uma mecânica (trabalho, impostos, saúde, crime, família, comércio, pesquisa, poluição…).
+
+## Decretos políticos
+
+- **26 decretos** (eram 9), em 7 categorias: Finanças, Energia, Comunidade, Foco, Trabalho, Segurança e Saúde e educação. Os novos também têm efeitos numéricos (saúde, crime, poluição, pesquisa, manutenção, bens) que se somam aos das tecnologias e leis.
+- **Cada decreto tem um partido que o defende** (e, às vezes, adversários). **Assinar** dá +1 de prestígio ao partido e −1 aos adversários; **revogar** faz o contrário (o aviso aparece em cada decreto, em Orçamento → Decretos, e o histórico da Câmara registra). O prestígio pesa nos votos da eleição, e os decretos em vigor dão um apoio extra (+0,3) enquanto durarem. Assinar e revogar logo em seguida zera o efeito.
+- **100 leis** no total (19 Esquerda, 19 Social Democrata, 17 Centro, 17 Liberal, 16 Conservador e 12 Fascista). A tabela das decisões está em `src/sim/laws.ts` e a dos decretos em `src/sim/finance.ts` (`ORDINANCE_POLITICS`).
 
 ## Balanceamento
 

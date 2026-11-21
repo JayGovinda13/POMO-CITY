@@ -5,6 +5,7 @@ import { citizenProfile, citizensView, type CitizenView } from "./citizens";
 import { CYCLES_PER_YEAR } from "./config";
 import { LAWS, LAW_IDS, PARTIES, PARTY_IDS, newCouncil, type Bill, type CouncilState, type LawId, type PartyId } from "./laws";
 import { ageYears } from "./people";
+import { ORDINANCE_POLITICS, ORDINANCES, type OrdinanceId } from "./finance";
 import type { CityState } from "./types";
 
 /** Mandato: 4 anos. */
@@ -112,7 +113,7 @@ export const crisisPull = (level: number): number => (level >= 3 ? 1 + (level - 
 export const ballot = (crisis: number): PartyId[] => PARTY_IDS.filter((p) => !PARTIES[p].crisisOnly || crisis > 0);
 
 /** Para qual partido cada morador tende a votar: pesos pelo que vive, pelas necessidades da idade e pela crise. */
-export function leaning(v: CitizenView, s: Pick<CityState, "council">, crisis = 0): Record<PartyId, number> {
+export function leaning(v: CitizenView, s: Pick<CityState, "council"> & Partial<Pick<CityState, "ordinances">>, crisis = 0): Record<PartyId, number> {
   // Na crise o Fascista já parte com algum apoio entre os descontentes em geral.
   const w: Record<PartyId, number> = { esquerda: 1, socialdemocrata: 1, centro: 1, liberal: 1, conservador: 1, fascista: 0.5 * crisis };
   const has = (t: string) => v.reasons.some((r) => r.text.startsWith(t));
@@ -179,6 +180,11 @@ export function leaning(v: CitizenView, s: Pick<CityState, "council">, crisis = 
   if (!v.job && !v.business && v.stage === "adulto") w.fascista += 0.6 * crisis;
   // Prestígio: quem teve leis aprovadas pelo prefeito sai mais forte; quem foi vetado, mais fraco.
   for (const p of PARTY_IDS) w[p] += (s.council?.standing[p] ?? 0) * 0.25;
+  // Decretos em vigor: quem os defende ganha um pouco de apoio enquanto durarem.
+  for (const id of Object.keys(s.ordinances ?? {}) as OrdinanceId[]) {
+    const pol = ORDINANCE_POLITICS[id];
+    if (pol) w[pol.party] += 0.3;
+  }
   if (!crisis) w.fascista = 0;
   return w;
 }
@@ -436,6 +442,21 @@ export function councilStep(s: CityState, rand: () => number): CouncilReport {
 }
 
 // ───────────────────────── decisões do prefeito ─────────────────────────
+
+/**
+ * Assinar um decreto dá +1 de prestígio ao partido que o defende e −1 aos adversários; revogar faz o
+ * contrário. O prestígio pesa nos votos da próxima eleição.
+ */
+export function ordinanceFavor(s: CityState, id: OrdinanceId, signed: boolean): void {
+  const pol = ORDINANCE_POLITICS[id];
+  const c = s.council;
+  if (!pol || !c) return;
+  const d = signed ? 1 : -1;
+  c.standing[pol.party] = clamp(c.standing[pol.party] + d, -5, 5);
+  for (const foe of pol.foes ?? []) c.standing[foe] = clamp(c.standing[foe] - d, -5, 5);
+  const foes = (pol.foes ?? []).map((f) => PARTIES[f].short).join("/");
+  note(c, s.cyclesCompleted, `Decreto ${signed ? "assinado" : "revogado"}: ${ORDINANCES[id].name} (${PARTIES[pol.party].short} ${d > 0 ? "+" : "−"}1${foes ? `, ${foes} ${d > 0 ? "−" : "+"}1` : ""})`);
+}
 
 /** Aprova ou veta uma proposta (muta `s`). Devolve erro em texto, ou null se deu certo. */
 export function decideBill(s: CityState, id: number, approve: boolean): string | null {

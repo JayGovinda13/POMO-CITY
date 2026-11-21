@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import {
+  ORDINANCE_POLITICS,
+  PARTIES,
+  type PartyId,
   BOND_VALUE,
   DEFAULT_TAX,
   DEPARTMENT_NAMES,
@@ -166,6 +169,7 @@ function OrdinancesTab({ city }: { city: CityState }) {
         </div>
       ))}
       <p className="text-zinc-500">Valores estimados por ciclo para a cidade de hoje; crescem com a população.</p>
+      <p className="text-zinc-500">Cada decreto tem um partido que o defende: assinar dá prestígio a ele e tira dos adversários; revogar faz o contrário. O prestígio e os decretos em vigor pesam na próxima eleição da Câmara.</p>
     </div>
   );
 }
@@ -174,6 +178,7 @@ function OrdinanceRow({ id, city }: { id: OrdinanceId; city: CityState }) {
   const def = ORDINANCES[id];
   const active = city.ordinances[id] !== undefined;
   const money = def.money(city);
+  const pol = ORDINANCE_POLITICS[id];
   return (
     <li className="flex items-start gap-2 border-2 border-zinc-700 p-1">
       <input
@@ -187,11 +192,28 @@ function OrdinanceRow({ id, city }: { id: OrdinanceId; city: CityState }) {
       <span className="flex-1">
         <strong>{def.name}</strong>
         <span className="block text-zinc-400">{def.description}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-zinc-400">
+          {active ? "Revogar" : "Assinar"}:
+          <PartyChip party={pol.party} sign={active ? -1 : 1} />
+          {(pol.foes ?? []).map((f) => (
+            <PartyChip key={f} party={f} sign={active ? 1 : -1} />
+          ))}
+          <span className="hidden sm:inline">(prestígio na eleição)</span>
+        </span>
       </span>
       <span className={money >= 0 ? "text-emerald-300" : "text-red-300"}>
         {money >= 0 ? "+" : "−"}${Math.abs(money)}/ciclo
       </span>
     </li>
+  );
+}
+
+function PartyChip({ party, sign }: { party: PartyId; sign: 1 | -1 }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 border border-zinc-600 px-1" title={PARTIES[party].name}>
+      <span className="inline-block h-2 w-2" style={{ background: PARTIES[party].color }} />
+      {PARTIES[party].short} <span className={sign > 0 ? "text-emerald-300" : "text-red-300"}>{sign > 0 ? "+1" : "−1"}</span>
+    </span>
   );
 }
 

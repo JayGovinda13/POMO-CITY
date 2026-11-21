@@ -2,7 +2,7 @@ import { BUILDINGS, PIPE_COST, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
 import { LIFE, ageOf, buildCyclesOf, renewCost, underConstruction } from "./lifecycle";
 import { DEFAULT_PENSION } from "./pension";
-import { decideBill, repealLaw } from "./council";
+import { decideBill, ordinanceFavor, repealLaw } from "./council";
 import { hasLaw } from "./laws";
 import { DEFAULT_LABOR, HOURS_OPTIONS, SECTOR_IDS, rulesOf } from "./labor";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
@@ -338,6 +338,7 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     const r = rulesOf(next, cmd.sector);
     next.labor = { ...DEFAULT_LABOR, ...next.labor, [cmd.sector]: { hours: cmd.hours ?? r.hours, pay: cmd.pay ?? r.pay } };
   } else if (cmd.type === "ordinance") {
+    ordinanceFavor(next, cmd.id, cmd.active);
     if (cmd.active) next.ordinances = { ...next.ordinances, [cmd.id]: next.cyclesCompleted };
     else {
       const rest = { ...next.ordinances };
