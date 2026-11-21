@@ -89,7 +89,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 12;
+export const CURRENT_SCHEMA_VERSION = 13;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -114,6 +114,8 @@ export interface CityState {
   elevation: number[];
   /** 1 = árvore no tile (Fase 9). */
   trees: number[];
+  /** Jornada e pagamento por setor (ver labor.ts). */
+  labor: import("./labor").LaborRules;
   /** Tecnologias pesquisadas (ver tech.ts). */
   techs: string[];
   /** Pesquisa em andamento: alvo escolhido e pontos acumulados (sem alvo, ficam guardados). */
@@ -191,6 +193,7 @@ export type Command =
   | { type: "insurance"; plan: "none" | "basico" | "completo" }
   | { type: "repair"; x: number; y: number }
   | { type: "research"; tech: string | null }
+  | { type: "labor"; sector: import("./labor").Sector; hours?: import("./labor").Hours; pay?: import("./labor").Pay }
   | { type: "terraform"; action: "raise" | "lower" | "water" | "land" | "tree"; x: number; y: number }
   | {
       type: "zone";

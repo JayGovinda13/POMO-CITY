@@ -48,6 +48,8 @@ import { citizensView, moodSummary, syncCitizens } from "./citizens";
 import { computeServices, landValueTaxFactor, updateQuality, type ServiceFields } from "./services";
 import { computeTraffic, type TrafficResult } from "./traffic";
 import { advanceResearch, researchPerCycle, techMods } from "./tech";
+import { SECTOR_OF_BUILDING, jobFactor, outputFactor } from "./labor";
+import { cityFatigue } from "./laborload";
 import { eventMods, rollEvents } from "./events";
 
 /** Sequência → Rank: 1 ciclo = D, 2 = C, 3 = B, 4 = A, 5+ = S. */
@@ -243,7 +245,9 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water
     const tm = techMods(s);
     const res = def.produces.resource;
     const tech = 1 + (res === "food" ? tm.farm : res === "wood" ? tm.wood : res === "ore" ? tm.ore : res === "metal" ? tm.refine : 0);
-    const qty = Math.floor(def.produces.base * biome.yield[res] * eff * climate * bonus * tech);
+    const sector = SECTOR_OF_BUILDING[b.type];
+    const work = sector ? outputFactor(s, sector) : 1; // jornada e pagamento do setor
+    const qty = Math.floor(def.produces.base * biome.yield[res] * eff * climate * bonus * tech * work);
     addTo(s.inventory, def.produces.resource, rank, qty);
     addTo(report.produced, def.produces.resource, rank, qty);
   }
@@ -253,7 +257,10 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water
   // Frete ferroviário (Fase 8): indústria perto de estação produz até 25% mais.
   const freight = 1 + 0.25 * (traffic?.freightShare ?? 0);
   // Tecnologia (linha de montagem, automação…) e eventos (greve) mexem nos bens.
-  const goods = Math.floor(industryFilled * GOODS_PER_INDUSTRY_JOB * freight * Math.max(0, 1 + techMods(s).goods + eventMods(s).goods));
+  // Máquinas dispensam operários mas mantêm a produção: cada empregado rende 1/fator a mais.
+  const goods = Math.floor(
+    (industryFilled * GOODS_PER_INDUSTRY_JOB * freight * Math.max(0, 1 + techMods(s).goods + eventMods(s).goods) * outputFactor(s, "fabrica")) / jobFactor(s),
+  );
   addTo(s.inventory, "goods", rank, goods);
   addTo(report.produced, "goods", rank, goods);
 };
@@ -270,7 +277,7 @@ const refiningSystem: CycleSystem = ({ s, report, status }) => {
     addTaken(report.consumed, p.input, taken);
     const inRank = averageRank(taken);
     const gross = Math.round((p.outputQty * inputQty) / p.inputQty);
-    const out = Math.round(gross * (1 - WASTE_BY_RANK[inRank]) * (1 + techMods(s).refine));
+    const out = Math.round(gross * (1 - WASTE_BY_RANK[inRank]) * (1 + techMods(s).refine) * outputFactor(s, "oficina"));
     const outRank = minRank(inRank, p.tierCap);
     addTo(s.inventory, p.output, outRank, out);
     addTo(report.produced, p.output, outRank, out);
@@ -448,6 +455,7 @@ const eventsSystem: CycleSystem = ({ s, report, rand, services }) => {
     hasFire: works("fire_station"),
     hasHospital: works("hospital"),
     approval: moodSummary(citizensView(s)).approval,
+    overwork: cityFatigue(s),
   });
   report.finance.events = s.money - before;
   if (news.length) report.events = news;

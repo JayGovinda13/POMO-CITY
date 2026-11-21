@@ -2,6 +2,7 @@ import { DEFAULT_POLICIES, START_EQ, START_LIFE } from "./config";
 import { CURRENT_SCHEMA_VERSION, ZONE, type CityState } from "./types";
 import { legacyTrees } from "./terrain";
 import { placeHallWings } from "./world";
+import { DEFAULT_LABOR } from "./labor";
 
 /**
  * Atualiza estados salvos em versões antigas para o formato atual.
@@ -99,6 +100,11 @@ export function migrateState(raw: CityState): CityState {
   if (from < 12) {
     // v11 → v12: a prefeitura virou um palácio de 3 tiles (ganha duas alas).
     placeHallWings(s);
+  }
+
+  if (from < 13) {
+    // v12 → v13: jornada e pagamento por setor.
+    s.labor = structuredClone(DEFAULT_LABOR);
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

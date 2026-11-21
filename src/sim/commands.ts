@@ -1,5 +1,6 @@
 import { BUILDINGS, PIPE_COST, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
+import { DEFAULT_LABOR, HOURS_OPTIONS, SECTOR_IDS, rulesOf } from "./labor";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
 import { BOND_VALUE, DEPARTMENTS, MAX_TAX, ORDINANCES, creditRating, type Department } from "./finance";
 import { PLANS, repairCost } from "./insurance";
@@ -109,6 +110,16 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     if (cmd.taxes && !["R", "C", "I"].every((k) => k in cmd.taxes!)) return "Impostos incompletos";
     for (const v of Object.values(cmd.funding ?? {})) if (!isInt(v) || v < 0 || v > 100) return "Verba de 0 a 100%";
     if (cmd.funding && Object.keys(cmd.funding).some((k) => !DEPARTMENTS.includes(k as Department))) return "Departamento desconhecido";
+    return null;
+  }
+
+  if (cmd.type === "labor") {
+    if (!SECTOR_IDS.includes(cmd.sector)) return "Setor desconhecido";
+    if (cmd.hours === undefined && cmd.pay === undefined) return "Nada a mudar";
+    if (cmd.hours !== undefined && !HOURS_OPTIONS.includes(cmd.hours)) return "Jornada de 6, 8, 10 ou 12 horas";
+    if (cmd.pay !== undefined && cmd.pay !== "tempo" && cmd.pay !== "peca") return "Pagamento por tempo ou por peça";
+    const r = rulesOf(s, cmd.sector);
+    if ((cmd.hours ?? r.hours) === r.hours && (cmd.pay ?? r.pay) === r.pay) return "Já é assim neste setor";
     return null;
   }
 
@@ -271,6 +282,9 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
   } else if (cmd.type === "budget") {
     if (cmd.taxes) next.taxes = { R: cmd.taxes.R, C: cmd.taxes.C, I: cmd.taxes.I };
     if (cmd.funding) next.funding = { ...next.funding, ...cmd.funding };
+  } else if (cmd.type === "labor") {
+    const r = rulesOf(next, cmd.sector);
+    next.labor = { ...DEFAULT_LABOR, ...next.labor, [cmd.sector]: { hours: cmd.hours ?? r.hours, pay: cmd.pay ?? r.pay } };
   } else if (cmd.type === "ordinance") {
     if (cmd.active) next.ordinances = { ...next.ordinances, [cmd.id]: next.cyclesCompleted };
     else {

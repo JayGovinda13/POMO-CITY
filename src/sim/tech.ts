@@ -37,11 +37,13 @@ export interface TechMods {
   disaster: number;
   /** Lotes a mais que crescem por ciclo. */
   growth: number;
+  /** Fração dos empregos industriais que as máquinas eliminam (ver labor.ts). */
+  automation: number;
 }
 
 export const NO_MODS: TechMods = {
   farm: 0, wood: 0, ore: 0, refine: 0, goods: 0, power: 0, water: 0, pollution: 0, crime: 0,
-  upkeep: 0, tax: 0, research: 0, traffic: 0, health: 0, disaster: 0, growth: 0,
+  upkeep: 0, tax: 0, research: 0, traffic: 0, health: 0, disaster: 0, growth: 0, automation: 0,
 };
 
 export type EraId = "industrial" | "eletrica" | "atomica" | "digital" | "verde" | "futuro";
@@ -79,7 +81,7 @@ export const TECHS: Record<string, TechDef> = {
   // ── Era Elétrica ──
   eletrificacao: { name: "Eletrificação", era: "eletrica", year: 1930, cost: 70, requires: ["maquina_vapor"], description: "Redes e turbinas melhores: +15% de energia.", mods: { power: 0.15 } },
   fertilizantes: { name: "Fertilizantes", era: "eletrica", year: 1935, cost: 80, requires: ["agricultura_moderna"], description: "Adubo químico: +20% de comida.", mods: { farm: 0.2 } },
-  linha_montagem: { name: "Linha de montagem", era: "eletrica", year: 1935, cost: 90, requires: ["aco"], description: "Produção em série: +20% de bens.", mods: { goods: 0.2 } },
+  linha_montagem: { name: "Linha de montagem", era: "eletrica", year: 1935, cost: 90, requires: ["aco"], description: "Produção em série: +20% de bens, mas 8% dos empregos industriais somem.", mods: { goods: 0.2, automation: 0.08 } },
   radio: { name: "Rádio", era: "eletrica", year: 1940, cost: 80, requires: ["imprensa"], description: "Educação e comércio no ar: +10% de pesquisa e +5% de impostos.", mods: { research: 0.1, tax: 0.05 } },
   antibioticos: { name: "Antibióticos", era: "eletrica", year: 1945, cost: 110, requires: ["saneamento"], description: "Hospitais atendem 20% mais gente.", mods: { health: 0.2 } },
   policia_cientifica: { name: "Polícia científica", era: "eletrica", year: 1950, cost: 110, requires: ["radio"], description: "Perícia e rádio-patrulha: −15% de crime.", mods: { crime: -0.15 } },
@@ -87,14 +89,14 @@ export const TECHS: Record<string, TechDef> = {
   energia_nuclear: { name: "Energia nuclear", era: "atomica", year: 1960, cost: 220, requires: ["eletrificacao"], description: "Libera a usina nuclear (120 MW).", unlocks: ["nuclear_plant"] },
   revolucao_verde: { name: "Revolução verde", era: "atomica", year: 1965, cost: 200, requires: ["fertilizantes"], description: "Sementes melhoradas: +25% de comida.", mods: { farm: 0.25 } },
   engenharia_trafego: { name: "Engenharia de tráfego", era: "atomica", year: 1965, cost: 180, requires: ["locomotiva"], description: "Semáforos e viadutos: +25% de capacidade das vias.", mods: { traffic: 0.25 } },
-  conteineres: { name: "Contêineres", era: "atomica", year: 1968, cost: 200, requires: ["linha_montagem"], description: "Logística padronizada: +10% de bens e +5% de impostos.", mods: { goods: 0.1, tax: 0.05 } },
+  conteineres: { name: "Contêineres", era: "atomica", year: 1968, cost: 200, requires: ["linha_montagem"], description: "Logística padronizada: +10% de bens e +5% de impostos; 4% dos empregos industriais somem.", mods: { goods: 0.1, tax: 0.05, automation: 0.04 } },
   televisao: { name: "Televisão", era: "atomica", year: 1970, cost: 180, requires: ["radio"], description: "Propaganda e consumo: +5% de impostos.", mods: { tax: 0.05 } },
-  computadores: { name: "Computadores", era: "atomica", year: 1975, cost: 260, requires: ["televisao"], description: "Prefeitura informatizada: +20% de pesquisa e −5% de manutenção.", mods: { research: 0.2, upkeep: -0.05 } },
+  computadores: { name: "Computadores", era: "atomica", year: 1975, cost: 260, requires: ["televisao"], description: "Prefeitura informatizada: +20% de pesquisa e −5% de manutenção; 5% dos empregos industriais somem.", mods: { research: 0.2, upkeep: -0.05, automation: 0.05 } },
   // ── Era Digital ──
   internet: { name: "Internet", era: "digital", year: 1990, cost: 400, requires: ["computadores"], description: "+20% de pesquisa e +5% de impostos.", mods: { research: 0.2, tax: 0.05 } },
   reciclagem: { name: "Reciclagem", era: "digital", year: 1990, cost: 350, requires: ["conteineres"], description: "Libera o centro de reciclagem e reduz 10% da poluição.", mods: { pollution: -0.1 }, unlocks: ["recycling_center"] },
   energia_solar: { name: "Energia solar", era: "digital", year: 1995, cost: 420, requires: ["eletrificacao", "computadores"], description: "Libera a usina solar (limpa).", unlocks: ["solar_plant"] },
-  automacao: { name: "Automação industrial", era: "digital", year: 2000, cost: 480, requires: ["linha_montagem", "computadores"], description: "Robôs nas fábricas: +25% de bens e +15% de refino.", mods: { goods: 0.25, refine: 0.15 } },
+  automacao: { name: "Automação industrial", era: "digital", year: 2000, cost: 480, requires: ["linha_montagem", "computadores"], description: "Robôs nas fábricas: +25% de bens e +15% de refino; 20% dos empregos industriais somem.", mods: { goods: 0.25, refine: 0.15, automation: 0.2 } },
   biotecnologia: { name: "Biotecnologia", era: "digital", year: 2005, cost: 500, requires: ["antibioticos", "revolucao_verde"], description: "+20% de comida e +15% de saúde.", mods: { farm: 0.2, health: 0.15 } },
   cidade_inteligente: { name: "Cidade inteligente", era: "digital", year: 2015, cost: 650, requires: ["internet"], description: "Sensores e dados: −10% de manutenção, +15% nas vias, −10% de crime.", mods: { upkeep: -0.1, traffic: 0.15, crime: -0.1 } },
   // ── Era Verde ──
@@ -102,7 +104,7 @@ export const TECHS: Record<string, TechDef> = {
   baterias: { name: "Baterias de grafeno", era: "verde", year: 2035, cost: 950, requires: ["energia_solar"], description: "Energia guardada: +20% de energia.", mods: { power: 0.2 } },
   agricultura_vertical: { name: "Agricultura vertical", era: "verde", year: 2040, cost: 1000, requires: ["biotecnologia"], description: "Fazendas em prédios: +30% de comida e +10% de água.", mods: { farm: 0.3, water: 0.1 } },
   agua_do_futuro: { name: "Água do futuro", era: "verde", year: 2045, cost: 1100, requires: ["baterias"], description: "Captação e reúso total: +30% de água.", mods: { water: 0.3 } },
-  inteligencia_artificial: { name: "Inteligência artificial", era: "verde", year: 2050, cost: 1400, requires: ["internet", "automacao"], description: "+30% de pesquisa e −10% de manutenção.", mods: { research: 0.3, upkeep: -0.1 } },
+  inteligencia_artificial: { name: "Inteligência artificial", era: "verde", year: 2050, cost: 1400, requires: ["internet", "automacao"], description: "+30% de pesquisa e −10% de manutenção; 15% dos empregos industriais somem.", mods: { research: 0.3, upkeep: -0.1, automation: 0.15 } },
   medicina_regenerativa: { name: "Medicina regenerativa", era: "verde", year: 2055, cost: 1300, requires: ["biotecnologia"], description: "Hospitais atendem 30% mais gente.", mods: { health: 0.3 } },
   // ── Era do Futuro ──
   fusao: { name: "Fusão nuclear", era: "futuro", year: 2070, cost: 2500, requires: ["energia_nuclear", "inteligencia_artificial"], description: "Libera o reator de fusão (400 MW, sem combustível).", unlocks: ["fusion_plant"] },

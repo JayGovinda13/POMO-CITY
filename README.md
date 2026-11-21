@@ -141,6 +141,18 @@ mostra o custo com **↶ Desfazer** (último toque), **✖ Cancelar** (tudo) e *
 confirmar a obra entra na fila do servidor. Pesquisa, orçamento e decretos continuam valendo na hora.
 Propostas não confirmadas são descartadas quando o foco começa.
 
+## Trabalho e salário (inspirado em *O Capital*, Livro 1)
+
+Botão 🔨 na barra superior. Por setor (campo, oficinas e fábricas) o jogador escolhe a **jornada** (6, 8,
+10 ou 12 h) e a **forma de pagamento** (por tempo ou por peça):
+- Jornada longa e pagamento por peça **aumentam a produção** (de −12% a +32%), mas derrubam o **humor
+  dos operários do setor**, aumentam o **desgaste da cidade** (a expectativa de vida cai até 6 anos) e
+  tornam a **greve** mais provável. Jornada curta rende menos e anima.
+- **Automação**: as tecnologias linha de montagem, contêineres, computadores, automação industrial e
+  inteligência artificial **eliminam parte dos empregos industriais** (até 55%) mantendo a produção.
+  A educação (QE acima de 40) realoca até metade do efeito; o resto vira desemprego.
+- Fora do escopo desta etapa: poder de compra como humor (precisa de preços que variem no mercado).
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

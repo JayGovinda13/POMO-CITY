@@ -52,6 +52,7 @@ import { CycleReportModal } from "./CycleReportModal";
 import { GameMenu } from "./GameMenu";
 import { MarketButton } from "./MarketPanel";
 import { BudgetButton } from "./BudgetPanel";
+import { LaborButton } from "./LaborPanel";
 import { TechButton } from "./TechPanel";
 import { LeaderboardButton } from "./LeaderboardPanel";
 import { EventsChip } from "./EventsChip";
@@ -209,6 +210,7 @@ export function Hud() {
           <CitizensButton />
           <MarketButton />
           <BudgetButton />
+          <LaborButton />
           <TechButton />
           <LeaderboardButton />
           <MusicButton />

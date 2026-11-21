@@ -10,6 +10,7 @@ import { buildingStatus, laborStats, type BuildingStatus } from "./status";
 import { computeTraffic, type TrafficResult } from "./traffic";
 import { isWater } from "./terrain";
 import { techMods } from "./tech";
+import { cityFatigue } from "./laborload";
 import { START_EQ, START_LIFE } from "./config";
 import { ZONE, type CityState } from "./types";
 
@@ -301,7 +302,8 @@ export function updateQuality(s: CityState, f: ServiceFields): void {
   s.eq = Math.round(clamp(next, 0, EQ_MAX) * 10) / 10;
 
   // Expectativa de vida: hospitais sobem, poluição derruba. Anda no máximo 1 ano por estação.
-  const lifeTarget = 50 + f.healthServed * 30 - f.avg.pollution * 0.25 + (s.eq ?? 0) * 0.03;
+  // Jornadas longas e pagamento por peça gastam a saúde: até −6 anos com exaustão total.
+  const lifeTarget = 50 + f.healthServed * 30 - f.avg.pollution * 0.25 + (s.eq ?? 0) * 0.03 - cityFatigue(s) * 6;
   const life = s.lifeExpectancy ?? START_LIFE;
   const step = Math.max(-1, Math.min(1, (lifeTarget - life) * 0.2));
   s.lifeExpectancy = Math.round(clamp(life + step, 30, 95) * 10) / 10;

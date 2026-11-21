@@ -100,12 +100,15 @@ export interface EventContext {
   hasHospital?: boolean;
   /** Aprovação dos moradores, de −1 a 1. Com a população triste (< 0), greves podem estourar. */
   approval?: number;
+  /** Desgaste dos trabalhadores (0..1): jornada longa e pagamento por peça. Aumenta a chance de greve. */
+  overwork?: number;
 }
 
 export function rollEvents(s: CityState, rand: () => number, info: EventContext): EventNews[] {
   const hasFire = info.hasFire ?? true;
   const hasHospital = info.hasHospital ?? true;
   const approval = info.approval ?? 0;
+  const overwork = info.overwork ?? 0;
   const news: EventNews[] = [];
   s.events ??= [];
 
@@ -133,11 +136,11 @@ export function rollEvents(s: CityState, rand: () => number, info: EventContext)
   const cause = (id: EventId) => {
     if (id === "incendio") return !hasFire && (s.zoneLevel.some((l) => l > 0) || s.buildings.some((b) => b.type !== "road" && !isHall(b)));
     if (id === "gripe" || id === "peste") return !hasHospital;
-    if (id === "greve") return approval < 0;
+    if (id === "greve") return approval < 0 || overwork >= 0.5;
     return true;
   };
   // Povo muito triste faz greve mais provável.
-  const weight = (id: EventId) => (id === "greve" ? DEF[id].weight + Math.round(-approval * 8) : DEF[id].weight);
+  const weight = (id: EventId) => (id === "greve" ? DEF[id].weight + Math.max(0, Math.round(-approval * 8)) + Math.round(overwork * 6) : DEF[id].weight);
   const pool = (Object.keys(DEF) as EventId[]).filter((id) => !(DEF[id].challenge && hasChallenge) && !s.events!.some((e) => e.id === id) && cause(id));
   const total = pool.reduce((a, id) => a + weight(id), 0);
   let x = rand() * total;

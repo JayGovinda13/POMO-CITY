@@ -1,6 +1,7 @@
 import { BUILDINGS, ZONES } from "./catalog";
 import { UNPOWERED_EFFICIENCY } from "./config";
 import { ZONE, type CityState } from "./types";
+import { SECTOR_OF_BUILDING, industrialLotJobs, jobFactor } from "./labor";
 import { connectedRoads, isRoadConnected } from "./world";
 
 export interface BuildingStatus {
@@ -22,20 +23,23 @@ export function buildingStatus(s: CityState, powered?: Uint8Array): Map<number, 
   const out = new Map<number, BuildingStatus>();
   let freeWorkers = s.population;
   const ordered = [...s.buildings].sort((a, b) => a.id - b.id);
+  const jobs = jobFactor(s);
   for (const b of ordered) {
     const def = BUILDINGS[b.type];
     const connected = !def.needsRoad || isRoadConnected(s, b, network);
+    // Máquinas (automação) dispensam parte dos operários das fábricas de produção; o resto produz igual.
+    const required = def.workers > 0 && SECTOR_OF_BUILDING[b.type] ? Math.max(1, Math.ceil(def.workers * jobs)) : def.workers;
     let staffed = 0;
     // Construção danificada por desastre não opera nem contrata até ser reparada.
-    if (connected && def.workers > 0 && !b.damaged) {
-      staffed = Math.min(def.workers, freeWorkers);
+    if (connected && required > 0 && !b.damaged) {
+      staffed = Math.min(required, freeWorkers);
       freeWorkers -= staffed;
     }
     const needsPower = (def.powerUse ?? 0) > 0;
     const hasPower = !powered || !needsPower || powered[b.y * s.width + b.x] === 1;
-    const staffRatio = def.workers === 0 ? 1 : staffed / def.workers;
+    const staffRatio = required === 0 ? 1 : staffed / required;
     const efficiency = !connected || b.damaged ? 0 : staffRatio * (hasPower ? 1 : UNPOWERED_EFFICIENCY);
-    out.set(b.id, { connected, staffed, required: def.workers, powered: hasPower, efficiency });
+    out.set(b.id, { connected, staffed, required, powered: hasPower, efficiency });
   }
   return out;
 }
@@ -64,7 +68,7 @@ export function laborStats(s: CityState, status = buildingStatus(s)): LaborStats
     if (!lvl) continue;
     if (s.zoneType[i] === ZONE.R) housing += lvl * ZONES.R.perLevel;
     else if (s.zoneType[i] === ZONE.C) commercialJobs += lvl * ZONES.C.perLevel;
-    else if (s.zoneType[i] === ZONE.I) industrialJobs += lvl * ZONES.I.perLevel;
+    else if (s.zoneType[i] === ZONE.I) industrialJobs += industrialLotJobs(s, lvl, ZONES.I.perLevel);
   }
   for (const b of s.buildings) housing += BUILDINGS[b.type].housing ?? 0;
 

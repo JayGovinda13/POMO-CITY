@@ -1,6 +1,7 @@
 import { BIOMES } from "./catalog";
 import { CYCLES_PER_YEAR, DEFAULT_POLICIES, LEGACY_MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_INVENTORY, STARTING_MONEY, START_EQ, START_LIFE } from "./config";
 import { bfsDistances } from "./grid";
+import { DEFAULT_LABOR } from "./labor";
 import { generateMap, isWater, legacyTrees, viaLinks, type MapOptions } from "./terrain";
 import { CURRENT_SCHEMA_VERSION, type BiomeId, type Building, type CityState, type Terrain } from "./types";
 
@@ -111,6 +112,7 @@ export function createCity(
     terrain,
     elevation,
     trees,
+    labor: structuredClone(DEFAULT_LABOR),
     techs: [],
     research: { target: null, progress: 0 },
     events: [],

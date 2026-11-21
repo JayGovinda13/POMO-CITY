@@ -17,6 +17,7 @@ import { TRIP_LIMIT_POPULATION, computeTraffic } from "./traffic";
 import { eventMods } from "./events";
 import { ZONE, type BuildingType, type CityState } from "./types";
 import { rng } from "./world";
+import { SECTOR_OF_BUILDING, industrialLotJobs, laborMood, type Sector } from "./labor";
 
 export type Gender = "f" | "m";
 export type Mood = "feliz" | "ok" | "triste";
@@ -136,6 +137,8 @@ const INDUSTRY_TITLES = [g("Operário", "Operária"), g("Soldador", "Soldadora")
 interface Slot {
   x: number;
   y: number;
+  /** Setor de trabalho (jornada e pagamento), quando existe. */
+  sector?: Sector;
   place: string;
   category: JobCategory;
   title: (gender: Gender, k: number) => string;
@@ -149,7 +152,7 @@ function jobSlots(s: CityState, status = buildingStatus(s)): Slot[] {
     const job = BUILDING_JOBS[b.type];
     if (!st || !job) continue;
     for (let k = 0; k < st.staffed; k++) {
-      slots.push({ x: b.x, y: b.y, place: BUILDINGS[b.type].name, category: job.category, title: (gd) => job.title[gd] });
+      slots.push({ x: b.x, y: b.y, sector: SECTOR_OF_BUILDING[b.type], place: BUILDINGS[b.type].name, category: job.category, title: (gd) => job.title[gd] });
     }
   }
   for (const [code, perLevel, titles, category, place] of [
@@ -160,8 +163,9 @@ function jobSlots(s: CityState, status = buildingStatus(s)): Slot[] {
       if (s.zoneType[i] !== code || !s.zoneLevel[i]) continue;
       const x = i % s.width;
       const y = Math.floor(i / s.width);
-      for (let k = 0; k < s.zoneLevel[i] * perLevel; k++) {
-        slots.push({ x, y, place, category, title: (gd, kk) => titles[(i + kk) % titles.length][gd] });
+      const count = code === ZONE.I ? industrialLotJobs(s, s.zoneLevel[i], perLevel) : s.zoneLevel[i] * perLevel;
+      for (let k = 0; k < count; k++) {
+        slots.push({ x, y, sector: code === ZONE.I ? "fabrica" : undefined, place, category, title: (gd, kk) => titles[(i + kk) % titles.length][gd] });
       }
     }
   }
@@ -214,6 +218,8 @@ export function citizensView(s: CityState): CitizenView[] {
     const reasons: CitizenView["reasons"] = [];
     if (slot) reasons.push({ text: "Tem emprego", delta: 2 });
     else reasons.push({ text: "Desempregado(a)", delta: -2 });
+    // Jornada e forma de pagamento do setor em que trabalha.
+    if (slot?.sector) for (const m of laborMood(s, slot.sector)) reasons.push(m);
     if (homeIdx === undefined) reasons.push({ text: "Sem moradia", delta: -3 });
     else if (power.powered[homeIdx]) reasons.push({ text: "Casa com energia", delta: 1 });
     else reasons.push({ text: "Casa sem energia", delta: -2 });

@@ -9,6 +9,11 @@ import {
   RESOURCE_IDS,
   ORDINANCES,
   TECHS,
+  HOURS_OPTIONS,
+  SECTOR_IDS,
+  type Hours,
+  type Pay,
+  type Sector,
   type OrdinanceId,
   type PolicyMode,
   type ResourceId,
@@ -97,6 +102,13 @@ export function parseCommands(raw: unknown): Command[] | null {
     if (r.type === "ordinance") {
       if (typeof r.id !== "string" || !Object.hasOwn(ORDINANCES, r.id) || typeof r.active !== "boolean") return null;
       out.push({ type: "ordinance", id: r.id as OrdinanceId, active: r.active });
+      continue;
+    }
+    if (r.type === "labor") {
+      if (typeof r.sector !== "string" || !SECTOR_IDS.includes(r.sector as Sector)) return null;
+      if (r.hours !== undefined && !HOURS_OPTIONS.includes(r.hours as Hours)) return null;
+      if (r.pay !== undefined && r.pay !== "tempo" && r.pay !== "peca") return null;
+      out.push({ type: "labor", sector: r.sector as Sector, ...(r.hours !== undefined ? { hours: r.hours as Hours } : {}), ...(r.pay !== undefined ? { pay: r.pay as Pay } : {}) });
       continue;
     }
     if (r.type === "insurance") {

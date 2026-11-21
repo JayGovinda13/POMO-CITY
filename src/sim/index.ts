@@ -25,3 +25,5 @@ export * from "./traffic";
 export * from "./terrain";
 export * from "./tech";
 export * from "./events";
+export * from "./labor";
+export * from "./laborload";
