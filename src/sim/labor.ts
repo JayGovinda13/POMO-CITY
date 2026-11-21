@@ -5,6 +5,7 @@
 import type { BuildingType, CityState } from "./types";
 import { techMods } from "./tech";
 import { educationProductivity } from "./strikes";
+import { hasLaw } from "./laws";
 
 /** Setores com regras próprias de trabalho. */
 export type Sector = "campo" | "oficina" | "fabrica";
@@ -43,13 +44,14 @@ export const DEFAULT_LABOR: LaborRules = {
 };
 
 /** O que as regras de trabalho leem da cidade. */
-export type LaborCity = Pick<CityState, "labor" | "buildings" | "ordinances"> & Partial<Pick<CityState, "cyclesCompleted" | "eq">>;
+export type LaborCity = Pick<CityState, "labor" | "buildings" | "ordinances"> & Partial<Pick<CityState, "cyclesCompleted" | "eq" | "council">>;
 
 /** Regras do setor (saves antigos sem o campo usam o padrão). */
 export const rulesOf = (s: Pick<CityState, "labor">, sector: Sector): SectorRules => s.labor?.[sector] ?? DEFAULT_LABOR[sector];
 
 /** Há fiscais de fábrica trabalhando? (Fiscalização do Trabalho que não foi danificada.) */
-export const inspected = (s: Pick<CityState, "buildings"> & Partial<Pick<CityState, "cyclesCompleted">>): boolean =>
+export const inspected = (s: Pick<CityState, "buildings"> & Partial<Pick<CityState, "cyclesCompleted" | "council">>): boolean =>
+  hasLaw(s, "fiscalizacao") ||
   s.buildings.some((b) => b.type === "labor_office" && !b.damaged && (b.readyAt === undefined || (s.cyclesCompleted ?? 0) >= b.readyAt));
 
 /** Decreto "Escola-fábrica" em vigor? */

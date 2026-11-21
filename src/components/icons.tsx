@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { IconContext } from "react-icons";
 import {
   GiAtom,
+  GiGavel,
   GiHourglass,
   GiHammerNails,
   GiAnticlockwiseRotation,
@@ -69,6 +70,7 @@ import type { ResourceId, Weather } from "@/sim";
 // Nomes pela função na interface (os componentes não precisam saber de qual biblioteca vêm).
 export {
   GiAtom as Atom,
+  GiGavel as Gavel,
   GiHourglass as Hourglass,
   GiHammerNails as Hammer,
   GiAnticlockwiseRotation as RotateLeft,

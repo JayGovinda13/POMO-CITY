@@ -94,7 +94,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 16;
+export const CURRENT_SCHEMA_VERSION = 17;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -119,6 +119,8 @@ export interface CityState {
   elevation: number[];
   /** 1 = árvore no tile (Fase 9). */
   trees: number[];
+  /** Câmara de vereadores, propostas e leis em vigor (ver council.ts e laws.ts). */
+  council: import("./laws").CouncilState;
   /** Vida de cada morador: idade, família e poupança (ver people.ts). */
   people: Record<number, import("./people").Life>;
   /** Idade de aposentar e previdência pública e privada (ver pension.ts). */
@@ -205,6 +207,8 @@ export type Command =
   | { type: "repair"; x: number; y: number }
   | { type: "research"; tech: string | null }
   | { type: "renew"; x: number; y: number }
+  | { type: "bill"; id: number; approve: boolean }
+  | { type: "repeal"; law: import("./laws").LawId }
   | { type: "pension"; retireAge?: number; publicOn?: boolean; publicRate?: number; publicLevel?: 1 | 2 | 3; privateOn?: boolean; privateSubsidy?: number }
   | { type: "labor"; sector: import("./labor").Sector; hours?: import("./labor").Hours; pay?: import("./labor").Pay }
   | { type: "terraform"; action: "raise" | "lower" | "water" | "land" | "tree"; x: number; y: number }
@@ -265,6 +269,8 @@ export interface CycleReport {
   events?: import("./events").EventNews[];
   /** Nascimentos, mortes e casamentos do ciclo (ver demography.ts). */
   demography?: import("./demography").DemographyReport;
+  /** Câmara no ciclo: eleição, proposta e arquivadas (ver council.ts). */
+  council?: import("./council").CouncilReport;
   /** Aposentadoria do ciclo (ver pensionsystem.ts). */
   pension?: import("./pensionsystem").PensionReport;
   /** Greve que valeu neste ciclo (ver strikes.ts). */
@@ -321,4 +327,6 @@ export interface FinanceBreakdown {
   insurance: number;
   /** Previdência: déficit público e subsídio privado. */
   pension: number;
+  /** Verbas das leis municipais em vigor. */
+  laws: number;
 }

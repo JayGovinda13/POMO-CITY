@@ -5,6 +5,7 @@ import { placeHallWings } from "./world";
 import { DEFAULT_LABOR } from "./labor";
 import { DEFAULT_PENSION } from "./pension";
 import { ensureLives } from "./demography";
+import { newCouncil } from "./laws";
 
 /**
  * Atualiza estados salvos em versões antigas para o formato atual.
@@ -124,6 +125,11 @@ export function migrateState(raw: CityState): CityState {
     s.pension = { ...DEFAULT_PENSION };
     s.people = {};
     ensureLives(s);
+  }
+
+  if (from < 17) {
+    // v16 → v17: câmara de vereadores (a primeira eleição acontece no próximo ciclo).
+    s.council = newCouncil();
   }
 
   s.schemaVersion = CURRENT_SCHEMA_VERSION;

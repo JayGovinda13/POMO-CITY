@@ -216,6 +216,23 @@ A prefeitura decide se oferece aposentadoria e como:
 - **Humor:** aposentado com renda (benefício público ou poupança) +1; **sem renda −3**; contribuição acima
   de 10% pesa nos trabalhadores. Tudo vem desligado por padrão.
 
+## Câmara de vereadores (botão 🔨 martelo)
+
+A partir de 30 moradores a cidade elege uma **câmara de 5 a 11 vereadores** (pela população) para um mandato
+de **4 anos (16 ciclos)**:
+- **Eleição:** cada morador adulto vota pelo que vive: desempregado, trabalho pesado, aposentado sem renda e
+  jornada exaustiva pesam no Partido do Trabalho; os ricos e o comércio, na União Empresarial; ar poluído, no
+  Verde; filhos, aposentados e falta de hospital, na Aliança Social; bairro perigoso, na Ordem e Progresso.
+  As cadeiras saem por D'Hondt e os vereadores são **moradores de verdade** (nome, idade e partido).
+  Vereador que morre ou se muda é substituído por um suplente do mesmo partido.
+- **Uma proposta de lei por ciclo**, de um dos partidos (sorteado pelas cadeiras). Você **aprova ou veta** na
+  pausa; sem decisão, a pauta guarda até 3 projetos e arquiva o mais antigo. 15 leis ligam a mecânicas que já
+  existem: jornada de 8 horas, salário mínimo, fiscalização obrigatória, isenção para a indústria, jornada
+  flexível, livre comércio, taxa de carbono, energia limpa, arborização, saúde universal, merenda escolar,
+  pensão universal, toque de recolher, guarda municipal e austeridade. Leis em vigor podem ser **revogadas**.
+- **Prestígio:** aprovar uma lei dá +1 ao partido, vetar ou revogar dá −1; quem tem prestígio ganha votos.
+  Algumas leis têm **verba por ciclo** (linha "Leis municipais" do livro-caixa).
+
 ## Orçamento
 
 Em **🏛 Orçamento**: impostos por zona, verba de transportes e energia (estradas sem verba se

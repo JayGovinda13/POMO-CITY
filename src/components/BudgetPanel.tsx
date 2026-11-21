@@ -260,6 +260,7 @@ const FIN_ROWS: { key: keyof CycleReport["finance"]; label: string; sign: 1 | -1
   { key: "insurance", label: "Seguro (prêmio)", sign: -1 },
   { key: "storage", label: "Armazenagem (estoque parado)", sign: -1 },
   { key: "pension", label: "Previdência (déficit e subsídio)", sign: -1 },
+  { key: "laws", label: "Leis municipais (verbas)", sign: -1 },
 ];
 
 function LedgerTab({ city }: { city: CityState }) {

@@ -9,6 +9,8 @@ import {
   RESOURCE_IDS,
   ORDINANCES,
   TECHS,
+  LAWS,
+  type LawId,
   HOURS_OPTIONS,
   SECTOR_IDS,
   type Hours,
@@ -108,6 +110,16 @@ export function parseCommands(raw: unknown): Command[] | null {
       const patch: Record<string, unknown> = {};
       for (const k of ["retireAge", "publicOn", "publicRate", "publicLevel", "privateOn", "privateSubsidy"]) if (r[k] !== undefined) patch[k] = r[k];
       out.push({ type: "pension", ...patch } as Command);
+      continue;
+    }
+    if (r.type === "bill") {
+      if (!Number.isInteger(r.id) || typeof r.approve !== "boolean") return null;
+      out.push({ type: "bill", id: r.id as number, approve: r.approve });
+      continue;
+    }
+    if (r.type === "repeal") {
+      if (typeof r.law !== "string" || !Object.hasOwn(LAWS, r.law)) return null;
+      out.push({ type: "repeal", law: r.law as LawId });
       continue;
     }
     if (r.type === "renew") {

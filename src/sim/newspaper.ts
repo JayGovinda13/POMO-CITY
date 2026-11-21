@@ -9,6 +9,7 @@ import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
 import { RANKS, type CityState, type CycleReport, type ResourceId } from "./types";
 import { QUARTER_MONTHS, rng } from "./world";
 import { TECHS, TECH_IDS } from "./tech";
+import { LAWS, PARTIES } from "./laws";
 
 export interface NewsStory {
   title: string;
@@ -142,6 +143,23 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
 
   // ── Notícias ──
   const stories: NewsStory[] = [...extra];
+  // Câmara de vereadores: eleição e proposta de lei.
+  const cr = report.council;
+  if (cr?.election) {
+    const seats = (Object.keys(cr.election.seats) as (keyof typeof cr.election.seats)[]).filter((p) => cr.election!.seats[p] > 0);
+    stories.push({
+      title: "Eleição para a Câmara de Vereadores",
+      body: `Os moradores foram às urnas: ${seats.map((p) => `${PARTIES[p].short} ${cr.election!.seats[p]}`).join(", ")}. Mandato de 4 anos.`,
+      tone: "neutral",
+    });
+  }
+  if (cr?.proposal) {
+    stories.push({
+      title: `Câmara propõe: ${LAWS[cr.proposal.law].name}`,
+      body: `Projeto do vereador ${cr.proposal.proposer} (${PARTIES[cr.proposal.party].short}). O prefeito decide: aprovar ou vetar, na pausa.`,
+      tone: "neutral",
+    });
+  }
   // Vida na cidade: nascimentos, casamentos e despedidas.
   const dm = report.demography;
   if (dm && dm.births > 0) {

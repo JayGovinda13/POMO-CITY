@@ -8,6 +8,7 @@
 import type { BuildingType, CityState, Rank } from "./types";
 import { RANK_YIELD } from "./config";
 import { isDown } from "./lifecycle";
+import { lawMods } from "./laws";
 import { cityYear } from "./world";
 
 /** Modificadores somados de todas as tecnologias pesquisadas (frações: 0,15 = +15%). */
@@ -119,8 +120,11 @@ export const TECHS: Record<string, TechDef> = {
 export const TECH_IDS = Object.keys(TECHS);
 
 /** Soma dos modificadores das tecnologias pesquisadas. */
-export function techMods(s: Pick<CityState, "techs">): TechMods {
+export function techMods(s: Pick<CityState, "techs"> & Partial<Pick<CityState, "council">>): TechMods {
   const out: TechMods = { ...NO_MODS };
+  // Leis municipais somam aos efeitos das tecnologias.
+  const lm = lawMods(s);
+  for (const k of Object.keys(lm) as (keyof TechMods)[]) out[k] += lm[k] ?? 0;
   for (const id of s.techs ?? []) {
     const m = TECHS[id]?.mods;
     if (!m) continue;

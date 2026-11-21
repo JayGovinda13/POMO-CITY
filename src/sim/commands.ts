@@ -2,6 +2,8 @@ import { BUILDINGS, PIPE_COST, WIRE_COST, ZONES } from "./catalog";
 import { MAX_ZONE_AREA } from "./config";
 import { LIFE, ageOf, buildCyclesOf, renewCost, underConstruction } from "./lifecycle";
 import { DEFAULT_PENSION } from "./pension";
+import { decideBill, repealLaw } from "./council";
+import { hasLaw } from "./laws";
 import { DEFAULT_LABOR, HOURS_OPTIONS, SECTOR_IDS, rulesOf } from "./labor";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
 import { BOND_VALUE, DEPARTMENTS, MAX_TAX, ORDINANCES, creditRating, type Department } from "./finance";
@@ -115,6 +117,14 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     return null;
   }
 
+  if (cmd.type === "bill") {
+    if (!s.council?.bills.some((b) => b.id === cmd.id)) return "Esta proposta não está mais na pauta";
+    return null;
+  }
+  if (cmd.type === "repeal") {
+    return s.council?.laws.includes(cmd.law) ? null : "Esta lei não está em vigor";
+  }
+
   if (cmd.type === "pension") {
     const isI = (v: unknown, lo: number, hi: number) => Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;
     if (cmd.retireAge !== undefined && !isI(cmd.retireAge, 60, 70)) return "Idade de aposentar de 60 a 70 anos";
@@ -133,6 +143,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     if (!SECTOR_IDS.includes(cmd.sector)) return "Setor desconhecido";
     if (cmd.hours === undefined && cmd.pay === undefined) return "Nada a mudar";
     if (cmd.hours !== undefined && !HOURS_OPTIONS.includes(cmd.hours)) return "Jornada de 6, 8, 10 ou 12 horas";
+    if (cmd.hours !== undefined && cmd.hours > 8 && hasLaw(s, "jornada_8h")) return "Lei da jornada máxima: até 8 horas";
     if (cmd.pay !== undefined && cmd.pay !== "tempo" && cmd.pay !== "peca") return "Pagamento por tempo ou por peça";
     const r = rulesOf(s, cmd.sector);
     if ((cmd.hours ?? r.hours) === r.hours && (cmd.pay ?? r.pay) === r.pay) return "Já é assim neste setor";
@@ -312,6 +323,10 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
   } else if (cmd.type === "budget") {
     if (cmd.taxes) next.taxes = { R: cmd.taxes.R, C: cmd.taxes.C, I: cmd.taxes.I };
     if (cmd.funding) next.funding = { ...next.funding, ...cmd.funding };
+  } else if (cmd.type === "bill") {
+    decideBill(next, cmd.id, cmd.approve);
+  } else if (cmd.type === "repeal") {
+    repealLaw(next, cmd.law);
   } else if (cmd.type === "pension") {
     const { type: _t, ...patch } = cmd;
     next.pension = { ...(next.pension ?? DEFAULT_PENSION), ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) } as typeof next.pension;

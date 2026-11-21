@@ -12,6 +12,7 @@ import { isWater } from "./terrain";
 import { techMods } from "./tech";
 import { cityFatigue } from "./laborload";
 import { demographics } from "./people";
+import { lawEq } from "./laws";
 import { START_EQ, START_LIFE } from "./config";
 import { ZONE, type CityState } from "./types";
 
@@ -297,7 +298,7 @@ export function eqTarget(f: Pick<ServiceFields, "schoolServed" | "collegeServed"
 /** Atualiza QE e expectativa de vida (mudam devagar). Muta `s`. */
 export function updateQuality(s: CityState, f: ServiceFields): void {
   // Escola-fábrica: aprendizes sobem o QE alvo em 10 pontos.
-  const target = eqTarget(f) + (s.ordinances?.escola_fabrica !== undefined ? 10 : 0);
+  const target = eqTarget(f) + (s.ordinances?.escola_fabrica !== undefined ? 10 : 0) + lawEq(s);
   const eq = s.eq ?? START_EQ;
   let next: number;
   if (target >= eq) next = eq + (target - eq) * 0.25;

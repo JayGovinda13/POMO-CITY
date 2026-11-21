@@ -56,6 +56,9 @@ import { computeStrike } from "./strikes";
 import { taxableResidents } from "./people";
 import { demographyStep } from "./demography";
 import { pensionStep } from "./pensionsystem";
+import { councilStep } from "./council";
+import { demographics } from "./people";
+import { lawCost, lawTaxIndustry } from "./laws";
 import { carryingCost, isDown, storageCostOf, stockValue, underConstruction } from "./lifecycle";
 import { cityFatigue } from "./laborload";
 import { eventMods, rollEvents } from "./events";
@@ -335,7 +338,7 @@ const economySystem: CycleSystem = (ctx) => {
   const lv = ctx.services && ctx.services.avg.landValue > 0 ? landValueTaxFactor(ctx.services.avg.landValue) : 1;
   f.taxR = Math.floor(taxRevenue("R", taxableResidents(s) * (report.starving ? 0.5 : 1), s.taxes.R) * m * lv);
   f.taxC = Math.floor(taxRevenue("C", labor.commercialFilled, s.taxes.C) * m);
-  f.taxI = Math.floor(taxRevenue("I", labor.industrialFilled, s.taxes.I) * m);
+  f.taxI = Math.floor(taxRevenue("I", labor.industrialFilled, s.taxes.I) * m * (1 - lawTaxIndustry(s)));
   report.taxes = f.taxR + f.taxC + f.taxI;
   // Decretos: receita ou custo por ciclo.
   for (const id of ORDINANCE_IDS) {
@@ -513,6 +516,14 @@ const pensionSystem: CycleSystem = ({ s, report, rand }) => {
   report.finance.pension = r.cost;
 };
 
+/** 10c) Câmara de vereadores: eleição, proposta de lei e verbas das leis em vigor. */
+const councilSystem: CycleSystem = ({ s, report, rand }) => {
+  report.council = councilStep(s, rand);
+  const cost = lawCost(s, demographics(s).retirees);
+  s.money -= cost;
+  report.finance.laws = cost;
+};
+
 /** 11) Balanço por recurso e saldo final do ciclo. */
 const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
   const sum = (inv: Inventory, res: ResourceId) => RANKS.reduce((acc, r) => acc + getQty(inv, res, r), 0);
@@ -541,6 +552,7 @@ const ledgerSystem: CycleSystem = ({ s, report, startStock }) => {
     f.insurance -
     f.storage -
     f.pension -
+    f.laws -
     report.importCost +
     report.salesRevenue +
     f.events;
@@ -591,6 +603,7 @@ export const CYCLE_SYSTEMS: CycleSystem[] = [
   eventsSystem,
   citizensSystem,
   pensionSystem,
+  councilSystem,
   ledgerSystem,
 ];
 
@@ -651,6 +664,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       events: 0,
       storage: 0,
       pension: 0,
+      laws: 0,
       interest: 0,
       insurance: 0,
     },

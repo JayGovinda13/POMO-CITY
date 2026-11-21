@@ -2,6 +2,7 @@
 // déficit) e previdência privada (poupança de cada um, com subsídio opcional da prefeitura).
 
 import { START_LIFE } from "./config";
+import { hasLaw } from "./laws";
 import { ageYears, retireAgeOf } from "./people";
 import type { CityState } from "./types";
 
@@ -42,8 +43,8 @@ export const EMPTY_PENSION_REPORT: PensionReport = {
 };
 
 /** O aposentado tem renda de aposentadoria? (benefício público ligado ou poupança privada.) */
-export function hasPensionIncome(s: Pick<CityState, "pension" | "people">, id: number): boolean {
-  return !!s.pension?.publicOn || (s.people?.[id]?.savings ?? 0) > 0.5;
+export function hasPensionIncome(s: Pick<CityState, "pension" | "people"> & Partial<Pick<CityState, "council">>, id: number): boolean {
+  return !!s.pension?.publicOn || hasLaw(s, "pensao_universal") || (s.people?.[id]?.savings ?? 0) > 0.5;
 }
 
 /**

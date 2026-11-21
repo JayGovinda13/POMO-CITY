@@ -19,6 +19,7 @@ import { ZONE, type BuildingType, type CityState } from "./types";
 import { rng } from "./world";
 import { createArrivalLife } from "./demography";
 import { hasPensionIncome } from "./pensionsystem";
+import { lawMoods } from "./laws";
 import { ageYears, retireAgeOf, stageOf, type Stage } from "./people";
 import { SECTOR_OF_BUILDING, industrialLotJobs, laborMood, type Sector } from "./labor";
 
@@ -252,6 +253,8 @@ export function citizensView(s: CityState): CitizenView[] {
     else if (stage === "adulto") reasons.push({ text: "Desempregado(a)", delta: -2 });
     // Família: casal junto anima; luto pesa por 4 ciclos.
     if (life?.partner !== undefined && s.people[life.partner]?.died === undefined) reasons.push({ text: "Vive em família", delta: 1 });
+    // Leis municipais em vigor (humor de todos e dos trabalhadores).
+    for (const m of lawMoods(s, !!slot)) reasons.push(m);
     // Aposentadoria: quem tem renda vive tranquilo; sem renda passa necessidade. Trabalhadores pagam a conta.
     if (stage === "aposentado") reasons.push(hasPensionIncome(s, id) ? { text: "Aposentadoria garantida", delta: 1 } : { text: "Aposentado(a) sem renda", delta: -3 });
     if (stage === "adulto" && s.pension?.publicOn && s.pension.publicRate > 10) reasons.push({ text: "Contribuição pesada para a previdência", delta: -1 });

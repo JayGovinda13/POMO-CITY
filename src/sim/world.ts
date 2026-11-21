@@ -3,6 +3,7 @@ import { CYCLES_PER_YEAR, DEFAULT_POLICIES, LEGACY_MAP_SIZE, ROAD_ACCESS_DISTANC
 import { bfsDistances } from "./grid";
 import { DEFAULT_LABOR } from "./labor";
 import { DEFAULT_PENSION } from "./pension";
+import { newCouncil } from "./laws";
 import { generateMap, isWater, legacyTrees, viaLinks, type MapOptions } from "./terrain";
 import { CURRENT_SCHEMA_VERSION, type BiomeId, type Building, type CityState, type Terrain } from "./types";
 
@@ -114,6 +115,7 @@ export function createCity(
     elevation,
     trees,
     people: {},
+    council: newCouncil(),
     pension: { ...DEFAULT_PENSION },
     strike: { share: 0, causes: [] },
     labor: structuredClone(DEFAULT_LABOR),
