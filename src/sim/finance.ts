@@ -3,6 +3,7 @@
 
 import { BUILDINGS } from "./catalog";
 import { ZONE, type CityState, type ZoneKind } from "./types";
+import { ecoDemand } from "./ecocycle";
 
 // ───────────────────────── impostos ─────────────────────────
 
@@ -105,7 +106,8 @@ export type OrdinanceId =
   | "embelezamento"
   | "festival"
   | "premio_produtividade"
-  | "escola_fabrica";
+  | "escola_fabrica"
+  | "habitacao_popular";
 
 export interface OrdinanceDef {
   name: string;
@@ -177,6 +179,12 @@ export const ORDINANCES: Record<OrdinanceId, OrdinanceDef> = {
     description: "Em ciclos de Rank A ou S, a extração rende 15% a mais (os trabalhadores ganham bônus).",
     money: (s) => -Math.ceil(pop(s) * 0.2),
   },
+  habitacao_popular: {
+    name: "Habitação popular",
+    category: "Comunidade",
+    description: "A prefeitura banca moradia para quem tem pouco: o aluguel pesado (IPTU alto) não derruba o humor dos mais pobres e a demanda residencial sofre metade.",
+    money: (s) => -Math.ceil(pop(s) * 0.25),
+  },
 };
 
 export const ORDINANCE_IDS = Object.keys(ORDINANCES) as OrdinanceId[];
@@ -189,7 +197,26 @@ export function conservationFactor(s: CityState): number {
   return 1 + 0.15 * Math.min(1, (s.cyclesCompleted - since) / 4);
 }
 
-/** Soma dos ajustes de demanda: impostos, decretos e dificuldade. */
+/** IPTU máximo (%). */
+export const MAX_LAND_TAX = 10;
+/** Moradores por lote residencial por nível. */
+const RENT_BASE = 12;
+
+/** Renda do solo: IPTU sobre o valor da terra dos lotes residenciais (quanto mais valorizado o bairro, mais rende). */
+export function landRentRevenue(s: CityState, landValue: ArrayLike<number>): number {
+  if (!s.landTax) return 0;
+  let total = 0;
+  for (let i = 0; i < s.zoneType.length; i++) {
+    if (s.zoneType[i] !== ZONE.R) continue;
+    total += s.zoneLevel[i] * 4 * (landValue[i] / 100) * RENT_BASE * (s.landTax / 100);
+  }
+  return Math.floor(total);
+}
+
+/** Aluguel pesado: o IPTU alto vira aluguel e espanta moradores. */
+export const rentPressure = (s: Pick<CityState, "landTax">): number => Math.max(0, (s.landTax ?? 0) - 2);
+
+/** Soma dos ajustes de demanda: impostos, decretos, IPTU, ciclo econômico e dificuldade. */
 export function demandModifiers(s: CityState): Record<ZoneKind, number> {
   const out: Record<ZoneKind, number> = { R: 0, C: 0, I: 0 };
   for (const k of ["R", "C", "I"] as ZoneKind[]) out[k] -= (s.taxes[k] - DEFAULT_TAX) * TAX_DEMAND_PER_POINT;
@@ -198,6 +225,10 @@ export function demandModifiers(s: CityState): Record<ZoneKind, number> {
     for (const [k, v] of Object.entries(ORDINANCES[id].demand ?? {})) out[k as ZoneKind] += v;
   }
   out.I += DIFFICULTY[s.difficulty].industryDemand;
+  out.R -= rentPressure(s) * 0.02 * (isActive(s, "habitacao_popular") ? 0.5 : 1);
+  const eco = ecoDemand(s);
+  out.C += eco;
+  out.I += eco;
   return out;
 }
 

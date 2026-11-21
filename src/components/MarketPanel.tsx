@@ -12,6 +12,9 @@ import {
   getQty,
   importPrice,
   tradeDiscount,
+  ECO,
+  ecoForecast,
+  ecoState,
   stockOf,
   storageCapacity,
   validatePolicy,
@@ -57,6 +60,16 @@ function MarketModal({ onClose }: { onClose: () => void }) {
             mais barato. O mercado externo só negocia até o Rank {MARKET_MAX_RANK}: recursos A e S nunca são vendidos a ele
             pela política; eles valem mais no consumo e nas obras (A rende 1,3×, S 1,4×).
           </p>
+          <div className="rounded border border-zinc-600 p-2">
+            <p>
+              Ciclo econômico: <strong className={ecoState(city).phase === "crise" ? "text-red-300" : ecoState(city).phase === "prosperidade" ? "text-emerald-300" : ""}>{ECO[ecoState(city).phase].name}</strong>{" "}
+              <span className="text-zinc-400">(mais {ecoState(city).left} ciclo(s))</span>
+            </p>
+            <p className="text-zinc-400">{ECO[ecoState(city).phase].description}</p>
+            <p className="text-zinc-500">
+              Próximas fases: {ecoForecast(city).map((f) => `${ECO[f.phase].name} em ${f.startsIn} ciclos`).join(" → ")}. Tábuas, metal e bens valem {Math.round(ECO[ecoState(city).phase].price * 100)}% do preço normal; títulos emitidos em tempos bons saem mais baratos.
+            </p>
+          </div>
           <div className="overflow-x-auto">
             <p className="mb-1 text-zinc-400">
               Frete: <strong className={tradeDiscount(city) > 0 ? "text-emerald-300" : ""}>{Math.round(tradeDiscount(city) * 100)}%</strong> mais barato para importar e{" "}

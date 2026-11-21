@@ -94,7 +94,7 @@ export interface Bond {
 export type InventoryKey = `${ResourceId}:${Rank}`;
 export type Inventory = Partial<Record<InventoryKey, number>>;
 
-export const CURRENT_SCHEMA_VERSION = 19;
+export const CURRENT_SCHEMA_VERSION = 20;
 
 export interface CityState {
   /** Versão do formato do estado; ver migrate.ts. */
@@ -119,6 +119,8 @@ export interface CityState {
   elevation: number[];
   /** 1 = árvore no tile (Fase 9). */
   trees: number[];
+  /** IPTU: imposto sobre o valor do solo dos lotes residenciais, 0 a 10 (%). */
+  landTax: number;
   /** Fim de jogo (golpe fascista): a cidade deixa de funcionar. null = o jogo segue. */
   ended: { cause: "golpe"; cycle: number } | null;
   /** Câmara de vereadores, propostas e leis em vigor (ver council.ts e laws.ts). */
@@ -173,7 +175,7 @@ export interface CityState {
   bonds: Bond[];
   nextBondId: number;
   /** Decretos ativos → ciclo em que foram ativados. */
-  ordinances: Partial<Record<"imposto_vendas" | "imposto_renda" | "jogos" | "conservacao_energia" | "embelezamento" | "festival" | "premio_produtividade" | "escola_fabrica", number>>;
+  ordinances: Partial<Record<"imposto_vendas" | "imposto_renda" | "jogos" | "conservacao_energia" | "embelezamento" | "festival" | "premio_produtividade" | "escola_fabrica" | "habitacao_popular", number>>;
   difficulty: "facil" | "medio" | "dificil";
   // ── Fase 5: riscos ──
   insurance: { plan: "none" | "basico" | "completo"; since: number; bonusMalus: number; lastClaimCycle: number | null };
@@ -202,7 +204,7 @@ export type Command =
   | { type: "pipe"; x: number; y: number }
   | { type: "policy"; resource: ResourceId; mode: "stock" | "sell_surplus" | "sell_percent" | "reserve"; value: number }
   | { type: "rename"; name: string }
-  | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: Partial<CityState["funding"]> }
+  | { type: "budget"; taxes?: Record<ZoneKind, number>; funding?: Partial<CityState["funding"]>; landTax?: number }
   | { type: "ordinance"; id: keyof CityState["ordinances"]; active: boolean }
   | { type: "bond"; action: "issue" | "repay" }
   | { type: "insurance"; plan: "none" | "basico" | "completo" }
@@ -305,9 +307,13 @@ export interface ClimateEffects {
   water: number;
   /** Frete: desconto nas importações (e metade disso a mais nas vendas), de 0 a 0,2. Opcional. */
   trade?: number;
+  /** Ciclo econômico: preço de tábuas, metal e bens no mercado (1 = neutro). Opcional. */
+  market?: number;
 }
 
 export interface FinanceBreakdown {
+  /** IPTU (renda do solo). */
+  landTax: number;
   taxR: number;
   taxC: number;
   taxI: number;

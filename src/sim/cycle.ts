@@ -40,8 +40,10 @@ import {
   departmentOf,
   isActive,
   taxRevenue,
+  landRentRevenue,
 } from "./finance";
 import { buildingStatus, laborStats } from "./status";
+import { ecoMarket } from "./ecocycle";
 import { RANKS, type Building, type CityState, type ClimateEffects, type CycleReport, type Inventory, type Rank, type ResourceId } from "./types";
 import { calendarIdx, quarterOfCycle, rng, roadAccess, utcDayKey, yearOfCycle } from "./world";
 import { developZones } from "./zones";
@@ -339,7 +341,9 @@ const economySystem: CycleSystem = (ctx) => {
   f.taxR = Math.floor(taxRevenue("R", taxableResidents(s) * (report.starving ? 0.5 : 1), s.taxes.R) * m * lv);
   f.taxC = Math.floor(taxRevenue("C", labor.commercialFilled, s.taxes.C) * m);
   f.taxI = Math.floor(taxRevenue("I", labor.industrialFilled, s.taxes.I) * m * (1 - lawTaxIndustry(s)));
-  report.taxes = f.taxR + f.taxC + f.taxI;
+  // IPTU: renda do solo dos lotes residenciais (entra no caixa como imposto).
+  f.landTax = ctx.services ? landRentRevenue(s, ctx.services.landValue) : 0;
+  report.taxes = f.taxR + f.taxC + f.taxI + f.landTax;
   // Decretos: receita ou custo por ciclo.
   for (const id of ORDINANCE_IDS) {
     if (!isActive(s, id)) continue;
@@ -652,6 +656,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
       taxR: 0,
       taxC: 0,
       taxI: 0,
+      landTax: 0,
       ordinanceRevenue: 0,
       ordinanceCost: 0,
       sales: 0,
@@ -689,7 +694,7 @@ export function resolveCycle(s: CityState, now: number): { state: CityState; rep
   const startStock = Object.fromEntries(RESOURCE_IDS.map((r) => [r, stockOf(s.inventory, r)])) as Record<ResourceId, number>;
   // Seed por cidade + ciclo: o mesmo ciclo sempre gera o mesmo resultado (cliente = servidor).
   const rand = rng((next.seed ^ Math.imul(next.cyclesCompleted, 0x9e3779b1)) >>> 0);
-  const ctx: CycleContext = { s: next, report, rank, rand, weather, effects: { ...effectsOf(weather), trade: tradeDiscount(next) }, startStock };
+  const ctx: CycleContext = { s: next, report, rank, rand, weather, effects: { ...effectsOf(weather), trade: tradeDiscount(next), market: ecoMarket(next) }, startStock };
   for (const system of CYCLE_SYSTEMS) system(ctx);
   return { state: next, report };
 }

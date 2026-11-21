@@ -6,6 +6,7 @@ import {
   DEFAULT_TAX,
   DEPARTMENT_NAMES,
   DEPARTMENTS,
+  MAX_LAND_TAX,
   MAX_TAX,
   ORDINANCES,
   ORDINANCE_IDS,
@@ -99,7 +100,8 @@ function Slider({ label, value, min, max, step, onChange, hint }: { label: strin
 function TaxesTab({ city }: { city: CityState }) {
   const [taxes, setTaxes] = useState(city.taxes);
   const [funding, setFunding] = useState(city.funding);
-  const dirty = JSON.stringify(taxes) !== JSON.stringify(city.taxes) || JSON.stringify(funding) !== JSON.stringify(city.funding);
+  const [landTax, setLandTax] = useState(city.landTax ?? 0);
+  const dirty = JSON.stringify(taxes) !== JSON.stringify(city.taxes) || JSON.stringify(funding) !== JSON.stringify(city.funding) || landTax !== (city.landTax ?? 0);
   const worn = city.buildings.filter((b) => b.type === "road" && (b.condition ?? 100) < 100).length;
   return (
     <div className="space-y-3">
@@ -120,6 +122,14 @@ function TaxesTab({ city }: { city: CityState }) {
         <p className="text-zinc-500">Imposto alto arrecada mais, mas espanta moradores, comércio ou indústria.</p>
       </div>
       <div className="space-y-1">
+        <h3 className="text-zinc-400">Renda do solo (IPTU)</h3>
+        <Slider label="IPTU sobre o valor da terra" value={landTax} min={0} max={MAX_LAND_TAX} step={1} onChange={setLandTax} hint={landTax > 2 ? "↑ aluguel" : ""} />
+        <p className="text-zinc-500">
+          Quem é dono da terra cobra renda de quem mora nela: bairros valorizados rendem mais. Acima de 2% o aluguel pesa, a demanda
+          residencial cai e os moradores de baixa renda ficam tristes (decreto Habitação popular alivia).
+        </p>
+      </div>
+      <div className="space-y-1">
         <h3 className="text-zinc-400">Verba dos departamentos</h3>
         {DEPARTMENTS.map((d) => (
           <Slider key={d} label={DEPARTMENT_NAMES[d]} value={funding[d]} min={0} max={100} step={10} onChange={(v) => setFunding({ ...funding, [d]: v })} />
@@ -133,7 +143,7 @@ function TaxesTab({ city }: { city: CityState }) {
         type="button"
         className="retro-button retro-button-primary"
         disabled={!dirty || locked()}
-        onClick={() => useGame.getState().queue({ type: "budget", taxes, funding })}
+        onClick={() => useGame.getState().queue({ type: "budget", taxes, funding, landTax })}
       >
         Aplicar (vale a partir do próximo ciclo)
       </button>
@@ -246,6 +256,7 @@ const FIN_ROWS: { key: keyof CycleReport["finance"]; label: string; sign: 1 | -1
   { key: "taxR", label: "Impostos residenciais", sign: 1 },
   { key: "taxC", label: "Impostos comerciais", sign: 1 },
   { key: "taxI", label: "Impostos industriais", sign: 1 },
+  { key: "landTax", label: "IPTU (renda do solo)", sign: 1 },
   { key: "ordinanceRevenue", label: "Decretos (receita)", sign: 1 },
   { key: "sales", label: "Vendas ao mercado", sign: 1 },
   { key: "upkeepTransport", label: "Manutenção: transportes", sign: -1 },

@@ -151,6 +151,11 @@ export function migrateState(raw: CityState): CityState {
     s.ended = null;
   }
 
+  if (from < 20) {
+    // v19 → v20: IPTU (renda do solo).
+    s.landTax = 0;
+  }
+
   s.schemaVersion = CURRENT_SCHEMA_VERSION;
   return s;
 }

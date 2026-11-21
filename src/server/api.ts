@@ -81,8 +81,10 @@ export function parseCommands(raw: unknown): Command[] | null {
         f && Object.keys(f).length > 0 && Object.keys(f).every((k) => (depts as readonly string[]).includes(k) && num(f[k]))
           ? Object.fromEntries(Object.entries(f)) as Partial<Record<(typeof depts)[number], number>>
           : undefined;
-      if ((t && !taxes) || (f && !funding) || (!taxes && !funding)) return null;
-      out.push({ type: "budget", taxes, funding });
+      const landTax = r.landTax === undefined ? undefined : num(r.landTax) ? (r.landTax as number) : null;
+      if (landTax === null) return null;
+      if ((t && !taxes) || (f && !funding) || (!taxes && !funding && landTax === undefined)) return null;
+      out.push({ type: "budget", taxes, funding, landTax });
       continue;
     }
     if (r.type === "research") {

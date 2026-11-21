@@ -9,12 +9,14 @@ import { BUILDINGS } from "./catalog";
 import { REGION_BY_ID, weatherAt, type Continent } from "./climate";
 import { foodSecure } from "./economy";
 import { computeWater } from "./water";
-import { ORDINANCES, ORDINANCE_IDS, isActive } from "./finance";
+import { ORDINANCES, ORDINANCE_IDS, isActive, rentPressure } from "./finance";
 import { computePower } from "./power";
 import { buildingStatus } from "./status";
 import { computeServices, wealthOf, type WealthClass } from "./services";
 import { TRIP_LIMIT_POPULATION, computeTraffic } from "./traffic";
 import { eventMods } from "./events";
+import { ecoState } from "./ecocycle";
+import { BASE_PRICE, basePrice, currentEffects } from "./economy";
 import { ZONE, type BuildingType, type CityState } from "./types";
 import { rng } from "./world";
 import { createArrivalLife } from "./demography";
@@ -212,6 +214,8 @@ export function citizensView(s: CityState): CitizenView[] {
   const water = computeWater(s, undefined, status);
   const traffic = computeTraffic(s);
   const moods = eventMods(s).mood;
+  const ecoPhase = ecoState(s).phase;
+  const foodFactor = basePrice("food", currentEffects(s)) / BASE_PRICE.food;
   const svc = computeServices(s, status, traffic);
   /** Há via congestionada a até 2 tiles da casa? */
   const jammed = (i: number) => {
@@ -309,6 +313,17 @@ export function citizensView(s: CityState): CitizenView[] {
     if (recentDisaster) reasons.push({ text: "Desastre recente", delta: -2 });
     if (harsh) reasons.push({ text: harsh, delta: -1 });
     if (s.streak >= 3) reasons.push({ text: "Prefeitura focada", delta: 1 });
+    // Livro 3: aluguel (IPTU), crise e comida cara pesam mais para quem tem pouco.
+    const wealth = homeIdx === undefined ? "media" : wealthOf(svc.landValue[homeIdx]);
+    const rent = rentPressure(s);
+    if (rent > 0 && homeIdx !== undefined) {
+      if (isActive(s, "habitacao_popular") && wealth === "baixa") reasons.push({ text: "Moradia popular", delta: 1 });
+      else if (wealth === "baixa" && rent >= 3) reasons.push({ text: "Aluguel pesado", delta: rent >= 6 ? -2 : -1 });
+      else if (wealth === "media" && rent >= 6) reasons.push({ text: "Aluguel pesado", delta: -1 });
+    }
+    if (ecoPhase === "crise" && (stage === "adulto" || stage === "aposentado")) reasons.push({ text: "Crise econômica", delta: -1 });
+    if (foodFactor >= 1.3 && wealth === "baixa") reasons.push({ text: "Comida cara", delta: -1 });
+    else if (foodFactor >= 1.5 && wealth === "media") reasons.push({ text: "Comida cara", delta: -1 });
     // Decretos que mexem com o humor (Fase 4).
     for (const oid of ORDINANCE_IDS) {
       const mood = ORDINANCES[oid].mood;

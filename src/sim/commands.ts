@@ -6,7 +6,8 @@ import { decideBill, repealLaw } from "./council";
 import { hasLaw } from "./laws";
 import { DEFAULT_LABOR, HOURS_OPTIONS, SECTOR_IDS, rulesOf } from "./labor";
 import { RESOURCE_IDS, payMaterials, quoteMaterials, validatePolicy } from "./economy";
-import { BOND_VALUE, DEPARTMENTS, MAX_TAX, ORDINANCES, creditRating, type Department } from "./finance";
+import { BOND_VALUE, DEPARTMENTS, MAX_LAND_TAX, MAX_TAX, ORDINANCES, creditRating, type Department } from "./finance";
+import { ecoSpread } from "./ecocycle";
 import { PLANS, repairCost } from "./insurance";
 import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
@@ -114,6 +115,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     if (cmd.taxes && !["R", "C", "I"].every((k) => k in cmd.taxes!)) return "Impostos incompletos";
     for (const v of Object.values(cmd.funding ?? {})) if (!isInt(v) || v < 0 || v > 100) return "Verba de 0 a 100%";
     if (cmd.funding && Object.keys(cmd.funding).some((k) => !DEPARTMENTS.includes(k as Department))) return "Departamento desconhecido";
+    if (cmd.landTax !== undefined && (!isInt(cmd.landTax) || cmd.landTax < 0 || cmd.landTax > MAX_LAND_TAX)) return `IPTU de 0 a ${MAX_LAND_TAX}%`;
     return null;
   }
 
@@ -324,6 +326,7 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
   } else if (cmd.type === "budget") {
     if (cmd.taxes) next.taxes = { R: cmd.taxes.R, C: cmd.taxes.C, I: cmd.taxes.I };
     if (cmd.funding) next.funding = { ...next.funding, ...cmd.funding };
+    if (cmd.landTax !== undefined) next.landTax = cmd.landTax;
   } else if (cmd.type === "bill") {
     decideBill(next, cmd.id, cmd.approve);
   } else if (cmd.type === "repeal") {
@@ -344,7 +347,7 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
   } else if (cmd.type === "bond") {
     if (cmd.action === "issue") {
       // Juros travados no rating do momento da emissão.
-      next.bonds = [...next.bonds, { id: next.nextBondId++, principal: BOND_VALUE, rate: creditRating(next).rate, issuedCycle: next.cyclesCompleted }];
+      next.bonds = [...next.bonds, { id: next.nextBondId++, principal: BOND_VALUE, rate: Math.max(0.01, Math.round((creditRating(next).rate + ecoSpread(next)) * 1000) / 1000), issuedCycle: next.cyclesCompleted }];
       next.money += BOND_VALUE;
     } else {
       const [oldest, ...rest] = next.bonds;

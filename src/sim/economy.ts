@@ -13,6 +13,7 @@ export const RESOURCE_IDS: ResourceId[] = ["food", "wood", "ore", "planks", "met
 export { RANK_YIELD, DEFAULT_POLICIES } from "./config";
 import { FOOD_PER_RESIDENT, RANK_YIELD } from "./config";
 import { lawTrade } from "./laws";
+import { ecoMarket } from "./ecocycle";
 
 /** O mercado externo só negocia até o Rank B: A e S vêm do foco ou de outros jogadores. */
 export const MARKET_MAX_RANK: Rank = "B";
@@ -26,6 +27,7 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /** Preço base na estação: comida encarece quando a colheita é ruim (inverno, seca). */
 export function basePrice(res: ResourceId, effects: ClimateEffects): number {
+  if (res === "planks" || res === "metal" || res === "goods") return round2(BASE_PRICE[res] * (effects.market ?? 1));
   if (res !== "food") return BASE_PRICE[res];
   const factor = Math.max(0.8, Math.min(1.6, 1 + (1 - effects.farm) * 0.6));
   return round2(BASE_PRICE.food * factor);
@@ -54,7 +56,7 @@ export function tradeDiscount(s: Pick<CityState, "buildings" | "cyclesCompleted"
   return Math.round(Math.min(0.2, d) * 1000) / 1000;
 }
 
-export const currentEffects = (s: CityState): ClimateEffects => ({ ...effectsOf(weatherAt(s)), trade: tradeDiscount(s) });
+export const currentEffects = (s: CityState): ClimateEffects => ({ ...effectsOf(weatherAt(s)), trade: tradeDiscount(s), market: ecoMarket(s) });
 
 // ───────────────────────── rendimento equivalente ─────────────────────────
 

@@ -277,6 +277,7 @@ describe("Fase 1 — crescimento das zonas", () => {
 
   it("demanda: cidade vazia quer moradores e indústria; comércio vem com a população", () => {
     const s = city();
+    s.cyclesCompleted = 10 * 2 - ((s.seed >>> 3) % 40) + 40; // fase neutra do ciclo econômico (superprodução)
     const d0 = computeDemand(s);
     expect(d0.R).toBeGreaterThan(0);
     expect(d0.I).toBeGreaterThan(0);
