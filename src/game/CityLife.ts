@@ -4,6 +4,7 @@
 
 import Phaser from "phaser";
 import { BUILDINGS, ZONE, citizensView, type CityState } from "@/sim";
+import { carStyleOf, drawCar, drawPerson, drawTrain, type CarStyle } from "./sprites2d";
 
 type Iso = (x: number, y: number) => { sx: number; sy: number };
 
@@ -17,6 +18,8 @@ interface Mover {
   color: number;
   /** pedestre: lado da calçada (−1/1) */
   side: number;
+  /** carro: modelo */
+  style: CarStyle;
 }
 
 /** Um morador de verdade: mora numa casa, trabalha num emprego e passeia pela cidade. */
@@ -64,6 +67,7 @@ const CAR_COLORS = [0xd84a3a, 0x3a6ad8, 0xf0c040, 0xe8e8e8, 0x40a060, 0x2a2a30, 
 const SHIRT_COLORS = [0xd84a3a, 0x3a6ad8, 0xf0c040, 0x40a060, 0xe07a30, 0x8a5ac8, 0xe8e8e8];
 const SKIN = [0xf2c9a0, 0xd9a27a, 0xa86f4a, 0x6e4630];
 const HAIR = [0x1b1630, 0x6e4630, 0xe8c070, 0xb0502a];
+const PANTS = [0x2a3a5a, 0x3a3a40, 0x5a4a3a, 0x2a4a3a, 0x4a3a5a];
 
 const ROADLIKE = new Set(["road", "onramp", "tunnel", "highway"]);
 
@@ -199,6 +203,7 @@ export class CityLife {
           speed: kind === "car" ? 1.3 + Math.random() * 0.8 : kind === "ped" ? 0.35 + Math.random() * 0.25 : 2.2,
           color: kind === "car" ? CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)] : SHIRT_COLORS[Math.floor(Math.random() * SHIRT_COLORS.length)],
           side: Math.random() < 0.5 ? -1 : 1,
+          style: carStyleOf(Math.random() * 100),
         });
       }
     };
@@ -316,7 +321,7 @@ export class CityLife {
         skin: v.look.skin,
         hair: v.look.hairColor,
         stage: v.stage,
-        shirt: SHIRT_COLORS[(v.id * 7) % SHIRT_COLORS.length],
+        shirt: SHIRT_COLORS[(v.id * 5 + (v.look.hairColor ?? 0)) % SHIRT_COLORS.length],
         home,
         homeRoad,
         job,
@@ -515,48 +520,13 @@ export class CityLife {
         g.fillTriangle(mx - 2, my, mx + 2, my, mx, my + 3);
       }
       if (m.kind === "car") {
-        const cx = x + px * 2.5;
-        const cy = y + py * 2.5;
-        const quad = (l: number, w: number, color: number, lift = 0) => {
-          g.fillStyle(color, 1);
-          g.fillPoints(
-            [
-              new Phaser.Math.Vector2(cx + ux * l + px * w, cy + uy * l + py * w - lift),
-              new Phaser.Math.Vector2(cx + ux * l - px * w, cy + uy * l - py * w - lift),
-              new Phaser.Math.Vector2(cx - ux * l - px * w, cy - uy * l - py * w - lift),
-              new Phaser.Math.Vector2(cx - ux * l + px * w, cy - uy * l + py * w - lift),
-            ],
-            true,
-          );
-        };
-        quad(3, 1.6, 0x1b1630); // sombra/contorno
-        quad(2.6, 1.2, m.color, 1);
-        quad(1.2, 0.9, 0x9ad0ff, 2); // para-brisa/teto
+        drawCar(g, x + px * 2.5, y + py * 2.5, ux, uy, m.color, m.style);
       } else if (m.kind === "ped") {
         const sx = Math.round(x + px * 6 * m.side);
         const sy = Math.round(y + py * 6 * m.side);
-        // Passo: as pernas alternam.
-        const step = Math.floor((m.t * 8) % 2);
-        g.fillStyle(0x1b1630, 1);
-        g.fillRect(sx - 1 + step, sy, 1, 1);
-        g.fillStyle(m.color, 1);
-        g.fillRect(sx - 1, sy - 3, 2, 3);
-        g.fillStyle(SKIN[m.color % SKIN.length], 1);
-        g.fillRect(sx - 1, sy - 5, 2, 2);
+        drawPerson(g, sx, sy, { shirt: m.color, pants: PANTS[m.color % PANTS.length], skin: SKIN[m.color % SKIN.length], hair: HAIR[m.color % HAIR.length], kid: false, old: false, seed: m.color }, true, m.t * 8, ux >= 0);
       } else {
-        // Trem: locomotiva e dois vagões atrás, ao longo do trecho.
-        for (let k = 0; k < 3; k++) {
-          const tx = x - ux * k * 7;
-          const ty = y - uy * k * 7;
-          g.fillStyle(0x1b1630, 1);
-          g.fillRect(tx - 3.5, ty - 4.5, 7, 5);
-          g.fillStyle(k === 0 ? 0xa83a2a : 0x3a5a8a, 1);
-          g.fillRect(tx - 3, ty - 4, 6, 4);
-          if (k === 0) {
-            g.fillStyle(0xffe9a0, 1);
-            g.fillRect(tx + ux * 3 - 0.5, ty - 2.5, 1.5, 1.5);
-          }
-        }
+        drawTrain(g, x, y, ux, uy);
       }
     }
 
@@ -631,42 +601,35 @@ export class CityLife {
       if (p.mode === "car" && p.state === "walk") {
         const cx = x + px * 2.5;
         const cy = y + py * 2.5;
-        const quad = (l: number, w: number, color: number, lift = 0) => {
-          g.fillStyle(color, 1);
-          g.fillPoints(
-            [
-              new Phaser.Math.Vector2(cx + ux * l + px * w, cy + uy * l + py * w - lift),
-              new Phaser.Math.Vector2(cx + ux * l - px * w, cy + uy * l - py * w - lift),
-              new Phaser.Math.Vector2(cx - ux * l - px * w, cy - uy * l - py * w - lift),
-              new Phaser.Math.Vector2(cx - ux * l + px * w, cy - uy * l + py * w - lift),
-            ],
-            true,
-          );
-        };
-        quad(3, 1.6, 0x1b1630);
-        quad(2.6, 1.2, p.shirt, 1);
-        quad(1.2, 0.9, 0x9ad0ff, 2);
+        drawCar(g, cx, cy, ux, uy, p.shirt, carStyleOf(p.id));
         p.sx = cx;
-        p.sy = cy - 2;
-        if (this.followed === p) this.followPos = { sx: cx, sy: cy - 2 };
+        p.sy = cy - 3;
+        if (this.followed === p) this.followPos = { sx: cx, sy: cy - 3 };
       } else {
         const side = p.id % 2 ? 1 : -1;
         const sx = Math.round(x + (p.state === "walk" ? px * 6 * side : 0));
         const sy = Math.round(y + (p.state === "walk" ? py * 6 * side : 0));
-        const step = p.state === "walk" ? Math.floor((p.t * 8) % 2) : 0;
-        g.fillStyle(0x1b1630, 1);
-        g.fillRect(sx - 1 + step, sy, 1, 1);
-        const kid = p.stage === "crianca";
-        // Criança: um ponto mais baixa. Aposentado: cabelo branco.
-        g.fillStyle(p.shirt, 1);
-        g.fillRect(sx - 1, sy - (kid ? 2 : 3), 2, kid ? 2 : 3);
-        g.fillStyle(SKIN[p.skin % SKIN.length], 1);
-        g.fillRect(sx - 1, sy - (kid ? 4 : 5), 2, 2);
-        g.fillStyle(p.stage === "aposentado" ? 0xe8e8f0 : HAIR[p.hair % HAIR.length], 1);
-        g.fillRect(sx - 1, sy - (kid ? 5 : 6), 2, 1);
+        const walking = p.state === "walk";
+        drawPerson(
+          g,
+          sx,
+          sy,
+          {
+            shirt: p.shirt,
+            pants: PANTS[p.id % PANTS.length],
+            skin: SKIN[p.skin % SKIN.length],
+            hair: HAIR[p.hair % HAIR.length],
+            kid: p.stage === "crianca",
+            old: p.stage === "aposentado",
+            seed: p.id,
+          },
+          walking,
+          p.t * 8,
+          ux >= 0,
+        );
         p.sx = sx;
-        p.sy = sy - 3;
-        if (this.followed === p) this.followPos = { sx, sy: sy - 3 };
+        p.sy = sy - 4;
+        if (this.followed === p) this.followPos = { sx, sy: sy - 4 };
       }
       if (this.followed === p && this.followPos) {
         const mx = Math.round(this.followPos.sx);
