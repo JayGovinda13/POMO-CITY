@@ -45,6 +45,8 @@ export interface BuildingDef {
   /** Custo de manutenção cobrado a cada ciclo concluído. */
   upkeep: number;
   workers: number;
+  /** Lado do quadrado que a construção ocupa, em tiles (padrão 1; 2 = 2×2, 3 = 3×3). O dono fica no canto de cima. */
+  footprint?: number;
   /** Precisa tocar uma estrada conectada à prefeitura para operar. */
   needsRoad: boolean;
   housing?: number;
@@ -86,6 +88,9 @@ export interface BuildingDef {
   color: number;
   height: number;
 }
+
+/** Lado do quadrado que a construção ocupa (1 para as comuns). */
+export const footprintOf = (type: BuildingType): number => BUILDINGS[type]?.footprint ?? 1;
 
 export const BUILDINGS: Record<BuildingType, BuildingDef> = {
   road: {
@@ -728,6 +733,88 @@ export const BUILDINGS: Record<BuildingType, BuildingDef> = {
     service: { kind: "leisure", radius: 5, landValue: 6, demand: 0.1 },
     color: 0xb0b0c0,
     height: 18,
+  },
+  part: {
+    category: "special",
+    name: "Parte de construção grande",
+    description: "Tile de uma construção que ocupa vários quadrados.",
+    buildable: false,
+    cost: 0,
+    upkeep: 0,
+    workers: 0,
+    needsRoad: false,
+    color: 0x9a9a9a,
+    height: 0,
+  },
+  university: {
+    name: "Universidade",
+    description: "Ocupa 3×3. Atende 900 moradores (como três faculdades), rende muita pesquisa e atrai moradores. Requer 200 habitantes e a tecnologia Universidade pública.",
+    buildable: true,
+    category: "services",
+    requires: { population: 200, tech: "universidade_publica" },
+    footprint: 3,
+    cost: 3200,
+    materials: [{ resource: "planks", qty: 24 }, { resource: "metal", qty: 16 }],
+    upkeep: 30,
+    workers: 14,
+    powerUse: 8,
+    needsRoad: true,
+    service: { kind: "college", capacity: 900, radius: 8, landValue: 16, demand: 0.08 },
+    color: 0xa85a3e,
+    height: 30,
+  },
+  worker_coop: {
+    name: "Cooperativa fabril",
+    description: "Ocupa 2×2. Fábrica de bens tocada pelos próprios trabalhadores: produz bens, protege as cooperativas da crise e abre vagas para cooperados. Requer 120 habitantes.",
+    buildable: true,
+    category: "production",
+    requires: { population: 120 },
+    footprint: 2,
+    cost: 1100,
+    materials: [{ resource: "planks", qty: 12 }, { resource: "metal", qty: 6 }],
+    upkeep: 8,
+    workers: 8,
+    powerUse: 3,
+    needsRoad: true,
+    produces: { resource: "goods", base: 5 },
+    pollution: 3,
+    color: 0xb04a38,
+    height: 20,
+  },
+  incubator: {
+    name: "Incubadora de empresas",
+    description: "Ocupa 2×2. Espaço e mentoria para novos negócios: mais empreendedores sem precisar de lei e um pouco de pesquisa. Requer 150 habitantes.",
+    buildable: true,
+    category: "services",
+    requires: { population: 150 },
+    footprint: 2,
+    cost: 1300,
+    materials: [{ resource: "planks", qty: 10 }, { resource: "metal", qty: 8 }],
+    upkeep: 10,
+    workers: 5,
+    powerUse: 4,
+    needsRoad: true,
+    service: { kind: "leisure", radius: 3, landValue: 6, demand: 0.04 },
+    color: 0x4a80b8,
+    height: 22,
+  },
+  intermodal: {
+    name: "Terminal intermodal",
+    description: "Ocupa 3×3. Junta porto seco, trem e rodovia: frete 6% mais barato e muita demanda de comércio e indústria. Requer 250 habitantes e a tecnologia Contêineres.",
+    buildable: true,
+    category: "transport",
+    requires: { population: 250, tech: "conteineres" },
+    footprint: 3,
+    cost: 3600,
+    materials: [{ resource: "metal", qty: 28 }, { resource: "planks", qty: 18 }],
+    upkeep: 26,
+    workers: 12,
+    powerUse: 6,
+    needsRoad: true,
+    transport: { kind: "station", demand: { C: 0.15, I: 0.15 } },
+    pollution: 4,
+    color: 0x7a7f8a,
+    height: 22,
   },
   warehouse: {
     name: "Armazém",

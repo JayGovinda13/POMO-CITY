@@ -50,6 +50,7 @@ export function tradeDiscount(s: Pick<CityState, "buildings" | "cyclesCompleted"
     if (b.damaged || (b.readyAt !== undefined && s.cyclesCompleted < b.readyAt)) continue;
     if (b.type === "seaport") d += 0.08;
     else if (b.type === "airport") d += 0.05;
+    else if (b.type === "intermodal") d += 0.06;
     else if (b.type === "train_station") stations++;
     else if (b.type === "highway") highways++;
   }

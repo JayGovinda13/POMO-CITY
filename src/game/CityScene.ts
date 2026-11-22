@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, buildingStatus, computePower, computeServices, computeTraffic, computeWater, underConstruction, type CityState } from "@/sim";
+import { BIOMES, BUILDINGS, ZONE_KINDS, ZONES, anchorOf, bigAreaError, buildingStatus, computePower, computeServices, computeTraffic, computeWater, footprintOf, footprintTiles, underConstruction, type BuildingType, type CityState } from "@/sim";
 import { isAreaTool, useGame } from "@/store/game";
 import { bus } from "./bus";
 import { CityLife } from "./CityLife";
@@ -700,6 +700,31 @@ export class CityScene extends Phaser.Scene {
           else img.setCrop(w / 2 + 8, 0, w / 2 - 8, img.height);
           this.spriteLayer.add(img);
           castShadow(sx, sy, k === 0 ? 20 : 14);
+        } else if (b && (b.type === "part" || footprintOf(b.type) > 1)) {
+          // Construção grande: um sprite só, desenhado no tile da frente (o de maior profundidade na vista).
+          const owner = anchorOf(city, b);
+          const tiles = footprintTiles(owner);
+          const front = tiles.reduce((best, t) => (iso(t.x, t.y).sy > iso(best.x, best.y).sy ? t : best), tiles[0]);
+          if (front.x === x && front.y === y) {
+            const n = footprintOf(owner.type);
+            const img = this.add.image(sx, baseY, "city", this.frame(owner.type) ?? "warehouse").setOrigin(0.5, 1).setAlpha(owner.id > syncedMaxId ? 0.75 : 1);
+            this.spriteLayer.add(img);
+            for (const t of tiles) {
+              const p = iso(t.x, t.y);
+              castShadow(p.sx, p.sy, Math.min(14, Math.max(6, img.height - TH * n)));
+            }
+            const st = status.get(owner.id);
+            const top = baseY - img.height;
+            if (underConstruction(owner, city)) {
+              img.setAlpha(0.5);
+              this.alert(fx, sx, top, 0x8fb8e8);
+            } else if (owner.damaged) {
+              img.setTint(0x6a5a5a);
+              this.alert(fx, sx, top, 0xb0b0b0);
+            } else if (st && !st.connected) this.alert(fx, sx, top, 0xe03030);
+            else if (st && !st.powered) this.alert(fx, sx, top, 0xf5e04a);
+            else if (st && st.efficiency < 1) this.alert(fx, sx, top, 0xf0a030);
+          }
         } else if (b) {
           const name = this.frame(b.type) ?? "farm";
           const img = this.add.image(sx, baseY, "city", name).setOrigin(0.5, 1).setAlpha(b.id > syncedMaxId ? 0.75 : 1);
@@ -1016,6 +1041,22 @@ export class CityScene extends Phaser.Scene {
       return;
     }
     if (!this.hover) return;
+    // Construção grande: prévia do quadrado inteiro (vermelho se não couber).
+    const n = tool && tool in BUILDINGS ? footprintOf(tool as BuildingType) : 1;
+    if (n > 1) {
+      const city = useGame.getState().city;
+      const bad = !city || bigAreaError(city, this.hover.x, this.hover.y, n) !== null;
+      const col = bad ? 0xff5050 : color;
+      g.fillStyle(col, 0.18);
+      g.lineStyle(1, col, 0.9);
+      for (let dy = 0; dy < n; dy++)
+        for (let dx = 0; dx < n; dx++) {
+          const p = iso(this.hover.x + dx, this.hover.y + dy);
+          this.diamond(g, p.sx, p.sy, 0.95);
+          this.diamondOutline(g, p.sx, p.sy);
+        }
+      return;
+    }
     const { sx, sy } = iso(this.hover.x, this.hover.y);
     g.lineStyle(1, color, 0.9);
     this.diamondOutline(g, sx, sy);

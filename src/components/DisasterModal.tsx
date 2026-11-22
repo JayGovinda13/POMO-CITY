@@ -1,6 +1,6 @@
 "use client";
 
-import { BUILDINGS, CAUSE_TEXT, RESOURCES, type Rank, type ResourceId } from "@/sim";
+import { BUILDINGS, anchorAt, CAUSE_TEXT, RESOURCES, type Rank, type ResourceId } from "@/sim";
 import { useGame } from "@/store/game";
 import { RankBadge } from "./ranks";
 
@@ -70,7 +70,7 @@ export function DisasterModal() {
 
 /** Reparo direto da janela do desastre (entra na fila como as obras da pausa). */
 function RepairButton({ x, y, cost }: { x: number; y: number; cost: number }) {
-  const damaged = useGame((s) => s.city?.buildings.some((b) => b.x === x && b.y === y && b.damaged) ?? false);
+  const damaged = useGame((s) => (s.city ? !!anchorAt(s.city, x, y)?.damaged : false));
   const focus = useGame((s) => s.phase === "focus");
   if (!damaged) return <span className="text-emerald-300">✓ reparada</span>;
   return (

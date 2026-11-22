@@ -1,5 +1,5 @@
 import { newBusiness } from "./business";
-import { BIOMES } from "./catalog";
+import { BIOMES, footprintOf } from "./catalog";
 import { CYCLES_PER_YEAR, DEFAULT_POLICIES, LEGACY_MAP_SIZE, ROAD_ACCESS_DISTANCE, START_YEAR, STARTING_INVENTORY, STARTING_MONEY, START_EQ, START_LIFE } from "./config";
 import { bfsDistances } from "./grid";
 import { DEFAULT_LABOR } from "./labor";
@@ -197,6 +197,26 @@ export function buildingAt(s: CityState, x: number, y: number): Building | undef
   return s.buildings.find((b) => b.x === x && b.y === y);
 }
 
+/** Tiles (x, y) ocupados por uma construção: 1 para as comuns; N×N para as grandes (dono no canto de cima). */
+export function footprintTiles(b: Pick<Building, "type" | "x" | "y">): { x: number; y: number }[] {
+  const n = footprintOf(b.type);
+  const out: { x: number; y: number }[] = [];
+  for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) out.push({ x: b.x + dx, y: b.y + dy });
+  return out;
+}
+
+/** O dono da construção: para um tile "parte" de uma construção grande, o prédio inteiro; senão, ele mesmo. */
+export function anchorOf(s: Pick<CityState, "buildings">, b: Building): Building {
+  if (b.type !== "part") return b;
+  return s.buildings.find((x) => x.id === b.of) ?? b;
+}
+
+/** Construção (inteira) que cobre o tile, ou undefined. */
+export function anchorAt(s: Pick<CityState, "buildings">, x: number, y: number): Building | undefined {
+  const b = s.buildings.find((v) => v.x === x && v.y === y);
+  return b ? anchorOf(s, b) : undefined;
+}
+
 const DIRS = [
   [1, 0],
   [-1, 0],
@@ -264,10 +284,13 @@ export function connectedRoads(s: CityState): Set<number> {
 }
 
 export function isRoadConnected(s: CityState, b: Building, network = connectedRoads(s)): boolean {
-  for (const [dx, dy] of DIRS) {
-    const x = b.x + dx;
-    const y = b.y + dy;
-    if (inBounds(s, x, y) && network.has(idx(s, x, y))) return true;
+  // Construção grande: basta um dos tiles dela encostar numa estrada ligada à prefeitura.
+  for (const t of footprintTiles(b)) {
+    for (const [dx, dy] of DIRS) {
+      const x = t.x + dx;
+      const y = t.y + dy;
+      if (inBounds(s, x, y) && network.has(idx(s, x, y))) return true;
+    }
   }
   return false;
 }

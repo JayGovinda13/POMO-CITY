@@ -3,6 +3,7 @@
 // imposto, mas quebram fácil (sobretudo na crise); cooperativas rendem menos, mas resistem melhor.
 
 import { ecoState } from "./ecocycle";
+import { isDown } from "./lifecycle";
 import { lawCoop, lawEntrepreneur } from "./laws";
 import type { CityState } from "./types";
 
@@ -38,13 +39,17 @@ export interface BusinessReport {
 export function businessStep(s: CityState, unemployed: number, rand: () => number): BusinessReport {
   s.business ??= newBusiness();
   const b = s.business;
-  const E = lawEntrepreneur(s);
-  const C = lawCoop(s);
+  // Incubadoras e cooperativas fabris em operação reforçam o que as leis fazem (e funcionam sem lei).
+  const running = (t: string) => s.buildings.filter((x) => x.type === t && !isDown(x, s)).length;
+  const incubators = running("incubator");
+  const coopPlants = running("worker_coop");
+  const E = Math.min(2, lawEntrepreneur(s) + incubators * 0.4);
+  const C = Math.min(2, lawCoop(s) + coopPlants * 0.5);
   const crise = ecoState(s).phase === "crise";
 
   // Quebras (e dissolução quando a lei foi revogada).
   const failE = Math.min(0.9, FAIL_ENTREPRENEUR * (crise ? 2 : 1) * (E > 0 ? 1 : 2));
-  const failC = Math.min(0.9, FAIL_COOP * (crise ? 1.5 : 1) * (C > 0 ? 1 : 3));
+  const failC = Math.min(0.9, FAIL_COOP * (crise ? 1.5 : 1) * (C > 0 ? 1 : 3) * (coopPlants > 0 ? 0.5 : 1));
   const lose = (n: number, p: number) => {
     let out = 0;
     for (let i = 0; i < n; i++) if (rand() < p) out++;

@@ -125,44 +125,46 @@ export function computeServices(
   // ── Fontes: poluição, serviços em raio, valorização ──
   for (const b of s.buildings) {
     const def = BUILDINGS[b.type];
+    // Construção grande irradia do centro dela.
+    const o = Math.floor(((def.footprint ?? 1) - 1) / 2);
     const e = eff(b.id);
-    if (def.pollution && e > 0) spread(s, pollution, b.x, b.y, POLLUTION_RADIUS, def.pollution * 4 * e, "add");
+    if (def.pollution && e > 0) spread(s, pollution, b.x + o, b.y + o, POLLUTION_RADIUS, def.pollution * 4 * e, "add");
     const sv = def.service;
     if (!sv) continue;
     // Áreas verdes funcionam sozinhas; os demais precisam operar (estrada e trabalhadores).
     const op = sv.kind === "leisure" && def.workers === 0 ? 1 : e * serviceFundingFactor(serviceFunding(s, sv.kind));
-    if (sv.landValue && op > 0) spread(s, lvBonus, b.x, b.y, sv.radius ?? 3, sv.landValue * (sv.landValue > 0 ? op : 1), "add");
+    if (sv.landValue && op > 0) spread(s, lvBonus, b.x + o, b.y + o, sv.radius ?? 3, sv.landValue * (sv.landValue > 0 ? op : 1), "add");
     if (op <= 0) continue;
-    if (sv.cleans) spread(s, cleaning, b.x, b.y, sv.radius ?? 3, sv.cleans * 3, "add");
+    if (sv.cleans) spread(s, cleaning, b.x + o, b.y + o, sv.radius ?? 3, sv.cleans * 3, "add");
     if (sv.demand) attraction += sv.demand * op;
     switch (sv.kind) {
       case "police":
-        spread(s, police, b.x, b.y, sv.radius ?? 8, op, "max");
+        spread(s, police, b.x + o, b.y + o, sv.radius ?? 8, op, "max");
         break;
       case "fire":
-        spread(s, fire, b.x, b.y, sv.radius ?? 8, op, "max");
+        spread(s, fire, b.x + o, b.y + o, sv.radius ?? 8, op, "max");
         break;
       case "prison":
         prisons++;
         break;
       case "hospital":
         healthCap += (sv.capacity ?? 0) * op * (1 + techMods(s).health);
-        spread(s, health, b.x, b.y, sv.radius ?? 5, 1, "max");
+        spread(s, health, b.x + o, b.y + o, sv.radius ?? 5, 1, "max");
         break;
       case "school":
         schoolCap += (sv.capacity ?? 0) * op;
-        spread(s, school, b.x, b.y, sv.radius ?? 5, 1, "max");
+        spread(s, school, b.x + o, b.y + o, sv.radius ?? 5, 1, "max");
         break;
       case "college":
         collegeCap += (sv.capacity ?? 0) * op;
-        spread(s, school, b.x, b.y, sv.radius ?? 6, 1, "max");
+        spread(s, school, b.x + o, b.y + o, sv.radius ?? 6, 1, "max");
         break;
       case "library":
       case "museum":
         eqProtected = true;
         break;
       case "leisure":
-        spread(s, leisure, b.x, b.y, sv.radius ?? 3, 1, "max");
+        spread(s, leisure, b.x + o, b.y + o, sv.radius ?? 3, 1, "max");
         break;
     }
   }

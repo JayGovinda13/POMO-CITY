@@ -16,6 +16,7 @@ import {
   type TerraformAction,
   type MapOptions,
   RESOURCES,
+  anchorAt,
   buildCost,
   quoteMaterials,
 } from "@/sim";
@@ -373,9 +374,12 @@ export const useGame = create<GameStore>()(
           if (tool === "demolish") {
             // Desfazer obra ainda não sincronizada: remove o comando da fila em vez de enfileirar demolição.
             const { draft } = get();
-            const di = draft.findLastIndex((c) => c.type === "build" && c.x === x && c.y === y);
-            const i = pending.findLastIndex((c) => c.type === "build" && c.x === x && c.y === y);
-            const stillThere = city?.buildings.some((b) => b.x === x && b.y === y);
+            // Construção grande: qualquer tile dela vale pelo prédio inteiro.
+            const owner = city ? anchorAt(city, x, y) : undefined;
+            const [ox, oy] = [owner?.x ?? x, owner?.y ?? y];
+            const di = draft.findLastIndex((c) => c.type === "build" && c.x === ox && c.y === oy);
+            const i = pending.findLastIndex((c) => c.type === "build" && c.x === ox && c.y === oy);
+            const stillThere = !!owner;
             if (di >= 0 && stillThere) {
               set(derive(serverState, pending, draft.filter((_, j) => j !== di)));
               return;

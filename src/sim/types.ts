@@ -54,7 +54,13 @@ export type BuildingType =
   | "solar_plant"
   | "nuclear_plant"
   | "recycling_center"
-  | "fusion_plant";
+  | "fusion_plant"
+  /** Construções grandes (ocupam vários tiles): o dono fica no canto de cima; o resto são "partes". */
+  | "part"
+  | "university"
+  | "worker_coop"
+  | "incubator"
+  | "intermodal";
 
 /** 0 = terra, 1 = água doce (rio, lago), 2 = mar (água salgada, Fase 9). */
 export type Terrain = 0 | 1 | 2;
@@ -80,6 +86,8 @@ export interface Building {
   readyAt?: number;
   /** Ciclo em que foi construída ou renovada (desgaste). */
   builtAt?: number;
+  /** Só em "part": id da construção grande a que este tile pertence. */
+  of?: number;
 }
 
 export interface Bond {

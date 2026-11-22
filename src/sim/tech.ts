@@ -212,7 +212,9 @@ export function researchPerCycle(s: CityState, rank: Rank = "D"): number {
     s.population * ((s.eq ?? 40) / 100) * 0.04 +
     count("school") * 1.5 +
     count("college") * 5 +
+    count("university") * 14 +
     count("library") * 1 +
+    count("incubator") * 2 +
     count("museum") * 2;
   return Math.round(base * RANK_YIELD[rank] * (1 + techMods(s).research) * 10) / 10;
 }

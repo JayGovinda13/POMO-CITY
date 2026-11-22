@@ -351,6 +351,15 @@ acompanhamentos) e `player.ts` (agendador).
 - **81 tecnologias** (eram 36) em 6 eras, de 1900 a 2100. As novas somam três efeitos que não existiam: **QE** (escolas, ensino secundário, universidade, ensino a distância, educação personalizada), **frete** (telégrafo, aviação, rodovias, satélites, comércio eletrônico, elevador orbital; leva o desconto de comércio de 20% para até 30%) e **nascimentos** (vacinas, previdência social, edição genômica, longevidade). As demais mexem em comida, energia, poluição, crime, saúde, pesquisa, manutenção e automação.
 - No painel, os botões **Era atual / Todas / cada era** evitam a rolagem longa no celular, e dentro de cada era as tecnologias ficam em ordem de ano.
 
+## Construções grandes (vários quadrados)
+
+- O catálogo tem o campo `footprint` (lado do quadrado: 2 = 2×2, 3 = 3×3). A construção fica no canto de cima (menor x e y) e os outros tiles viram "partes" ligadas a ela (`of`); demolir, consertar ou renovar qualquer tile vale para o prédio inteiro. Só precisa de um tile encostado numa estrada ligada à prefeitura. O terreno precisa ser plano, de terra firme e livre (prévia vermelha quando não cabe).
+- **Universidade (3×3)**: atende 900 moradores (como 3 faculdades) e rende +14 pontos de pesquisa por ciclo. Requer 200 habitantes e a tecnologia *Universidade pública*.
+- **Cooperativa fabril (2×2)**: fábrica de bens tocada pelos trabalhadores; pesa +0,5 no cooperativismo e reduz pela metade as quebras de cooperativas. Requer 120 habitantes.
+- **Incubadora de empresas (2×2)**: +0,4 no empreendedorismo (funciona sem lei) e +2 de pesquisa. Requer 150 habitantes.
+- **Terminal intermodal (3×3)**: frete 6% mais barato e +15% de demanda comercial e industrial. Requer 250 habitantes e a tecnologia *Contêineres*.
+- Os sprites (`art/city.px.js`, função `bigSprite`) são gerados com pxl; o desenho é um só, escolhido no tile da frente da vista (funciona nas 4 rotações da câmera).
+
 ## Balanceamento
 
 ```bash

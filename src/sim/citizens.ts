@@ -158,6 +158,10 @@ const BUILDING_JOBS: Partial<Record<BuildingType, { title: { m: string; f: strin
   train_station: { title: g("Maquinista", "Maquinista"), category: "servicos" },
   airport: { title: g("Controlador de voo", "Comissária de bordo"), category: "servicos" },
   seaport: { title: g("Estivador", "Estivadora"), category: "servicos" },
+  university: { title: g("Pesquisador universitário", "Pesquisadora universitária"), category: "servicos" },
+  worker_coop: { title: g("Cooperado", "Cooperada"), category: "industria" },
+  incubator: { title: g("Mentor de startups", "Mentora de startups"), category: "servicos" },
+  intermodal: { title: g("Operador de terminal", "Operadora de terminal"), category: "servicos" },
 };
 
 const COMMERCE_TITLES = [g("Vendedor", "Vendedora"), g("Caixa", "Caixa"), g("Cozinheiro", "Cozinheira"), g("Gerente de loja", "Gerente de loja"), g("Barbeiro", "Cabeleireira"), g("Garçom", "Garçonete")];

@@ -1276,4 +1276,123 @@ const FACES = {
 }
 for (const [mood, draw] of Object.entries(FACES)) sprite(`pt_mood_${mood}`, { w: 18, h: 20 }, (c) => draw(c))
 
-sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "foam_*", "beach_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "labor_office", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })
+
+// ───────────────────── construções grandes (N×N tiles) ─────────────────────
+// Grade (i, j) em unidades de tile: i corre para a direita-baixo, j para a esquerda-baixo.
+function bigSprite(name, N, H, draw) {
+  sprite(name, { w: 32 * N, h: 16 * N + H, outline: "k" }, (c) => {
+    const oy = H
+    const P = (i, j, up = 0) => [Math.round(16 * N + (i - j) * 16), Math.round(oy + (i + j) * 8 - up)]
+    const quad = (pts, col) => c.poly(pts.flat(), col)
+    const prism = (i0, i1, j0, j1, h, top, front, side) => {
+      quad([P(i0, j1), P(i1, j1), P(i1, j1, h), P(i0, j1, h)], front)
+      quad([P(i1, j1), P(i1, j0), P(i1, j0, h), P(i1, j1, h)], side)
+      quad([P(i0, j0, h), P(i1, j0, h), P(i1, j1, h), P(i0, j1, h)], top)
+    }
+    // Janelas na face da frente (j fixo, i variando) e na lateral (i fixo, j variando).
+    const winsFront = (i0, i1, j, ups, col = "d") => {
+      for (let i = i0; i < i1; i += 0.2) for (const up of ups) { const [x, y] = P(i, j); c.px(x, y - up, col) }
+    }
+    const winsSide = (i, j0, j1, ups, col = "u") => {
+      for (let j = j0; j < j1; j += 0.2) for (const up of ups) { const [x, y] = P(i, j); c.px(x, y - up, col) }
+    }
+    const shrub = (i, j) => { const [x, y] = P(i, j); c.circ(x, y - 1, 1, "F"); c.px(x, y - 2, "v") }
+    draw(c, { P, quad, prism, winsFront, winsSide, shrub, N, oy })
+  })
+}
+
+// Universidade 3×3: bloco de tijolos com torre do relógio e escadaria.
+bigSprite("university", 3, 38, (c, { P, quad, prism, winsFront, winsSide, shrub }) => {
+  quad([P(0, 0), P(3, 0), P(3, 3), P(0, 3)], "g")
+  quad([P(1.1, 2.3), P(1.9, 2.3), P(1.9, 3), P(1.1, 3)], "p")
+  quad([P(0, 2.55), P(1.1, 2.55), P(1.1, 2.75), P(0, 2.75)], "h")
+  quad([P(1.9, 2.55), P(3, 2.55), P(3, 2.75), P(1.9, 2.75)], "h")
+  prism(0.3, 2.7, 0.5, 2.3, 15, "x", "o", "O")
+  winsFront(0.45, 2.7, 2.3, [4, 8, 12])
+  winsSide(2.7, 0.65, 2.3, [4, 8, 12])
+  for (const u of [14, 15]) { c.line(...P(0.3, 2.3, u), ...P(2.7, 2.3, u), "Y") }
+  // Pórtico e torre.
+  prism(1.05, 1.95, 1.2, 2.45, 19, "W", "w", "W")
+  for (let i = 1.15; i < 1.95; i += 0.2) { const [x, y] = P(i, 2.45); c.vline(x, y - 16, 14, "Y") }
+  prism(1.28, 1.72, 1.55, 2.0, 28, "Y", "w", "W")
+  const [tx, ty] = P(1.5, 2.0)
+  c.circ(tx - 1, ty - 22, 3, "H")
+  c.px(tx - 1, ty - 22, "k")
+  c.px(tx - 1, ty - 24, "k")
+  c.line(...P(1.28, 1.55, 28), ...P(1.5, 1.77, 33), "r", 1)
+  c.line(...P(1.72, 1.55, 28), ...P(1.5, 1.77, 33), "R", 1)
+  const [fx, fy] = P(1.5, 1.77, 33)
+  c.vline(fx, fy - 6, 6, "J"); c.hline(fx + 1, fy - 6, 3, "N")
+  const [dx, dy] = P(1.5, 2.45)
+  c.rect(dx - 1, dy - 6, 3, 6, "D")
+  for (const [i, j] of [[0.3, 2.7], [0.7, 2.75], [2.3, 2.75], [2.7, 2.7], [0.2, 0.3], [2.8, 0.3]]) shrub(i, j)
+})
+
+// Cooperativa fabril 2×2: galpão de tijolos com telhado em dentes de serra, chaminé e bandeira.
+bigSprite("worker_coop", 2, 30, (c, { P, quad, prism, winsFront, winsSide }) => {
+  quad([P(0, 0), P(2, 0), P(2, 2), P(0, 2)], "i")
+  quad([P(0.2, 1.75), P(1.8, 1.75), P(1.8, 2), P(0.2, 2)], "p")
+  prism(0.2, 1.8, 0.3, 1.6, 11, "z", "r", "R")
+  winsFront(0.35, 1.8, 1.6, [4, 7], "d")
+  winsSide(1.8, 0.45, 1.6, [4, 7], "u")
+  // Dentes de serra: três cumeeiras claras no telhado.
+  for (const i of [0.3, 0.75, 1.2]) {
+    prism(i, i + 0.38, 0.35, 0.95, 16, "J", "H", "i")
+  }
+  const [cx, cy] = P(1.6, 0.6, 15)
+  c.rect(cx - 1, cy - 14, 3, 14, "z"); c.rect(cx + 1, cy - 14, 1, 14, "Z"); c.rect(cx - 2, cy - 15, 5, 2, "Z")
+  c.rect(cx - 1, cy - 8, 3, 1, "N")
+  const [dx, dy] = P(1.0, 1.6)
+  c.rect(dx - 2, dy - 6, 5, 6, "D")
+  // Bandeira vermelha dos cooperados.
+  const [fx, fy] = P(0.3, 1.7, 11)
+  c.vline(fx, fy - 12, 12, "J")
+  c.rect(fx + 1, fy - 12, 5, 3, "N")
+  c.px(fx + 3, fy - 11, "Y")
+})
+
+// Incubadora 2×2: dois blocos de vidro, o maior com antena, e um canteiro na frente.
+bigSprite("incubator", 2, 34, (c, { P, quad, prism, winsFront, winsSide, shrub }) => {
+  quad([P(0, 0), P(2, 0), P(2, 2), P(0, 2)], "g")
+  quad([P(0.5, 1.6), P(1.5, 1.6), P(1.5, 2), P(0.5, 2)], "p")
+  prism(0.25, 1.15, 0.35, 1.5, 26, "q", "Q", "u")
+  winsFront(0.3, 1.15, 1.5, [5, 9, 13, 17, 21], "l")
+  winsSide(1.15, 0.4, 1.5, [5, 9, 13, 17, 21], "c")
+  prism(1.15, 1.8, 0.55, 1.5, 15, "c", "q", "Q")
+  winsFront(1.2, 1.8, 1.5, [4, 8, 12], "l")
+  winsSide(1.8, 0.6, 1.5, [4, 8, 12], "u")
+  const [ax, ay] = P(0.7, 0.9, 26)
+  c.vline(ax, ay - 8, 8, "J"); c.px(ax, ay - 9, "N")
+  const [lx, ly] = P(1.45, 1.05, 15)
+  c.circ(lx, ly - 2, 2, "E")
+  for (const [i, j] of [[0.2, 1.75], [1.8, 1.75], [0.2, 0.2], [1.85, 0.25]]) shrub(i, j)
+})
+
+// Terminal intermodal 3×3: pátio de concreto, pilhas de contêineres, trilho e pórtico.
+bigSprite("intermodal", 3, 40, (c, { P, quad, prism, shrub }) => {
+  quad([P(0, 0), P(3, 0), P(3, 3), P(0, 3)], "i")
+  // Trilhos e faixa da via.
+  quad([P(0, 2.45), P(3, 2.45), P(3, 2.9), P(0, 2.9)], "A")
+  for (const j of [2.55, 2.8]) c.line(...P(0.05, j), ...P(2.95, j), "p")
+  for (let i = 0.1; i < 3; i += 0.25) c.line(...P(i, 2.5), ...P(i, 2.85), "D")
+  // Pilhas de contêineres.
+  const cols = [["N", "N", "R"], ["K", "K", "B"], ["C", "C", "S"], ["E", "E", "F"], ["N", "N", "R"], ["K", "K", "B"]]
+  let k = 0
+  for (const [i, j, h] of [[0.2, 0.25, 12], [0.9, 0.25, 8], [1.6, 0.25, 16], [0.2, 1.0, 8], [0.9, 1.0, 12], [0.2, 1.75, 6]]) {
+    const [top, front] = cols[k % cols.length]
+    const side = cols[k % cols.length][2]
+    prism(i, i + 0.6, j, j + 0.65, h, top, front, side)
+    for (let u = 3; u < h; u += 4) { const [x, y] = P(i + 0.3, j + 0.65); c.hline(x - 4, y - u, 9, "k") }
+    k++
+  }
+  // Pórtico (guindaste) sobre o pátio.
+  const legs = [[1.5, 1.2], [2.4, 1.2], [1.5, 2.2], [2.4, 2.2]]
+  for (const [i, j] of legs) { const [x, y] = P(i, j); c.vline(x, y - 30, 30, "J") }
+  quad([P(1.5, 1.2, 30), P(2.4, 1.2, 30), P(2.4, 2.2, 30), P(1.5, 2.2, 30)], "H")
+  quad([P(1.5, 1.2, 33), P(2.4, 1.2, 33), P(2.4, 2.2, 33), P(1.5, 2.2, 33)], "J")
+  const [gx, gy] = P(1.95, 1.7, 30)
+  c.rect(gx - 2, gy - 6, 5, 4, "N"); c.vline(gx, gy - 2, 6, "z")
+  for (const [i, j] of [[2.75, 0.2], [2.8, 2.35]]) shrub(i, j)
+})
+
+sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "foam_*", "beach_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "labor_office", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "university", "worker_coop", "incubator", "intermodal", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })

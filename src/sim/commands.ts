@@ -13,7 +13,7 @@ import { DIRS4 } from "./grid";
 import { ZONE, type CityState, type Command, type ZoneCode } from "./types";
 import { lockReason } from "./unlocks";
 import { sanitizeCityName } from "./founding";
-import { buildingAt, idx, inBounds, isHall } from "./world";
+import { anchorAt, anchorOf, buildingAt, footprintTiles, idx, inBounds, isHall } from "./world";
 import { RANK_TERRAFORM, TERRAFORM, isWater, MAX_ELEVATION } from "./terrain";
 import { addTo } from "./inventory";
 import { techLock } from "./tech";
@@ -83,6 +83,24 @@ export function zoneArea(s: CityState, cmd: Extract<Command, { type: "zone" }>):
       if (cmd.zone !== "none") cost += ZONES[cmd.zone].cost[density];
     }
   return { tiles, cost };
+}
+
+/** Por que um quadrado N×N a partir de (x, y) não aceita uma construção grande (null = serve). */
+export function bigAreaError(s: CityState, x: number, y: number, n: number): string | null {
+  const e0 = s.elevation?.[idx(s, x, y)] ?? 0;
+  for (let dy = 0; dy < n; dy++)
+    for (let dx = 0; dx < n; dx++) {
+      const tx = x + dx;
+      const ty = y + dy;
+      if (!inBounds(s, tx, ty)) return `Precisa de ${n}×${n} quadrados livres (fora do mapa)`;
+      const i = idx(s, tx, ty);
+      if (isWater(s.terrain[i])) return `Precisa de ${n}×${n} quadrados de terra firme`;
+      if (s.buildings.some((b) => b.x === tx && b.y === ty)) return `Precisa de ${n}×${n} quadrados livres`;
+      if (s.zoneLevel[i] > 0) return "Há um lote desenvolvido no caminho — demolir primeiro";
+      if (s.wires[i]) return "Há uma linha de transmissão no caminho";
+      if ((s.elevation?.[i] ?? 0) !== e0) return `Precisa de ${n}×${n} quadrados no mesmo nível (terreno plano)`;
+    }
+  return null;
 }
 
 /** Verifica se um comando é válido sem alterar o estado. */
@@ -187,7 +205,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
   if (!isInt(cmd.x) || !isInt(cmd.y) || !inBounds(s, cmd.x, cmd.y)) return "Fora do mapa";
 
   if (cmd.type === "renew") {
-    const b = buildingAt(s, cmd.x, cmd.y);
+    const b = anchorAt(s, cmd.x, cmd.y);
     if (!b || !LIFE[b.type]) return "Só máquinas e usinas se renovam";
     if (b.damaged) return "Repare antes de renovar";
     if (underConstruction(b, s)) return "Ainda em obra";
@@ -197,7 +215,7 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     return null;
   }
   if (cmd.type === "repair") {
-    const b = buildingAt(s, cmd.x, cmd.y);
+    const b = anchorAt(s, cmd.x, cmd.y);
     if (!b?.damaged) return "Nada danificado aqui";
     const cost = repairCost(b.type);
     if (s.money < cost) return `Reparo custa $${cost}`;
@@ -234,6 +252,10 @@ export function validateCommand(s: CityState, cmd: Command): string | null {
     if (here) return "Tile ocupado";
     if (s.zoneLevel[i] > 0) return "Lote já desenvolvido — demolir primeiro";
     if (s.wires[i] && !def.linear) return "Há uma linha de transmissão aqui";
+    if ((def.footprint ?? 1) > 1) {
+      const big = bigAreaError(s, cmd.x, cmd.y, def.footprint!);
+      if (big) return big;
+    }
     if (def.needsWaterAdjacent) {
       const touchesWater = DIRS4.some(([dx, dy]) => {
         const x = cmd.x + dx;
@@ -314,11 +336,11 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     // Contratar ou trocar de plano reinicia a carência; o bônus/malus acompanha a cidade.
     next.insurance = { ...next.insurance, plan: cmd.plan, since: next.cyclesCompleted };
   } else if (cmd.type === "renew") {
-    const b = next.buildings.find((x) => x.x === cmd.x && x.y === cmd.y)!;
+    const b = anchorAt(next, cmd.x, cmd.y)!;
     next.money -= renewCost(b.type);
     b.builtAt = next.cyclesCompleted;
   } else if (cmd.type === "repair") {
-    const b = next.buildings.find((x) => x.x === cmd.x && x.y === cmd.y)!;
+    const b = anchorAt(next, cmd.x, cmd.y)!;
     next.money -= repairCost(b.type);
     delete b.damaged;
   } else if (cmd.type === "rename") {
@@ -402,19 +424,33 @@ export function applyCommand(s: CityState, cmd: Command): CommandResult {
     next.zoneType[i] = ZONE.NONE;
     next.zoneDensity[i] = 0;
     const wait = buildCyclesOf(cmd.building);
+    const anchorId = next.nextId++;
     next.buildings.push({
-      id: next.nextId++,
+      id: anchorId,
       type: cmd.building,
       x: cmd.x,
       y: cmd.y,
       builtAt: next.cyclesCompleted + wait,
       ...(wait > 0 ? { readyAt: next.cyclesCompleted + wait } : {}),
     });
+    // Construção grande: os outros tiles viram "partes" ligadas ao dono.
+    for (const t of footprintTiles({ type: cmd.building, x: cmd.x, y: cmd.y })) {
+      if (t.x === cmd.x && t.y === cmd.y) continue;
+      const ti = idx(next, t.x, t.y);
+      clearTree(next, ti);
+      next.zoneType[ti] = ZONE.NONE;
+      next.zoneDensity[ti] = 0;
+      next.buildings.push({ id: next.nextId++, type: "part", x: t.x, y: t.y, of: anchorId });
+    }
   } else {
     // Demolição em camadas: construção → prédio do lote → linha → zoneamento.
     const i = idx(next, cmd.x, cmd.y);
     const here = buildingAt(next, cmd.x, cmd.y);
-    if (here) next.buildings = next.buildings.filter((b) => b !== here && !(b.x === cmd.x && b.y === cmd.y));
+    if (here) {
+      // Construção grande: demolir qualquer tile derruba o prédio inteiro.
+      const owner = anchorOf(next, here);
+      next.buildings = next.buildings.filter((b) => b.id !== owner.id && b.of !== owner.id && !(b.x === cmd.x && b.y === cmd.y));
+    }
     else if (next.zoneLevel[i] > 0) next.zoneLevel[i] = 0;
     else if (next.wires[i]) next.wires[i] = 0;
     else if (next.trees?.[i] && !next.zoneType[i]) clearTree(next, i);

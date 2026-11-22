@@ -9,6 +9,7 @@ import {
   computeWater,
   ZONE_KINDS,
   ZONES,
+  anchorOf,
   buildingAt,
   buildingStatus,
   cityPeriodLabel,
@@ -323,7 +324,8 @@ function TileInfo({
 }) {
   const city = useGame((s) => s.city)!;
   const i = y * city.width + x;
-  const b = buildingAt(city, x, y);
+  const raw = buildingAt(city, x, y);
+  const b = raw ? anchorOf(city, raw) : undefined;
   const zone = city.zoneType[i];
   if (!b && !zone && !city.wires[i] && !city.pipes[i] && !city.trees?.[i] && !city.elevation?.[i] && !city.terrain[i]) return null;
 
