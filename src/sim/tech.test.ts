@@ -25,6 +25,7 @@ import {
   rollEvents,
   techLock,
   techMods,
+  tradeDiscount,
   type CityState,
 } from "./index";
 
@@ -310,5 +311,29 @@ describe("eventos de causa (incêndio, doenças, greve)", () => {
       return n;
     };
     expect(freq(-0.8)).toBeGreaterThan(freq(-0.05));
+  });
+});
+
+describe("árvore ampliada", () => {
+  it("tem muitas tecnologias em todas as eras e custos crescentes", () => {
+    expect(TECH_IDS.length).toBeGreaterThanOrEqual(80);
+    for (const e of ERAS) expect(TECH_IDS.filter((id) => TECHS[id].era === e.id).length, e.id).toBeGreaterThanOrEqual(8);
+    for (const id of TECH_IDS) expect(TECHS[id].cost).toBeGreaterThan(0);
+  });
+
+  it("QE, frete e nascimentos vêm das tecnologias", () => {
+    const s = city();
+    s.techs = ["escola_publica", "telegrafo", "vacinas"];
+    const m = techMods(s);
+    expect(m.eq).toBe(6);
+    expect(m.trade).toBeCloseTo(0.03);
+    expect(m.births).toBeCloseTo(0.05);
+  });
+
+  it("o frete das tecnologias soma ao da infraestrutura e vai até 30%", () => {
+    const s = city();
+    s.techs = ["aviacao_comercial", "rodovias_modernas", "comercio_eletronico", "elevador_orbital"];
+    expect(tradeDiscount(s)).toBeGreaterThan(0.1);
+    expect(tradeDiscount(s)).toBeLessThanOrEqual(0.3);
   });
 });

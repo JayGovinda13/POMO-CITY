@@ -42,11 +42,17 @@ export interface TechMods {
   growth: number;
   /** Fração dos empregos industriais que as máquinas eliminam (ver labor.ts). */
   automation: number;
+  /** QE alvo a mais (pontos). */
+  eq: number;
+  /** Desconto de frete (fração, soma ao das obras e leis). */
+  trade: number;
+  /** Mais nascimentos (fração a mais na chance de filhos). */
+  births: number;
 }
 
 export const NO_MODS: TechMods = {
   farm: 0, wood: 0, ore: 0, refine: 0, goods: 0, power: 0, water: 0, pollution: 0, crime: 0,
-  upkeep: 0, tax: 0, research: 0, traffic: 0, health: 0, disaster: 0, growth: 0, automation: 0,
+  upkeep: 0, tax: 0, research: 0, traffic: 0, health: 0, disaster: 0, growth: 0, automation: 0, eq: 0, trade: 0, births: 0,
 };
 
 export type EraId = "industrial" | "eletrica" | "atomica" | "digital" | "verde" | "futuro";
@@ -116,6 +122,51 @@ export const TECHS: Record<string, TechDef> = {
   logistica_quantica: { name: "Logística quântica", era: "futuro", year: 2085, cost: 3200, requires: ["nanotecnologia"], description: "+20% de bens e +30% nas vias.", mods: { goods: 0.2, traffic: 0.3 } },
   pos_escassez: { name: "Economia pós-escassez", era: "futuro", year: 2095, cost: 4500, requires: ["fusao", "nanotecnologia", "engenharia_climatica"], description: "+15% de impostos e −15% de manutenção.", mods: { tax: 0.15, upkeep: -0.15 } },
   arcologias: { name: "Arcologias", era: "futuro", year: 2100, cost: 6000, requires: ["pos_escassez"], description: "Cidades verticais: +3 lotes crescem por ciclo.", mods: { growth: 3 } },
+  irrigacao: { name: "Irrigação", era: "industrial", year: 1902, cost: 18, requires: [], description: "Canais e açudes: +8% de comida.", mods: { farm: 0.08 } },
+  telegrafo: { name: "Telégrafo", era: "industrial", year: 1906, cost: 26, requires: ["imprensa"], description: "Notícia e pedido de longe: +5% de pesquisa e frete 3% mais barato.", mods: { research: 0.05, trade: 0.03 } },
+  vacinas: { name: "Vacinas", era: "industrial", year: 1908, cost: 28, requires: ["saneamento"], description: "Menos crianças doentes: +10% de saúde e 5% mais nascimentos.", mods: { health: 0.1, births: 0.05 } },
+  escola_publica: { name: "Escola pública", era: "industrial", year: 1910, cost: 32, requires: ["imprensa"], description: "Ensino para todos: QE alvo +6.", mods: { eq: 6 } },
+  mineracao_mecanizada: { name: "Mineração mecanizada", era: "industrial", year: 1914, cost: 40, requires: ["maquina_vapor"], description: "Perfuratrizes a vapor: +10% de minério.", mods: { ore: 0.1 } },
+  bombeiros_modernos: { name: "Bombeiros modernos", era: "industrial", year: 1918, cost: 35, requires: ["saneamento"], description: "Carros-pipa e escadas: desastres 10% mais fracos.", mods: { disaster: -0.1 } },
+  concreto: { name: "Concreto armado", era: "industrial", year: 1920, cost: 50, requires: ["aco"], description: "Obras duram mais: manutenção 4% mais barata.", mods: { upkeep: -0.04 } },
+  telefone: { name: "Telefone", era: "industrial", year: 1925, cost: 55, requires: ["telegrafo"], description: "Negócios por fio: +3% de impostos e +5% de pesquisa.", mods: { tax: 0.03, research: 0.05 } },
+  ensino_secundario: { name: "Ensino secundário", era: "eletrica", year: 1932, cost: 75, requires: ["escola_publica"], description: "Mais anos de estudo: QE alvo +8.", mods: { eq: 8 } },
+  tratores: { name: "Tratores", era: "eletrica", year: 1938, cost: 85, requires: ["fertilizantes"], description: "Máquinas no campo: +12% de comida.", mods: { farm: 0.12 } },
+  aviacao_comercial: { name: "Aviação comercial", era: "eletrica", year: 1942, cost: 100, requires: ["locomotiva"], description: "Frete aéreo: frete 4% mais barato e +5% nas vias.", mods: { trade: 0.04, traffic: 0.05 } },
+  previdencia_social: { name: "Previdência social", era: "eletrica", year: 1946, cost: 100, requires: ["antibioticos"], description: "Famílias mais seguras: +8% de nascimentos e +5% de saúde.", mods: { births: 0.08, health: 0.05 } },
+  eletrodomesticos: { name: "Eletrodomésticos", era: "eletrica", year: 1950, cost: 100, requires: ["eletrificacao"], description: "Geladeira e fogão elétrico: +4% de impostos.", mods: { tax: 0.04 } },
+  plasticos: { name: "Plásticos", era: "eletrica", year: 1952, cost: 110, requires: ["linha_montagem"], description: "Bens baratos, porém sujos: +10% de bens e +5% de poluição.", mods: { goods: 0.1, pollution: 0.05 } },
+  rodovias_modernas: { name: "Rodovias modernas", era: "eletrica", year: 1955, cost: 120, requires: ["locomotiva"], description: "Estradas largas: +10% nas vias e frete 4% mais barato.", mods: { traffic: 0.1, trade: 0.04 } },
+  universidade_publica: { name: "Universidade pública", era: "eletrica", year: 1958, cost: 130, requires: ["ensino_secundario"], description: "Pesquisa e diploma: QE alvo +8 e +10% de pesquisa.", mods: { eq: 8, research: 0.1 } },
+  satelites: { name: "Satélites", era: "atomica", year: 1972, cost: 200, requires: ["televisao"], description: "Telecomunicação global: +5% de pesquisa e frete 5% mais barato.", mods: { research: 0.05, trade: 0.05 } },
+  petroquimica: { name: "Petroquímica", era: "atomica", year: 1968, cost: 210, requires: ["plasticos"], description: "Combustíveis e resinas: +12% de bens e +6% de poluição.", mods: { goods: 0.12, pollution: 0.06 } },
+  turbinas_eficientes: { name: "Turbinas eficientes", era: "atomica", year: 1970, cost: 190, requires: ["eletrificacao"], description: "Mais energia com a mesma água e vento: +10% de energia.", mods: { power: 0.1 } },
+  inspecao_ambiental: { name: "Inspeção ambiental", era: "atomica", year: 1972, cost: 170, requires: ["saneamento"], description: "Fiscais do ar e da água: 8% menos poluição.", mods: { pollution: -0.08 } },
+  tomografia: { name: "Diagnóstico por imagem", era: "atomica", year: 1975, cost: 230, requires: ["antibioticos", "computadores"], description: "Exames precisos: hospitais atendem 10% mais gente.", mods: { health: 0.1 } },
+  educacao_tecnica: { name: "Educação técnica", era: "atomica", year: 1978, cost: 220, requires: ["universidade_publica"], description: "Escolas de ofício: QE alvo +6 e +4% de bens.", mods: { eq: 6, goods: 0.04 } },
+  robotica_inicial: { name: "Robótica inicial", era: "atomica", year: 1984, cost: 280, requires: ["computadores"], description: "Braços mecânicos: +10% de bens; 6% dos empregos industriais somem.", mods: { goods: 0.1, automation: 0.06 } },
+  engenharia_genetica: { name: "Engenharia genética", era: "atomica", year: 1985, cost: 300, requires: ["revolucao_verde"], description: "Plantas mais fortes: +12% de comida.", mods: { farm: 0.12 } },
+  comercio_eletronico: { name: "Comércio eletrônico", era: "digital", year: 1996, cost: 430, requires: ["internet"], description: "Lojas na rede: +6% de impostos e frete 5% mais barato.", mods: { tax: 0.06, trade: 0.05 } },
+  telemedicina: { name: "Telemedicina", era: "digital", year: 2002, cost: 460, requires: ["internet", "antibioticos"], description: "Consulta à distância: hospitais atendem 12% mais gente.", mods: { health: 0.12 } },
+  ensino_distancia: { name: "Ensino a distância", era: "digital", year: 2004, cost: 450, requires: ["internet", "universidade_publica"], description: "Aulas pela rede: QE alvo +8 e +5% de pesquisa.", mods: { eq: 8, research: 0.05 } },
+  logistica_gps: { name: "Logística por GPS", era: "digital", year: 2006, cost: 470, requires: ["satelites", "internet"], description: "Rotas inteligentes: +12% nas vias e frete 4% mais barato.", mods: { traffic: 0.12, trade: 0.04 } },
+  rede_inteligente: { name: "Rede elétrica inteligente", era: "digital", year: 2010, cost: 560, requires: ["energia_solar", "internet"], description: "Menos desperdício: +10% de energia e manutenção 3% mais barata.", mods: { power: 0.1, upkeep: -0.03 } },
+  analise_de_dados: { name: "Análise de dados policial", era: "digital", year: 2012, cost: 560, requires: ["internet", "policia_cientifica"], description: "Patrulha por mapa de crime: 10% menos crime.", mods: { crime: -0.1 } },
+  impressao_3d: { name: "Impressão 3D", era: "digital", year: 2018, cost: 600, requires: ["automacao"], description: "Peças sob demanda: +8% de bens e +5% de refino.", mods: { goods: 0.08, refine: 0.05 } },
+  tratamento_avancado: { name: "Tratamento avançado de água", era: "digital", year: 2020, cost: 620, requires: ["reciclagem", "saneamento"], description: "Esgoto virando água limpa: +10% de água e 8% menos poluição.", mods: { water: 0.1, pollution: -0.08 } },
+  eolica_offshore: { name: "Eólica no mar", era: "verde", year: 2038, cost: 900, requires: ["baterias"], description: "Parques de vento em alto-mar: +10% de energia.", mods: { power: 0.1 } },
+  cidade_15_minutos: { name: "Cidade de 15 minutos", era: "verde", year: 2042, cost: 980, requires: ["cidade_inteligente"], description: "Tudo perto de casa: +15% nas vias e 10% menos poluição.", mods: { traffic: 0.15, pollution: -0.1 } },
+  edicao_genomica: { name: "Edição genômica", era: "verde", year: 2048, cost: 1150, requires: ["biotecnologia"], description: "Doenças hereditárias curadas: +10% de saúde e 8% mais nascimentos.", mods: { health: 0.1, births: 0.08 } },
+  educacao_personalizada: { name: "Educação personalizada", era: "verde", year: 2052, cost: 1200, requires: ["inteligencia_artificial"], description: "Tutores de IA: QE alvo +12.", mods: { eq: 12 } },
+  economia_circular: { name: "Economia circular", era: "verde", year: 2056, cost: 1250, requires: ["reciclagem", "carros_eletricos"], description: "Nada vira lixo: 15% menos poluição e +5% de bens.", mods: { pollution: -0.15, goods: 0.05 } },
+  reflorestamento: { name: "Reflorestamento em massa", era: "verde", year: 2060, cost: 1100, requires: ["carros_eletricos"], description: "Florestas urbanas: 10% menos poluição e desastres 10% mais fracos.", mods: { pollution: -0.1, disaster: -0.1 } },
+  fazendas_autonomas: { name: "Fazendas autônomas", era: "verde", year: 2064, cost: 1500, requires: ["agricultura_vertical", "inteligencia_artificial"], description: "Colheita sem gente: +20% de comida; 10% dos empregos industriais somem.", mods: { farm: 0.2, automation: 0.1 } },
+  computacao_quantica: { name: "Computação quântica", era: "futuro", year: 2072, cost: 2500, requires: ["inteligencia_artificial"], description: "Simulações impossíveis: +40% de pesquisa.", mods: { research: 0.4 } },
+  cidades_flutuantes: { name: "Cidades flutuantes", era: "futuro", year: 2078, cost: 2800, requires: ["nanotecnologia"], description: "Expansão sobre a água: desastres 20% mais fracos e +1 lote por ciclo.", mods: { disaster: -0.2, growth: 1 } },
+  elevador_orbital: { name: "Elevador orbital", era: "futuro", year: 2088, cost: 3400, requires: ["logistica_quantica"], description: "Frete até o espaço: frete 10% mais barato e +10% de bens.", mods: { trade: 0.1, goods: 0.1 } },
+  longevidade: { name: "Longevidade", era: "futuro", year: 2090, cost: 3600, requires: ["medicina_regenerativa", "nanotecnologia"], description: "Viver 120 anos: +20% de saúde e 10% mais nascimentos.", mods: { health: 0.2, births: 0.1 } },
+  governanca_algoritmica: { name: "Governança algorítmica", era: "futuro", year: 2092, cost: 3800, requires: ["computacao_quantica"], description: "A prefeitura decide com dados: manutenção 10% mais barata e 15% menos crime.", mods: { upkeep: -0.1, crime: -0.15 } },
+  terraformacao_local: { name: "Terraformação local", era: "futuro", year: 2096, cost: 5000, requires: ["engenharia_climatica", "nanotecnologia"], description: "O clima sob controle: +30% de comida e +20% de água.", mods: { farm: 0.3, water: 0.2 } },
 };
 
 export const TECH_IDS = Object.keys(TECHS);

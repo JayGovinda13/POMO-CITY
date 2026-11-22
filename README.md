@@ -346,6 +346,11 @@ acompanhamentos) e `player.ts` (agendador).
 - **Cada decreto tem um partido que o defende** (e, às vezes, adversários). **Assinar** dá +1 de prestígio ao partido e −1 aos adversários; **revogar** faz o contrário (o aviso aparece em cada decreto, em Orçamento → Decretos, e o histórico da Câmara registra). O prestígio pesa nos votos da eleição, e os decretos em vigor dão um apoio extra (+0,3) enquanto durarem. Assinar e revogar logo em seguida zera o efeito.
 - **100 leis** no total (19 Esquerda, 19 Social Democrata, 17 Centro, 17 Liberal, 16 Conservador e 12 Fascista). A tabela das decisões está em `src/sim/laws.ts` e a dos decretos em `src/sim/finance.ts` (`ORDINANCE_POLITICS`).
 
+## Árvore de tecnologia ampliada
+
+- **81 tecnologias** (eram 36) em 6 eras, de 1900 a 2100. As novas somam três efeitos que não existiam: **QE** (escolas, ensino secundário, universidade, ensino a distância, educação personalizada), **frete** (telégrafo, aviação, rodovias, satélites, comércio eletrônico, elevador orbital; leva o desconto de comércio de 20% para até 30%) e **nascimentos** (vacinas, previdência social, edição genômica, longevidade). As demais mexem em comida, energia, poluição, crime, saúde, pesquisa, manutenção e automação.
+- No painel, os botões **Era atual / Todas / cada era** evitam a rolagem longa no celular, e dentro de cada era as tecnologias ficam em ordem de ano.
+
 ## Balanceamento
 
 ```bash

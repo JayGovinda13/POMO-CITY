@@ -73,7 +73,7 @@ function MarketModal({ onClose }: { onClose: () => void }) {
           <div className="overflow-x-auto">
             <p className="mb-1 text-zinc-400">
               Frete: <strong className={tradeDiscount(city) > 0 ? "text-emerald-300" : ""}>{Math.round(tradeDiscount(city) * 100)}%</strong> mais barato para importar e{" "}
-              {Math.round((tradeDiscount(city) / 2) * 100)}% a mais ao vender. Porto, aeroporto, estações de trem e rodovias baixam o custo do comércio (máx. 20%).
+              {Math.round((tradeDiscount(city) / 2) * 100)}% a mais ao vender. Porto, aeroporto, estações de trem e rodovias baixam o custo do comércio (máx. 30%).
               Estoque acima de $300 paga 1% por ciclo para ficar guardado.
             </p>
             <p className="mb-1 text-[10px] text-zinc-500 sm:hidden">← deslize a tabela para o lado →</p>

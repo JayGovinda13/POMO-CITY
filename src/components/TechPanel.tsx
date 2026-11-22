@@ -40,6 +40,7 @@ export function TechButton() {
 
 function TechModal({ onClose }: { onClose: () => void }) {
   const city = useGame((s) => s.city);
+  const [only, setOnly] = useState<string>("atual");
   if (!city) return null;
   const year = cityYear(city);
   const era = currentEra(city);
@@ -83,9 +84,17 @@ function TechModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
         <div className="min-h-0 space-y-3 overflow-y-auto p-2">
-          {ERAS.map((e, i) => {
+          <div className="flex flex-wrap gap-1">
+            {[{ id: "atual", name: "Era atual" }, { id: "todas", name: "Todas" }, ...ERAS.map((e) => ({ id: e.id, name: e.name.replace("Era ", "").replace("do ", "") }))].map((f) => (
+              <button key={f.id} type="button" className={`retro-button ${only === f.id ? "retro-button-active" : ""}`} onClick={() => setOnly(f.id)}>
+                {f.name}
+              </button>
+            ))}
+          </div>
+          {ERAS.filter((e) => only === "todas" || (only === "atual" ? e.id === era.id : e.id === only)).map((e) => {
+            const i = ERAS.indexOf(e);
             const until = ERAS[i + 1]?.from;
-            const ids = TECH_IDS.filter((id) => TECHS[id].era === e.id);
+            const ids = TECH_IDS.filter((id) => TECHS[id].era === e.id).sort((a, b) => TECHS[a].year - TECHS[b].year);
             return (
               <div key={e.id}>
                 <h3 className={`mb-1 ${year >= e.from ? "text-amber-300" : "text-zinc-500"}`}>

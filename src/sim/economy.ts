@@ -13,6 +13,7 @@ export const RESOURCE_IDS: ResourceId[] = ["food", "wood", "ore", "planks", "met
 export { RANK_YIELD, DEFAULT_POLICIES } from "./config";
 import { FOOD_PER_RESIDENT, RANK_YIELD } from "./config";
 import { lawTrade } from "./laws";
+import { techMods } from "./tech";
 import { ecoMarket } from "./ecocycle";
 
 /** O mercado externo só negocia até o Rank B: A e S vêm do foco ou de outros jogadores. */
@@ -40,8 +41,8 @@ export const importPrice = (res: ResourceId, rank: Rank, effects: ClimateEffects
 export const exportPrice = (res: ResourceId, rank: Rank, effects: ClimateEffects) =>
   round2(basePrice(res, effects) * EXPORT_FACTOR * (1 + (effects.trade ?? 0) / 2) * RANK_YIELD[rankIndex(rank) > rankIndex(MARKET_MAX_RANK) ? MARKET_MAX_RANK : rank]);
 
-/** Desconto de frete por infraestrutura: porto, aeroporto, estações de trem e rodovias (máx. 20%). */
-export function tradeDiscount(s: Pick<CityState, "buildings" | "cyclesCompleted"> & Partial<Pick<CityState, "council">>): number {
+/** Desconto de frete por infraestrutura: porto, aeroporto, estações de trem e rodovias (máx. 30%). */
+export function tradeDiscount(s: Pick<CityState, "buildings" | "cyclesCompleted"> & Partial<Pick<CityState, "council" | "techs">>): number {
   let d = 0;
   let stations = 0;
   let highways = 0;
@@ -53,7 +54,9 @@ export function tradeDiscount(s: Pick<CityState, "buildings" | "cyclesCompleted"
     else if (b.type === "highway") highways++;
   }
   d += Math.min(2, stations) * 0.03 + Math.min(0.05, highways / 1000) + lawTrade(s);
-  return Math.round(Math.min(0.2, d) * 1000) / 1000;
+  // Infraestrutura e leis chegam a 20%; tecnologias de logística levam o total a 30%.
+  d = Math.min(0.2, d) + techMods({ techs: s.techs ?? [] }).trade;
+  return Math.round(Math.min(0.3, d) * 1000) / 1000;
 }
 
 export const currentEffects = (s: CityState): ClimateEffects => ({ ...effectsOf(weatherAt(s)), trade: tradeDiscount(s), market: ecoMarket(s) });
