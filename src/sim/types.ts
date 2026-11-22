@@ -32,6 +32,7 @@ export type BuildingType =
   | "fire_station"
   | "prison"
   | "hospital"
+  | "clinic"
   | "labor_office"
   | "school"
   | "college"

@@ -13,6 +13,7 @@ import {
   newCouncil,
   researchPerCycle,
   rng,
+  rollEvents,
   tradeDiscount,
   type CityState,
 } from "./index";
@@ -135,5 +136,37 @@ describe("construções que ocupam vários quadrados", () => {
     const r = rng(4);
     for (let i = 0; i < 20; i++) businessStep(st, 40, r);
     expect(st.business.entrepreneurs).toBeGreaterThan(0);
+  });
+});
+
+describe("posto médico", () => {
+  it("é menor e mais barato que o hospital", () => {
+    const c = BUILDINGS.clinic;
+    const h = BUILDINGS.hospital;
+    expect(c.buildable).toBe(true);
+    expect(c.cost).toBeLessThan(h.cost);
+    expect(c.upkeep).toBeLessThan(h.upkeep);
+    expect(c.workers).toBeLessThan(h.workers);
+    expect(c.service!.capacity!).toBeLessThan(h.service!.capacity!);
+    expect(c.service!.radius!).toBeLessThan(h.service!.radius!);
+    expect(c.service!.kind).toBe("hospital");
+  });
+
+  it("evita a gripe, mas não a peste", () => {
+    const base = { healthServed: 0, hasFire: true, approval: 0.5, overwork: 0 };
+    const tries = (info: object, id: string) => {
+      let n = 0;
+      for (let seed = 1; seed <= 400; seed++) {
+        const s = flat();
+        s.population = 400;
+        const news = rollEvents(s, rng(seed), { ...base, ...info });
+        if (news.some((x) => x.title.toLowerCase().includes(id))) n++;
+      }
+      return n;
+    };
+    const gripeSem = tries({ hasHospital: false, hasClinic: false }, "gripe");
+    const gripeCom = tries({ hasHospital: false, hasClinic: true }, "gripe");
+    expect(gripeCom).toBeLessThanOrEqual(gripeSem);
+    expect(gripeCom).toBe(0);
   });
 });

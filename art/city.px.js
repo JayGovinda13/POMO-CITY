@@ -985,6 +985,20 @@ building("hospital", 46, (c, oy) => {
   c.rect(b.cx - 1, ty - 3, 3, 7, "N")
   c.rect(b.cx - 3, ty - 1, 7, 3, "N")
 })
+// Posto médico: casinha branca com faixa verde, cruz vermelha na fachada e toldo.
+building("clinic", 34, (c, oy) => {
+  c.poly(ground(oy, 2), "p")
+  const b = block(c, { oy, hw: 11, H: 12, top: "J", left: "Y", right: "H" })
+  windows(c, b, { floors: 1, fh: 6, col: "q", lit: "c", every: 4, from: 4 })
+  parapet(c, b, "E")
+  door(c, b, 0.5, "Q")
+  // Cruz vermelha na fachada da direita e placa no telhado.
+  const cx = b.cx + 6, cy = b.B[1] - b.H + 6
+  c.rect(cx - 1, cy - 3, 3, 7, "N")
+  c.rect(cx - 3, cy - 1, 7, 3, "N")
+  c.rect(b.cx - 1, b.cy - b.H - 4, 3, 5, "N")
+  c.rect(b.cx - 2, b.cy - b.H - 3, 5, 3, "N")
+})
 // Fiscalização do Trabalho: sobrado cinza-azulado com placa, relógio de ponto e bandeira.
 building("labor_office", 36, (c, oy) => {
   c.poly(ground(oy, 2), "p")
@@ -1395,4 +1409,4 @@ bigSprite("intermodal", 3, 40, (c, { P, quad, prism, shrub }) => {
   for (const [i, j] of [[2.75, 0.2], [2.8, 2.35]]) shrub(i, j)
 })
 
-sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "foam_*", "beach_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "labor_office", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "university", "worker_coop", "incubator", "intermodal", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })
+sheet("city", ["ground_*", "water_*", "road_*", "highway_*", "rail_*", "onramp", "foam_*", "beach_*", "decor_*", "zone_*", "cityhall", "monument", "farm", "lumberyard", "mine", "sawmill", "smelter", "thermal_plant", "wind_turbine", "hydro_plant", "solar_plant", "nuclear_plant", "recycling_center", "fusion_plant", "warehouse", "silo", "water_pump", "water_tower", "water_treatment", "police", "fire_station", "prison", "hospital", "clinic", "labor_office", "school", "college", "library", "museum", "plaza", "park", "zoo", "stadium", "university", "worker_coop", "incubator", "intermodal", "bus_stop", "train_station", "airport", "seaport", "tunnel", "desalination", "marina", "power_pole", "pt_*"], { pad: 1 })

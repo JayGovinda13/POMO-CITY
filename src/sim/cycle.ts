@@ -485,6 +485,7 @@ const eventsSystem: CycleSystem = ({ s, report, rand, services }) => {
     healthServed: services?.healthServed ?? 0,
     hasFire: works("fire_station"),
     hasHospital: works("hospital"),
+    hasClinic: works("clinic"),
     approval: moodSummary(citizensView(s)).approval,
     overwork: cityFatigue(s),
   });

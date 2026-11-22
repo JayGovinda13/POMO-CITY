@@ -358,6 +358,7 @@ acompanhamentos) e `player.ts` (agendador).
 - **Cooperativa fabril (2×2)**: fábrica de bens tocada pelos trabalhadores; pesa +0,5 no cooperativismo e reduz pela metade as quebras de cooperativas. Requer 120 habitantes.
 - **Incubadora de empresas (2×2)**: +0,4 no empreendedorismo (funciona sem lei) e +2 de pesquisa. Requer 150 habitantes.
 - **Terminal intermodal (3×3)**: frete 6% mais barato e +15% de demanda comercial e industrial. Requer 250 habitantes e a tecnologia *Contêineres*.
+- **Posto médico (1×1)**: o irmão pequeno do hospital, em Serviços. Custa $200 (hospital: $600), 2 trabalhadores e manutenção $4; atende 45 moradores (hospital: 150) num raio de 3 (hospital: 5). Evita surtos de gripe, mas não segura a peste: para ela é preciso um hospital.
 - Os sprites (`art/city.px.js`, função `bigSprite`) são gerados com pxl; o desenho é um só, escolhido no tile da frente da vista (funciona nas 4 rotações da câmera).
 
 ## Balanceamento

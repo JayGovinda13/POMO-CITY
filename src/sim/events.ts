@@ -98,6 +98,8 @@ export interface EventContext {
   hasFire?: boolean;
   /** Há hospital funcionando? Sem ele, doenças podem aparecer. (Padrão: sim.) */
   hasHospital?: boolean;
+  /** Há posto médico funcionando? Evita a gripe, mas não a peste. */
+  hasClinic?: boolean;
   /** Aprovação dos moradores, de −1 a 1. Com a população triste (< 0), greves podem estourar. */
   approval?: number;
   /** Desgaste dos trabalhadores (0..1): jornada longa e pagamento por peça. Aumenta a chance de greve. */
@@ -135,7 +137,8 @@ export function rollEvents(s: CityState, rand: () => number, info: EventContext)
   // Eventos de causa: só acontecem quando falta o serviço (ou o povo está triste).
   const cause = (id: EventId) => {
     if (id === "incendio") return !hasFire && (s.zoneLevel.some((l) => l > 0) || s.buildings.some((b) => b.type !== "road" && !isHall(b)));
-    if (id === "gripe" || id === "peste") return !hasHospital;
+    if (id === "gripe") return !hasHospital && !(info.hasClinic ?? false);
+    if (id === "peste") return !hasHospital;
     if (id === "greve") return approval < 0 || overwork >= 0.5;
     return true;
   };
