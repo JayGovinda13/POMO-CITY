@@ -794,15 +794,39 @@ building("farm", 24, (c, oy) => {
   const b = block(c, { oy, hw: 6, H: 6, left: "N", right: "R", dx: 6, dy: -2 })
   hipRoof(c, b, 4, "D", "P")
 })
-building("lumberyard", 30, (c, oy) => {
+building("lumberyard", 38, (c, oy) => {
   c.poly(ground(oy, 2), "S")
-  // Pilhas de toras (círculos de topo).
-  for (const [x, y] of [[6, 8], [10, 8], [8, 6], [16, 11], [20, 11], [18, 9]]) {
-    c.circ(x, oy + y, 2, "P")
-    c.px(x, oy + y, "C")
+  // Serragem e marcas de arrasto no chão.
+  c.hline(4, oy + 12, 6, "s")
+  c.hline(18, oy + 13, 7, "s")
+  // Pilha de toras de lado (três fileiras) e toras de topo.
+  for (let row = 0; row < 3; row++) {
+    for (let k = 0; k < 4 - row; k++) {
+      const x = 4 + k * 4 + row * 2
+      const y = oy + 12 - row * 3
+      c.rect(x, y - 2, 4, 3, row % 2 ? "P" : "D")
+      c.px(x + 3, y - 1, "C")
+      c.px(x + 1, y - 1, "p")
+    }
   }
-  const b = block(c, { oy, hw: 6, H: 7, left: "P", right: "D", dx: 7, dy: -3, top: "D" })
-  hipRoof(c, b, 3, "I", "Z")
+  // Toco com machado e tronco derrubado.
+  c.rect(19, oy + 12, 4, 3, "P")
+  c.hline(19, oy + 12, 4, "C")
+  c.vline(21, oy + 8, 4, "D")
+  c.rect(20, oy + 8, 3, 1, "I")
+  c.rect(23, oy + 14, 7, 2, "D")
+  c.px(29, oy + 14, "C")
+  // Cabana do madeireiro, com chaminé e fumaça.
+  const b = block(c, { oy, hw: 7, H: 9, left: "P", right: "D", dx: 7, dy: -4, top: "D" })
+  for (let x = b.L[0] + 2; x < b.cx; x += 2) {
+    const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
+    c.vline(x, y - b.H + 1, b.H - 1, "D")
+  }
+  door(c, b, 0.55, "Z")
+  hipRoof(c, b, 4, "r", "R")
+  chimney(c, b.cx + 3, b.cy - b.H - 2, 4, 2, "z", "Z")
+  c.px(b.cx + 4, b.cy - b.H - 8, "H")
+  c.px(b.cx + 5, b.cy - b.H - 10, "i")
 })
 building("mine", 30, (c, oy) => {
   c.poly(ground(oy, 0), "M")
@@ -818,13 +842,32 @@ building("mine", 30, (c, oy) => {
   c.rect(21, oy + 9, 4, 3, "I")
   c.px(22, oy + 9, "j")
 })
-building("sawmill", 34, (c, oy) => {
+building("sawmill", 38, (c, oy) => {
   c.poly(ground(oy, 2), "S")
-  const b = block(c, { oy, hw: 11, H: 10, top: "D", left: "P", right: "D" })
+  // Esteira com toras chegando, e montes de serragem.
+  c.line(3, oy + 13, 12, oy + 9, "D")
+  c.line(3, oy + 14, 12, oy + 10, "P")
+  for (const [x, y] of [[4, 12], [7, 10]]) c.rect(x, oy + y, 3, 2, "P")
+  c.rect(24, oy + 13, 6, 2, "s")
+  c.hline(25, oy + 12, 4, "e")
+  // Galpão da serraria.
+  const b = block(c, { oy, hw: 11, H: 10, top: "D", left: "P", right: "D", dx: 2 })
+  for (let x = b.L[0] + 2; x < b.cx; x += 2) {
+    const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
+    c.vline(x, y - b.H + 1, b.H - 1, "D")
+  }
   windows(c, b, { floors: 1, fh: 8, col: "Z", lit: "l", every: 3 })
+  plinth(c, b, "D", "Z", 1)
+  // Abertura da serra circular na fachada da direita.
+  const [sx, sy] = fR(b, 0.5, 6)
+  c.circ(sx, sy, 3, "i")
+  c.circ(sx, sy, 2, "J")
+  c.px(sx, sy, "k")
   hipRoof(c, b, 6, "I", "Z")
-  // Pilha de tábuas.
-  for (let k = 0; k < 3; k++) c.hline(3, oy + 10 - k, 8, k % 2 ? "C" : "P")
+  // Chaminé e pilha de tábuas prontas.
+  chimney(c, b.cx - 6, b.cy - b.H - 3, 9, 3, "z", "Z", "N")
+  c.px(b.cx - 5, b.cy - b.H - 14, "H")
+  for (let k = 0; k < 3; k++) c.hline(2, oy + 7 - k, 7, k % 2 ? "C" : "P")
 })
 building("smelter", 46, (c, oy) => {
   c.poly(ground(oy, 0), "p")
@@ -922,17 +965,30 @@ building("hydro_plant", 32, (c, oy) => {
 
 // ───────────────────────────── armazenagem ─────────────────────────────
 
-building("warehouse", 32, (c, oy) => {
+building("warehouse", 38, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 14, H: 10, left: "P", right: "D" })
-  // Tábuas verticais na fachada (seguem a inclinação) e portão largo.
+  const b = block(c, { oy, hw: 14, H: 11, left: "P", right: "D" })
+  // Tábuas verticais na frente, com travessas, e soleira.
   for (let x = b.L[0] + 2; x < b.cx; x += 3) {
     const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
     c.vline(x, y - b.H + 1, b.H - 1, "D")
   }
-  c.rect(b.cx + 3, b.cy - 6, 7, 6, "Z")
-  c.rect(b.cx + 4, b.cy - 5, 5, 1, "I")
+  slabs(c, b, { floors: 2, fh: 5, left: "D", right: "Z" })
+  plinth(c, b, "D", "Z", 1)
+  // Portão largo de correr com trilho e placa.
+  c.rect(b.cx + 3, b.cy - 7, 8, 7, "Z")
+  c.rect(b.cx + 4, b.cy - 6, 6, 1, "I")
+  c.vline(b.cx + 7, b.cy - 6, 6, "I")
+  c.hline(b.cx + 2, b.cy - 8, 10, "J")
   hipRoof(c, b, 5, "r", "R")
+  // Ventilação no cume e lanterna.
+  c.rect(b.cx - 2, b.cy - b.H - 7, 4, 2, "I")
+  c.px(b.cx - 1, b.cy - b.H - 8, "J")
+  // Caixotes e barril à porta, e empilhadeira.
+  c.rect(2, oy + 12, 4, 3, "P"); c.px(3, oy + 13, "D")
+  c.rect(5, oy + 10, 4, 3, "C"); c.px(6, oy + 11, "P")
+  c.rect(25, oy + 13, 3, 3, "K"); c.hline(25, oy + 14, 3, "B")
+  c.rect(20, oy + 14, 4, 2, "L"); c.px(20, oy + 13, "J"); c.px(23, oy + 16, "k")
 })
 building("silo", 44, (c, oy) => {
   c.poly(ground(oy, 4), "S")
@@ -973,16 +1029,31 @@ building("water_tower", 52, (c, oy) => {
   c.ellipse(cx, base - 32, 7, 3, "H")
   c.ellipse(cx, base - 18, 7, 2, "b")
 })
-building("water_treatment", 34, (c, oy) => {
+building("water_treatment", 40, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 9, H: 9, top: "J", left: "i", right: "I", dx: -5, dy: -1 })
+  // Casa de controle, com claraboia e chaminé de ventilação.
+  const b = block(c, { oy, hw: 9, H: 10, top: "J", left: "i", right: "I", dx: -5, dy: -2 })
   windows(c, b, { floors: 1, fh: 8, col: "Z", lit: "l", every: 3 })
-  // Tanques de decantação redondos com água.
-  for (const [x, y] of [[22, oy + 6], [18, oy + 11]]) {
-    c.ellipse(x, y, 5, 3, "I")
+  slabs(c, b, { floors: 2, fh: 5, left: "T", right: "z" })
+  plinth(c, b, "I", "z", 1)
+  parapet(c, b, "H")
+  door(c, b, 0.55, "d")
+  c.rect(b.cx - 5, b.cy - b.H - 4, 4, 3, "q")
+  c.vline(b.cx + 3, b.cy - b.H - 9, 6, "J")
+  c.rect(b.cx + 2, b.cy - b.H - 10, 3, 1, "I")
+  // Tanques de decantação com borda, ponte giratória e água em movimento.
+  for (const [x, y] of [[23, oy + 6], [19, oy + 12]]) {
+    c.ellipse(x, y, 6, 3, "I")
+    c.ellipse(x, y, 5, 3, "J")
     c.ellipse(x, y - 1, 4, 2, "c")
-    c.px(x - 1, y - 1, "H")
+    c.px(x - 2, y - 1, "H")
+    c.px(x + 1, y, "q")
+    c.hline(x - 3, y - 1, 6, "i")
   }
+  // Canos ligando os tanques à casa.
+  c.hline(14, oy + 11, 5, "z")
+  c.line(16, oy + 10, 20, oy + 8, "z")
+  c.px(14, oy + 10, "N")
 })
 
 // ───────────────────────────── serviços (Fase 7) ─────────────────────────────
