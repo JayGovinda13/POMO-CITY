@@ -197,6 +197,10 @@ export function Hud() {
         <span title="Caixa da prefeitura">
           <Coins /> ${city.money}
         </span>
+        {/* No celular o indicador de demanda R/C/I fica na primeira linha, ao lado do caixa. */}
+        <span className="inline-flex sm:hidden">
+          <DemandIndicator demand={demand} />
+        </span>
         <ResourcesButton />
         <StrikeChip />
         <EventsChip />
