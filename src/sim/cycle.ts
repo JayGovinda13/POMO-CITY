@@ -270,7 +270,7 @@ const extractionSystem: CycleSystem = ({ s, report, rank, status, effects, water
     // Tecnologia: +% por recurso (agricultura, mineração, madeira; metal reciclado conta como refino).
     const tm = techMods(s);
     const res = def.produces.resource;
-    const tech = 1 + (res === "food" ? tm.farm : res === "wood" ? tm.wood : res === "ore" ? tm.ore : res === "metal" ? tm.refine : 0);
+    const tech = 1 + (res === "food" ? tm.farm : res === "wood" ? tm.wood : res === "ore" ? tm.ore : res === "metal" ? tm.refine : res === "goods" ? Math.max(-0.9, tm.goods + eventMods(s).goods) : 0);
     const sector = SECTOR_OF_BUILDING[b.type];
     const work = sector ? outputFactor(s, sector) : 1; // jornada e pagamento do setor
     const qty = Math.floor(def.produces.base * biome.yield[res] * eff * climate * bonus * tech * work);

@@ -355,7 +355,7 @@ acompanhamentos) e `player.ts` (agendador).
 
 - O catálogo tem o campo `footprint` (lado do quadrado: 2 = 2×2, 3 = 3×3). A construção fica no canto de cima (menor x e y) e os outros tiles viram "partes" ligadas a ela (`of`); demolir, consertar ou renovar qualquer tile vale para o prédio inteiro. Só precisa de um tile encostado numa estrada ligada à prefeitura. O terreno precisa ser plano, de terra firme e livre (prévia vermelha quando não cabe).
 - **Universidade (3×3)**: atende 900 moradores (como 3 faculdades) e rende +14 pontos de pesquisa por ciclo. Requer 200 habitantes e a tecnologia *Universidade pública*.
-- **Cooperativa fabril (2×2)**: fábrica de bens tocada pelos trabalhadores; pesa +0,5 no cooperativismo e reduz pela metade as quebras de cooperativas. Requer 120 habitantes.
+- **Cooperativa fabril (2×2)**: fábrica de bens (até 5 por ciclo, valendo os bônus de bens das tecnologias, leis e eventos) tocada pelos trabalhadores; pesa +0,5 no cooperativismo e reduz pela metade as quebras de cooperativas. Requer 120 habitantes.
 - **Incubadora de empresas (2×2)**: +0,4 no empreendedorismo (funciona sem lei) e +2 de pesquisa. Requer 150 habitantes.
 - **Terminal intermodal (3×3)**: frete 6% mais barato e +15% de demanda comercial e industrial. Requer 250 habitantes e a tecnologia *Contêineres*.
 - **Posto médico (1×1)**: o irmão pequeno do hospital, em Serviços. Custa $200 (hospital: $600), 2 trabalhadores e manutenção $4; atende 45 moradores (hospital: 150) num raio de 3 (hospital: 5). Evita surtos de gripe, mas não segura a peste: para ela é preciso um hospital.

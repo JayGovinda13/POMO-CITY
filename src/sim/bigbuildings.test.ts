@@ -12,8 +12,10 @@ import {
   idx,
   newCouncil,
   researchPerCycle,
+  resolveCycle,
   rng,
   rollEvents,
+  syncCitizens,
   tradeDiscount,
   type CityState,
 } from "./index";
@@ -168,5 +170,34 @@ describe("posto médico", () => {
     const gripeCom = tries({ hasHospital: false, hasClinic: true }, "gripe");
     expect(gripeCom).toBeLessThanOrEqual(gripeSem);
     expect(gripeCom).toBe(0);
+  });
+});
+
+describe("cooperativa fabril e bônus de bens", () => {
+  it("tecnologia e leis de bens também valem para a produção da cooperativa", () => {
+    const run = (techs: string[], laws: string[]) => {
+      const s = flat();
+      const hall = hallOf(s);
+      s.techs = techs;
+      s.wires[idx(s, hall.x + 1, hall.y + 1)] = 1; // liga a prefeitura (usina) à cooperativa
+      // Moradia para os trabalhadores.
+      for (let k = 0; k < 12; k++) {
+        const zi = idx(s, hall.x - 6 + k, hall.y - 3);
+        s.zoneType[zi] = 1;
+        s.zoneLevel[zi] = 4;
+      }
+      s.council = { ...newCouncil(), laws: laws as never[] };
+      let st = applyCommands(s, [{ type: "build", building: "worker_coop", x: hall.x + 1, y: hall.y + 2 }]).state;
+      for (const b of st.buildings) delete b.readyAt;
+      st.population = 400;
+      syncCitizens(st);
+      st.inventory = {} as typeof st.inventory;
+      const { report } = resolveCycle(st, T0);
+      return (Object.entries(report.produced) as [string, number][]).filter(([k]) => k.startsWith("goods")).reduce((a, [, v]) => a + (v ?? 0), 0);
+    };
+    const base = run([], []);
+    const boosted = run(["aco", "maquina_vapor", "linha_montagem"], ["isencao_industria"]);
+    expect(base).toBeGreaterThan(0);
+    expect(boosted).toBeGreaterThan(base);
   });
 });
