@@ -145,9 +145,9 @@ function door(c, b, t = 0.5, col = "D") {
 
 /** Tile de chão: base + manchas com causa (tufos, ondulações, pedras), sem ruído aleatório. */
 /** Mancha pontilhada (xadrez) de uma cor, dentro do losango: dá relevo ao chão sem ruído. */
-function dither(c, x, y, w, h, col) {
+function dither(c, x, y, w, h, col, oy = 0) {
   for (let yy = 0; yy < h; yy++)
-    for (let xx = 0; xx < w; xx++) if ((xx + yy) % 2 === 0 && inDiamondLoose(x + xx, y + yy)) c.px(x + xx, y + yy, col)
+    for (let xx = 0; xx < w; xx++) if ((xx + yy) % 2 === 0 && inDiamondLoose(x + xx, y + yy - oy)) c.px(x + xx, y + yy, col)
 }
 const inDiamondLoose = (x, y) => Math.abs(x - 16) / 16 + Math.abs(y - 8) / 8 <= 0.74
 
@@ -881,19 +881,31 @@ building("lumberyard", 38, (c, oy) => {
   c.px(b.cx + 4, b.cy - b.H - 8, "H")
   c.px(b.cx + 5, b.cy - b.H - 10, "i")
 })
-building("mine", 30, (c, oy) => {
+building("mine", 38, (c, oy) => {
   c.poly(ground(oy, 0), "M")
-  // Monte de pedra com a boca da mina.
+  dither(c, 6, oy + 9, 7, 3, "m", oy)
+  // Monte de pedra com a boca da mina escorada em madeira.
   c.poly([4, oy + 10, 12, oy - 2, 20, oy - 4, 28, oy + 8, 16, oy + 14], "m")
   c.poly([12, oy - 2, 20, oy - 4, 18, oy + 2], "j")
   c.rect(13, oy + 4, 6, 6, "Z")
   c.rect(12, oy + 3, 8, 1, "P")
   c.vline(12, oy + 4, 6, "P")
   c.vline(19, oy + 4, 6, "P")
-  // Trilho e vagonete.
+  c.px(15, oy + 6, "l")
+  // Torre de extração (cabeça de poço) com roda e cabo.
+  c.line(22, oy + 5, 24, oy - 8, "D")
+  c.line(28, oy + 5, 26, oy - 8, "D")
+  c.line(23, oy + 1, 27, oy + 1, "P")
+  c.circ(25, oy - 9, 2, "I")
+  c.px(25, oy - 9, "k")
+  c.vline(25, oy - 7, 8, "z")
+  c.rect(24, oy + 1, 3, 2, "J")
+  // Trilho, vagonete cheio de minério e pilha de pedras.
   c.line(16, oy + 10, 24, oy + 14, "J")
-  c.rect(21, oy + 9, 4, 3, "I")
-  c.px(22, oy + 9, "j")
+  c.rect(21, oy + 9, 5, 3, "I")
+  c.px(22, oy + 8, "j"); c.px(24, oy + 8, "j"); c.px(23, oy + 7, "j")
+  c.px(22, oy + 12, "k"); c.px(25, oy + 12, "k")
+  c.rect(4, oy + 11, 3, 2, "j"); c.px(5, oy + 10, "j")
 })
 building("sawmill", 38, (c, oy) => {
   c.poly(ground(oy, 2), "S")
@@ -922,14 +934,30 @@ building("sawmill", 38, (c, oy) => {
   c.px(b.cx - 5, b.cy - b.H - 14, "H")
   for (let k = 0; k < 3; k++) c.hline(2, oy + 7 - k, 7, k % 2 ? "C" : "P")
 })
-building("smelter", 46, (c, oy) => {
+building("smelter", 52, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 13, H: 12, top: "I", left: "z", right: "Z" })
-  // Boca do forno acesa.
+  // Monte de minério e trilho de vagonete.
+  c.poly([2, oy + 12, 6, oy + 8, 10, oy + 12], "m")
+  c.px(5, oy + 9, "j")
+  c.line(2, oy + 14, 12, oy + 15, "J")
+  const b = block(c, { oy, hw: 13, H: 13, top: "I", left: "z", right: "Z" })
+  slabs(c, b, { floors: 3, fh: 4, left: "Z", right: "k" })
+  plinth(c, b, "Z", "k", 1)
+  parapet(c, b, "i")
+  // Boca do forno acesa com arco e brasa.
   const x = b.L[0] + 5, y = Math.round(b.L[1] + 2.5) - 6
+  c.rect(x - 1, y - 1, 6, 6, "i")
   c.rect(x, y, 4, 4, "L")
   c.rect(x + 1, y + 1, 2, 2, "l")
-  chimney(c, b.R[0] - 7, b.R[1] - b.H, 20, 4, "z", "Z", "N")
+  c.px(x + 1, y + 5, "N")
+  // Duas chaminés, a mais alta com faixa vermelha e fumaça.
+  chimney(c, b.R[0] - 8, b.R[1] - b.H, 22, 4, "z", "Z", "N")
+  chimney(c, b.R[0] - 15, b.R[1] - b.H + 4, 14, 3, "z", "Z")
+  c.px(b.R[0] - 7, b.R[1] - b.H - 24, "H")
+  c.px(b.R[0] - 5, b.R[1] - b.H - 27, "i")
+  // Caçamba de escória brilhando.
+  c.rect(24, oy + 12, 4, 3, "I")
+  c.hline(24, oy + 12, 4, "L")
 })
 
 // ───────────────────────────── energia ─────────────────────────────
@@ -952,17 +980,24 @@ building("wind_turbine", 50, (c, oy) => {
   c.line(hubX, hubY, hubX - 10, hubY + 6, "J", 2)
   c.circ(hubX, hubY, 1, "N")
 })
-building("solar_plant", 30, (c, oy) => {
+building("solar_plant", 32, (c, oy) => {
   c.poly(ground(oy, 2), "G")
-  // Fileiras de painéis inclinados.
+  dither(c, 6, oy + 4, 6, 3, "g", oy)
+  // Fileiras de painéis inclinados, cada um com quadro, células e reflexo.
   for (let r = 0; r < 3; r++) {
-    const x = 6 + r * 4, y = oy + 3 + r * 3
-    c.poly([x, y + 3, x + 12, y - 3, x + 14, y - 1, x + 2, y + 5], "u")
+    const x = 5 + r * 4, y = oy + 3 + r * 3
+    c.poly([x, y + 3, x + 12, y - 3, x + 14, y - 1, x + 2, y + 5], "J")
+    c.poly([x + 1, y + 3, x + 12, y - 2, x + 13, y - 1, x + 2, y + 4], "u")
+    for (let k = 0; k < 5; k++) c.line(x + 2 + k * 2, y + 4 - k, x + 2 + k * 2, y + 1 - k, "Q")
     c.line(x + 1, y + 3, x + 12, y - 2, "q")
-    c.line(x + 4, y + 2, x + 6, y + 3, "c")
-    c.vline(x + 2, y + 5, 2, "J")
-    c.vline(x + 13, y, 2, "J")
+    c.px(x + 4, y + 2, "c"); c.px(x + 9, y - 1, "c")
+    c.vline(x + 2, y + 5, 2, "z")
+    c.vline(x + 13, y, 2, "z")
   }
+  // Inversor com luz e cerca.
+  c.rect(24, oy + 11, 4, 3, "H")
+  c.px(26, oy + 12, "L")
+  c.hline(2, oy + 11, 4, "J")
 })
 building("nuclear_plant", 52, (c, oy) => {
   c.poly(ground(oy, 0), "p")
@@ -980,15 +1015,28 @@ building("nuclear_plant", 52, (c, oy) => {
   c.circ(tx, base - 28, 3, "Y")
   c.circ(tx + 3, base - 32, 2, "H")
 })
-building("recycling_center", 36, (c, oy) => {
+building("recycling_center", 42, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 12, H: 10, top: "E", left: "v", right: "F", dx: 1 })
+  const b = block(c, { oy, hw: 12, H: 11, top: "E", left: "v", right: "F", dx: 1 })
   windows(c, b, { floors: 1, fh: 8, col: "Z", lit: "l", every: 3 })
-  badge(c, b, "Y", 0.5, 0)
-  // Caçambas coloridas.
-  c.rect(3, oy + 9, 4, 3, "Q")
-  c.rect(8, oy + 11, 4, 3, "N")
-  c.rect(4, oy + 12, 3, 2, "C")
+  slabs(c, b, { floors: 2, fh: 5, left: "f", right: "F" })
+  plinth(c, b, "f", "F", 1)
+  // Símbolo da reciclagem (três setas formando triângulo) na fachada direita.
+  const [rx, ry] = fR(b, 0.5, 6)
+  c.line(rx - 3, ry + 1, rx, ry - 4, "Y")
+  c.line(rx, ry - 4, rx + 3, ry + 1, "Y")
+  c.line(rx - 3, ry + 1, rx + 3, ry + 1, "Y")
+  c.px(rx, ry - 5, "H")
+  // Painéis solares no telhado e esteira de triagem na lateral.
+  c.poly([b.cx - 6, b.cy - b.H - 2, b.cx + 2, b.cy - b.H - 6, b.cx + 4, b.cy - b.H - 4, b.cx - 4, b.cy - b.H], "u")
+  c.line(2, oy + 13, 10, oy + 9, "I")
+  c.line(2, oy + 14, 10, oy + 10, "z")
+  c.px(5, oy + 10, "Q"); c.px(7, oy + 10, "N"); c.px(9, oy + 9, "C")
+  // Caçambas de cores: papel, plástico, vidro, metal.
+  for (const [x, y, col] of [[3, 9, "Q"], [7, 12, "N"], [11, 14, "C"], [24, 13, "E"]]) {
+    c.rect(x, oy + y, 4, 3, col)
+    c.hline(x, oy + y, 4, "k")
+  }
 })
 building("fusion_plant", 50, (c, oy) => {
   c.poly(ground(oy, 0), "p")
@@ -1004,16 +1052,27 @@ building("fusion_plant", 50, (c, oy) => {
   c.vline(cx, cy - 16, 8, "H")
   c.px(cx, cy - 17, "N")
 })
-building("hydro_plant", 32, (c, oy) => {
+building("hydro_plant", 38, (c, oy) => {
   c.poly(ground(oy, 0), "b")
-  const b = block(c, { oy, hw: 14, H: 10, top: "J", left: "i", right: "I" })
-  // Comportas com água descendo.
+  dither(c, 6, oy + 9, 8, 3, "B", oy)
+  // Casa de máquinas atrás, em concreto.
+  const t = block(c, { oy, hw: 9, H: 14, top: "J", left: "i", right: "I", dx: 4, dy: -4 })
+  windows(c, t, { floors: 2, fh: 6, col: "d", lit: "l", every: 3 })
+  parapet(c, t, "H")
+  // Barragem (muro) com comportas e cachoeira de água branca.
+  const b = block(c, { oy, hw: 14, H: 10, top: "J", left: "i", right: "I", dy: 3 })
+  slabs(c, b, { floors: 3, fh: 3, left: "T", right: "z" })
   for (let x = b.L[0] + 3; x < b.cx - 1; x += 4) {
     const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
-    c.rect(x, y - 8, 2, 8, "c")
-    c.vline(x + 1, y - 8, 8, "b")
+    c.rect(x, y - 9, 3, 9, "c")
+    c.vline(x + 1, y - 9, 9, "H")
+    c.px(x, y - 1, "H"); c.px(x + 2, y, "H")
+    c.hline(x - 1, y, 5, "c")
   }
-  c.rect(b.cx + 4, b.cy - b.H - 4, 5, 3, "w")
+  c.rect(b.cx + 4, b.cy - b.H - 4 + 3, 5, 3, "w")
+  // Torre de transmissão.
+  c.vline(b.R[0] - 3, b.R[1] - b.H - 8, 8, "z")
+  c.hline(b.R[0] - 5, b.R[1] - b.H - 6, 5, "z")
 })
 
 // ───────────────────────────── armazenagem ─────────────────────────────
@@ -1369,41 +1428,87 @@ building("museum", 42, (c, oy) => {
 
 // ───────────────────────────── lazer (Fase 7) ─────────────────────────────
 
-building("plaza", 30, (c, oy) => {
+building("plaza", 34, (c, oy) => {
   c.poly(ground(oy, 0), "h")
-  c.poly(ground(oy, 6), "e")
-  // Chafariz no centro e bancos.
-  c.ellipse(16, oy + 8, 4, 2, "I")
-  c.ellipse(16, oy + 7, 3, 1, "c")
-  c.vline(16, oy + 3, 4, "c")
-  c.rect(6, oy + 8, 3, 1, "D")
-  c.rect(23, oy + 8, 3, 1, "D")
+  c.poly(ground(oy, 5), "e")
+  // Piso de lajotas em xadrez.
+  for (let y = 0; y < 14; y += 2)
+    for (let x = 6; x < 27; x += 2) if (((x >> 1) + (y >> 1)) % 2 === 0 && Math.abs(x - 16) / 14 + Math.abs(oy + 4 + y - (oy + 8)) / 6 < 0.9) c.px(x, oy + 2 + y, "Y")
+  // Chafariz de duas bacias com jatos.
+  c.ellipse(16, oy + 9, 5, 2, "I")
+  c.ellipse(16, oy + 8, 4, 2, "c")
+  c.ellipse(16, oy + 6, 2, 1, "I")
+  c.vline(16, oy + 1, 5, "c")
+  c.px(14, oy + 3, "c"); c.px(18, oy + 3, "c"); c.px(15, oy + 2, "H"); c.px(17, oy + 2, "H")
+  // Bancos, postes de luz e canteiros floridos.
+  c.rect(6, oy + 9, 3, 1, "D"); c.rect(23, oy + 9, 3, 1, "D")
+  c.vline(10, oy + 5, 5, "z"); c.px(10, oy + 4, "l")
+  c.vline(22, oy + 5, 5, "z"); c.px(22, oy + 4, "l")
+  for (const [x, y, col] of [[3, 7, "N"], [4, 9, "Y"], [28, 7, "y"], [27, 9, "N"]]) { c.px(x, oy + y, col); c.px(x + 1, oy + y + 1, "F") }
   c.stamp("_tree_round", 2, oy - 8)
+  c.stamp("_tree_round", 20, oy - 12)
 })
-building("park", 34, (c, oy) => {
+building("park", 38, (c, oy) => {
   c.poly(ground(oy, 0), "h")
-  // Caminho de terra cruzando o parque e lago.
-  c.line(4, oy + 8, 28, oy + 8, "e", 2)
-  c.ellipse(21, oy + 11, 4, 2, "b")
-  c.ellipse(21, oy + 10, 3, 1, "c")
+  dither(c, 6, oy + 4, 6, 3, "g", oy)
+  dither(c, 18, oy + 9, 6, 3, "g", oy)
+  // Caminho sinuoso de terra e ponte sobre o riacho.
+  c.line(3, oy + 9, 12, oy + 8, "e", 2)
+  c.line(12, oy + 8, 20, oy + 6, "e", 2)
+  c.line(20, oy + 6, 29, oy + 8, "e", 2)
+  c.ellipse(22, oy + 12, 5, 2, "b")
+  c.ellipse(22, oy + 11, 4, 1, "c")
+  c.px(21, oy + 11, "Y")
+  c.rect(14, oy + 7, 5, 2, "P")
+  c.hline(14, oy + 6, 5, "D")
+  // Piquenique: toalha xadrez e cesta.
+  c.rect(6, oy + 11, 5, 3, "N")
+  c.px(7, oy + 12, "Y"); c.px(9, oy + 12, "Y"); c.px(8, oy + 11, "Y"); c.px(10, oy + 13, "Y")
+  c.rect(11, oy + 12, 2, 2, "P")
+  // Banco e poste.
+  c.rect(24, oy + 5, 4, 1, "D"); c.vline(28, oy + 1, 5, "z"); c.px(28, oy, "l")
+  // Árvores de portes variados e arbustos floridos.
   c.stamp("_tree_round", 5, oy - 10)
   c.stamp("_tree_pine", 15, oy - 14)
   c.stamp("_tree_round", 9, oy - 4)
+  c.stamp("_tree_round", 22, oy - 6)
+  for (const [x, y, col] of [[2, 7, "N"], [3, 8, "Y"], [27, 11, "y"]]) { c.px(x, oy + y, col); c.px(x + 1, oy + y, "F") }
 })
-building("zoo", 36, (c, oy) => {
+building("zoo", 42, (c, oy) => {
   c.poly(ground(oy, 0), "E")
-  // Cercado, lago, tenda e uma girafa.
-  c.line(2, oy + 8, 16, oy + 1, "D")
-  c.line(16, oy + 1, 30, oy + 8, "D")
-  c.ellipse(10, oy + 10, 4, 2, "b")
-  c.stamp("_tree_round", 18, oy - 6)
-  c.rect(23, oy - 6, 2, 12, "C")
-  c.rect(22, oy - 8, 4, 2, "C")
-  c.px(24, oy - 3, "D")
-  c.px(23, oy + 1, "D")
-  c.rect(20, oy + 3, 7, 3, "C")
-  c.poly([4, oy + 6, 8, oy - 2, 12, oy + 6], "N")
-  c.vline(8, oy - 4, 2, "J")
+  c.poly(ground(oy, 4), "v")
+  // Cerca de madeira nos quatro lados.
+  c.line(1, oy + 8, 16, oy + 1, "D")
+  c.line(16, oy + 1, 31, oy + 8, "D")
+  c.line(1, oy + 8, 16, oy + 15, "D")
+  c.line(16, oy + 15, 31, oy + 8, "D")
+  // Lago com patinhos.
+  c.ellipse(9, oy + 9, 5, 2, "b")
+  c.ellipse(9, oy + 8, 4, 1, "c")
+  c.px(8, oy + 8, "Y"); c.px(11, oy + 9, "Y")
+  // Girafa: corpo, pescoço comprido, cabeça e manchas.
+  c.rect(19, oy + 4, 6, 3, "C")
+  c.vline(24, oy - 8, 12, "C")
+  c.vline(25, oy - 8, 12, "L")
+  c.rect(24, oy - 10, 4, 2, "C")
+  c.px(27, oy - 9, "k")
+  c.px(24, oy - 11, "D")
+  c.vline(19, oy + 7, 3, "C"); c.vline(24, oy + 7, 3, "C")
+  for (const [x, y] of [[20, oy + 5], [22, oy + 4], [24, oy - 2], [25, oy - 5]]) c.px(x, y, "D")
+  // Elefante cinza com orelha e tromba.
+  c.rect(13, oy + 11, 6, 3, "i")
+  c.rect(12, oy + 12, 2, 3, "I")
+  c.px(12, oy + 14, "H")
+  c.rect(17, oy + 10, 3, 2, "J")
+  c.px(19, oy + 12, "J")
+  // Tenda do circo e arco de entrada com placa.
+  c.poly([3, oy + 3, 7, oy - 4, 11, oy + 3], "N")
+  c.poly([5, oy + 3, 7, oy - 4, 9, oy + 3], "Y")
+  c.vline(7, oy - 7, 3, "J"); c.px(8, oy - 7, "N")
+  c.rect(14, oy + 13, 1, 3, "D"); c.rect(18, oy + 13, 1, 3, "D")
+  c.rect(14, oy + 12, 5, 2, "y")
+  c.px(15, oy + 12, "k"); c.px(17, oy + 12, "k")
+  c.stamp("_tree_round", 22, oy - 8)
 })
 building("stadium", 40, (c, oy) => {
   c.poly(ground(oy, 0), "p")
@@ -1467,34 +1572,70 @@ building("train_station", 44, (c, oy) => {
   c.px(b.cx, b.cy - b.H - 4, "k")
   c.px(b.cx + 1, b.cy - b.H - 5, "k")
 })
-building("airport", 40, (c, oy) => {
+building("airport", 46, (c, oy) => {
   c.poly(ground(oy, 0), "I")
-  // Pista com faixas e terminal com torre de controle.
-  c.line(2, oy + 8, 16, oy + 15, "Y")
-  c.line(16, oy + 1, 30, oy + 8, "a")
-  for (let k = 0; k < 4; k++) c.px(20 + k * 2, oy + 3 + k, "Y")
-  const b = block(c, { oy, hw: 8, H: 7, top: "J", left: "H", right: "J", dx: -5, dy: -1 })
-  windows(c, b, { floors: 1, fh: 6, col: "q", lit: "c", every: 2 })
-  c.rect(b.cx + 7, b.cy - 18, 3, 16, "J")
-  c.rect(b.cx + 6, b.cy - 22, 5, 4, "q")
-  // Avião estacionado.
-  c.rect(19, oy + 9, 9, 2, "H")
-  c.rect(22, oy + 7, 2, 6, "H")
-  c.px(27, oy + 8, "N")
+  dither(c, 6, oy + 4, 6, 3, "i", oy)
+  // Pista com cabeceira listrada, eixo tracejado e luzes.
+  c.poly([2, oy + 8, 16, oy + 15, 18, oy + 14, 4, oy + 7], "a")
+  c.line(16, oy + 1, 30, oy + 8, "a", 2)
+  for (let k = 0; k < 5; k++) c.px(19 + k * 2, oy + 3 + k, "Y")
+  for (let k = 0; k < 4; k++) c.hline(3 + k * 3, oy + 9 + k + (k > 1 ? 0 : 0), 2, "H")
+  c.px(29, oy + 8, "N"); c.px(17, oy + 1, "N")
+  // Terminal de vidro e torre de controle com cabine.
+  const b = block(c, { oy, hw: 8, H: 8, top: "J", left: "H", right: "J", dx: -5, dy: -1 })
+  windows(c, b, { floors: 1, fh: 7, col: "q", lit: "c", every: 2 })
+  plinth(c, b, "i", "I", 1)
+  parapet(c, b, "Y")
+  c.rect(b.cx + 7, b.cy - 20, 3, 18, "J")
+  c.rect(b.cx + 6, b.cy - 25, 5, 5, "q")
+  c.hline(b.cx + 6, b.cy - 26, 5, "z")
+  c.vline(b.cx + 8, b.cy - 30, 4, "J")
+  c.px(b.cx + 8, b.cy - 31, "N")
+  // Avião: fuselagem, asas, cauda e janelinhas.
+  c.rect(18, oy + 10, 10, 2, "H")
+  c.poly([21, oy + 10, 24, oy + 6, 25, oy + 7, 24, oy + 10], "J")
+  c.poly([21, oy + 12, 25, oy + 15, 24, oy + 16, 20, oy + 12], "J")
+  c.rect(27, oy + 8, 2, 4, "H")
+  c.px(28, oy + 7, "N")
+  c.hline(19, oy + 10, 6, "q")
+  // Biruta.
+  c.vline(3, oy + 1, 6, "J")
+  c.hline(4, oy + 1, 3, "L")
+  c.px(6, oy + 1, "H")
 })
-building("seaport", 40, (c, oy) => {
+building("seaport", 46, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  // Cais de madeira, contêineres e guindaste.
-  c.poly([2, oy + 8, 16, oy + 15, 18, oy + 14, 4, oy + 7], "P")
-  for (const [x, y, col] of [[8, oy + 3, "N"], [13, oy + 5, "Q"], [10, oy + 1, "E"]]) {
-    c.rect(x, y, 6, 3, col)
-    c.hline(x, y, 6, "k")
+  // Cais de tábuas e água do lado esquerdo-baixo.
+  c.poly([1, oy + 8, 16, oy + 16, 18, oy + 15, 3, oy + 7], "P")
+  c.poly([0, oy + 9, 16, oy + 16, 16, oy + 16, 0, oy + 9], "b")
+  for (let k = 0; k < 7; k++) c.px(3 + k * 2, oy + 8 + k, "D")
+  // Navio atracado: casco, convés de contêineres e ponte de comando.
+  c.poly([0, oy + 10, 10, oy + 15, 16, oy + 13, 6, oy + 8], "z")
+  c.poly([2, oy + 9, 8, oy + 12, 14, oy + 9, 8, oy + 6], "N")
+  c.rect(5, oy + 6, 4, 3, "K")
+  c.rect(9, oy + 5, 3, 3, "C")
+  c.rect(11, oy + 8, 3, 3, "E")
+  c.rect(2, oy + 9, 3, 3, "R")
+  c.rect(13, oy + 6, 2, 4, "H")
+  c.px(14, oy + 5, "q")
+  // Contêineres empilhados e armazém no cais.
+  for (const [x, y, col, h] of [[13, oy + 1, "N", 4], [17, oy + 3, "K", 4], [13, oy - 3, "C", 4], [21, oy + 5, "E", 3]]) {
+    c.rect(x, y, 5, h, col)
+    c.hline(x, y, 5, "k")
+    c.hline(x, y + h - 1, 5, "k")
+    c.vline(x + 2, y + 1, h - 2, "k")
   }
-  c.vline(22, oy - 14, 22, "y")
-  c.line(22, oy - 14, 30, oy - 8, "y")
-  c.line(22, oy - 14, 16, oy - 10, "y")
-  c.vline(29, oy - 8, 8, "J")
+  // Guindaste de cais: pórtico, lança e cabo com contêiner.
+  c.vline(23, oy - 14, 22, "y")
+  c.vline(24, oy - 14, 22, "L")
+  c.line(23, oy - 14, 31, oy - 8, "y")
+  c.line(23, oy - 14, 15, oy - 9, "y")
+  c.line(23, oy - 14, 15, oy - 10, "L")
+  c.vline(16, oy - 9, 6, "z")
+  c.rect(14, oy - 3, 5, 3, "N")
+  c.vline(30, oy - 8, 8, "J")
   c.rect(28, oy, 3, 2, "z")
+  c.px(28, oy + 4, "N"); c.px(28, oy + 5, "H")
 })
 
 // ───────────────────────────── terreno (Fase 9) ─────────────────────────────
@@ -1523,18 +1664,32 @@ building("desalination", 40, (c, oy) => {
   }
   c.line(4, oy + 9, 16, oy + 15, "K")
 })
-building("marina", 30, (c, oy) => {
+building("marina", 36, (c, oy) => {
   c.poly(ground(oy, 0), "b")
-  // Píer de madeira com barcos a vela.
-  c.poly([4, oy + 8, 16, oy + 2, 18, oy + 3, 6, oy + 9], "P")
-  c.poly([14, oy + 3, 26, oy + 9, 24, oy + 10, 12, oy + 4], "P")
-  for (const [x, y] of [[9, oy + 12], [21, oy + 5]]) {
-    c.rect(x - 3, y, 7, 2, "Y")
-    c.vline(x, y - 9, 9, "D")
-    c.poly([x + 1, y - 9, x + 1, y - 1, x + 5, y - 1], "H")
+  // Ondas e profundidade.
+  dither(c, 6, oy + 5, 6, 3, "B", oy)
+  dither(c, 18, oy + 9, 6, 3, "B", oy)
+  c.hline(9, oy + 11, 3, "c"); c.hline(21, oy + 4, 3, "c")
+  // Píer de tábuas com estacas.
+  c.poly([3, oy + 8, 16, oy + 2, 18, oy + 3, 5, oy + 9], "P")
+  c.poly([14, oy + 3, 27, oy + 9, 25, oy + 10, 12, oy + 4], "P")
+  for (let k = 0; k < 6; k++) { c.px(5 + k * 2, oy + 8 - k, "D"); c.px(15 + k * 2, oy + 3 + k, "D") }
+  for (const [x, y] of [[4, oy + 9], [12, oy + 5], [26, oy + 10]]) { c.vline(x, y - 1, 3, "D") }
+  // Veleiros: casco, mastro, vela principal e buja.
+  for (const [x, y, hull] of [[9, oy + 13, "Y"], [21, oy + 6, "N"]]) {
+    c.rect(x - 3, y, 7, 2, hull)
+    c.px(x - 4, y, hull); c.px(x + 4, y, hull)
+    c.vline(x, y - 11, 11, "D")
+    c.poly([x + 1, y - 11, x + 1, y - 1, x + 6, y - 1], "H")
+    c.poly([x - 1, y - 8, x - 1, y - 1, x - 5, y - 1], "Y")
+    c.px(x, y - 12, "N")
   }
-  c.rect(25, oy + 2, 4, 4, "w")
-  c.rect(25, oy + 1, 4, 1, "r")
+  // Capitania do porto com telhado vermelho e boias.
+  c.rect(25, oy + 1, 5, 4, "w")
+  c.rect(24, oy, 7, 1, "r")
+  c.rect(26, oy + 2, 2, 3, "D")
+  c.px(2, oy + 12, "N"); c.px(2, oy + 13, "H")
+  c.px(29, oy + 13, "N"); c.px(29, oy + 14, "H")
 })
 
 // Poste de transmissão.
