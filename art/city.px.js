@@ -144,11 +144,20 @@ function door(c, b, t = 0.5, col = "D") {
 // ───────────────────────────────── terreno ─────────────────────────────────
 
 /** Tile de chão: base + manchas com causa (tufos, ondulações, pedras), sem ruído aleatório. */
+/** Mancha pontilhada (xadrez) de uma cor, dentro do losango: dá relevo ao chão sem ruído. */
+function dither(c, x, y, w, h, col) {
+  for (let yy = 0; yy < h; yy++)
+    for (let xx = 0; xx < w; xx++) if ((xx + yy) % 2 === 0 && inDiamondLoose(x + xx, y + yy)) c.px(x + xx, y + yy, col)
+}
+const inDiamondLoose = (x, y) => Math.abs(x - 16) / 16 + Math.abs(y - 8) / 8 <= 0.74
+
 function groundTile(name, base, dark, light, marks) {
   for (let v = 0; v < 2; v++) {
     sprite(`ground_${name}_${v}`, { w: 32, h: 16 }, (c) => {
       c.poly(ground(0), base)
       const rng = c.rng(v * 7 + name.length)
+      // Duas manchas escuras e uma clara, em lugares diferentes a cada variação.
+      for (const [dx, dy, w, h, col] of [[6 + v * 8, 5, 6, 3, dark], [17 - v * 6, 8 + v, 7, 3, dark], [11 + v * 5, 3, 4, 2, light]]) dither(c, dx, dy, w, h, col)
       marks(c, rng, v, dark, light)
     })
   }
@@ -166,8 +175,24 @@ function tufts(c, rng, n, dark, light) {
   }
 }
 
-groundTile("plains", "g", "G", "h", (c, rng, v, d, l) => tufts(c, rng, 7 + v * 2, d, l))
-groundTile("forest", "f", "F", "v", (c, rng, v, d, l) => tufts(c, rng, 9 + v * 2, d, l))
+groundTile("plains", "g", "G", "h", (c, rng, v, d, l) => {
+  tufts(c, rng, 7 + v * 2, d, l)
+  // Florzinhas silvestres.
+  const flowers = ["Y", "y", "N"]
+  for (let i = 0; i < 2 + v; i++) {
+    const x = 5 + Math.floor(rng() * 22), y = 3 + Math.floor(rng() * 10)
+    if (inDiamond(x, y)) c.px(x, y, flowers[i % 3])
+  }
+})
+groundTile("forest", "f", "F", "v", (c, rng, v, d, l) => {
+  tufts(c, rng, 9 + v * 2, d, l)
+  // Folhas caídas e um cogumelo.
+  for (let i = 0; i < 3; i++) {
+    const x = 5 + Math.floor(rng() * 22), y = 3 + Math.floor(rng() * 10)
+    if (inDiamond(x, y)) c.px(x, y, i % 2 ? "D" : "C")
+  }
+  if (v === 1) { c.px(20, 10, "N"); c.px(20, 11, "Y") }
+})
 groundTile("desert", "s", "S", "e", (c, rng, v, d, l) => {
   // Ondulações de areia seguindo a diagonal isométrica.
   for (let i = 0; i < 3; i++) {
@@ -202,6 +227,10 @@ groundTile("mountains", "m", "M", "j", (c, rng, v, d, l) => {
 for (let v = 0; v < 4; v++) {
   sprite(`water_${v}`, { w: 32, h: 16 }, (c) => {
     c.poly(ground(0), "b")
+    // Profundidade: manchas mais escuras que não mexem entre os quadros.
+    dither(c, 8, 6, 7, 3, "B")
+    dither(c, 17, 9, 6, 2, "B")
+    dither(c, 14, 3, 5, 2, "c")
     const base = [[10, 5], [16, 8], [21, 6], [9, 10], [14, 3], [20, 11]]
     for (const [x0, y0] of base) {
       const x = x0 + v * 2, y = y0 + (v >> 1)
@@ -252,11 +281,21 @@ const EDGES = {
 for (let mask = 0; mask < 16; mask++) {
   sprite(`road_${mask}`, { w: 32, h: 16 }, (c) => {
     c.poly(ground(0), "a")
-    // Meio-fio nas bordas sem conexão.
+    // Textura do asfalto: remendos mais escuros e grãos claros (sempre os mesmos, para emendar bem).
+    const rng = c.rng(91 + mask)
+    dither(c, 9, 6, 5, 3, "A")
+    dither(c, 18, 7, 5, 2, "A")
+    for (let i = 0; i < 5; i++) {
+      const x = 6 + Math.floor(rng() * 20), y = 4 + Math.floor(rng() * 8)
+      if (inDiamond(x, y)) c.px(x, y, i % 2 ? "I" : "A")
+    }
+    // Meio-fio nas bordas sem conexão, com a sombra do rebaixo logo ao lado.
     for (const bit of [1, 2, 4, 8]) {
       if (mask & bit) continue
       const e = EDGES[bit]
       c.line(e.a[0], e.a[1], e.b[0], e.b[1], "p")
+      const ix = e.mid[0] < 16 ? 1 : -1, iy = e.mid[1] < 8 ? 1 : -1
+      c.line(e.a[0] + ix, e.a[1] + iy, e.b[0] + ix, e.b[1] + iy, "A")
     }
     // Faixa amarela tracejada do centro até cada saída.
     const conns = [1, 2, 4, 8].filter((bit) => mask & bit)
@@ -268,6 +307,20 @@ for (let mask = 0; mask < 16; mask++) {
       }
     }
     if (conns.length !== 2) c.rect(15, 7, 2, 2, "A") // cruzamento / ponta
+    // Faixa de retenção/pedestres atravessando cada saída de cruzamentos e de T.
+    if (conns.length >= 3) {
+      for (const bit of conns) {
+        const [mx, my] = EDGES[bit].mid
+        const [ax, ay] = bit === 1 || bit === 4 ? [2, -1] : [2, 1]
+        const x = Math.round(16 + (mx - 16) * 0.66), y = Math.round(8 + (my - 8) * 0.66)
+        c.line(x - ax * 2, y - ay * 2, x + ax * 2, y + ay * 2, "p")
+      }
+    }
+    // Bueiro nas vias retas.
+    if (conns.length === 2 && (mask === 5 || mask === 10)) {
+      c.hline(20, 6, 2, "k")
+      c.px(21, 7, "A")
+    }
   })
 }
 
@@ -285,7 +338,7 @@ for (let mask = 0; mask < 16; mask++) {
       const [mx, my] = EDGES[bit].mid
       // Mureta central (cinza claro) e faixas brancas tracejadas dos dois lados.
       c.line(16, 8, mx, my, "H")
-      for (let t = 0.2; t < 1; t += 0.35) {
+      for (let t = conns.length > 2 ? 0.55 : 0.2; t < 1; t += 0.35) {
         const x = Math.round(16 + (mx - 16) * t), y = Math.round(8 + (my - 8) * t)
         c.px(x - 3, y - 1, "Y")
         c.px(x + 3, y + 1, "Y")
@@ -1515,6 +1568,18 @@ for (const [cat, col] of Object.entries(SHIRTS)) {
   sprite(`pt_body_${cat}`, { w: 16, h: 18, outline: "k" }, (c) => {
     c.poly([0, 18, 1, 14, 4, 12, 12, 12, 15, 14, 16, 18], col)
     c.poly([6, 12, 8, 15, 10, 12], "Y") // gola
+    // Sombra do lado direito do corpo e dobra da manga.
+    c.vline(13, 13, 5, "Z")
+    c.px(14, 15, "Z")
+    c.hline(2, 17, 3, "Z")
+    // Detalhe de cada ofício.
+    if (cat === "comercio") { c.vline(8, 14, 4, "N"); c.px(8, 13, "R") }
+    if (cat === "servicos") { c.rect(4, 14, 2, 2, "Y"); c.px(4, 14, "L") }
+    if (cat === "industria") { c.hline(1, 16, 14, "Y"); c.hline(1, 17, 14, "J") }
+    if (cat === "agro") { c.vline(5, 13, 5, "D"); c.vline(11, 13, 5, "D") }
+    if (cat === "madeira") { c.hline(2, 15, 12, "D"); c.vline(6, 13, 5, "D"); c.vline(10, 13, 5, "D") }
+    if (cat === "mineracao") { c.px(8, 15, "l"); c.px(8, 16, "L") }
+    if (cat === "energia") { c.hline(2, 16, 12, "k") }
   })
 }
 
@@ -1526,6 +1591,10 @@ SKINS.forEach(([skin, dark], k) => {
     c.px(13, 7, skin)
     c.vline(12, 5, 5, dark) // sombra do lado direito
     c.px(11, 11, dark)
+    c.px(9, 10, dark) // nariz
+    c.px(4, 8, dark) // orelhas (interior)
+    c.px(12, 8, dark)
+    c.hline(6, 12, 4, dark) // sombra sob o queixo
   })
 })
 
