@@ -115,6 +115,17 @@ function awning(c, b, a, bcol, lift = 5, t0 = 0.12, t1 = 0.88) {
   }
 }
 
+/** Ponto na face esquerda (t: 0 = canto esquerdo, 1 = quina) a `lift` px do chão. */
+const fL = (b, t, lift = 0) => {
+  const x = Math.round(b.L[0] + (b.cx - b.L[0]) * t)
+  return [x, Math.round(b.L[1] + (x - b.L[0]) / 2) - lift]
+}
+/** Ponto na face direita (t: 0 = quina, 1 = canto direito) a `lift` px do chão. */
+const fR = (b, t, lift = 0) => {
+  const x = Math.round(b.cx + (b.R[0] - b.cx) * t)
+  return [x, Math.round(b.B[1] - (x - b.cx) / 2) - lift]
+}
+
 /** Chaminé cilíndrica-ish (2 tons) com topo. */
 function chimney(c, x, yBase, h, w = 3, col = "z", dark = "Z", band) {
   c.rect(x, yBase - h, w, h, col)
@@ -983,31 +994,60 @@ function badge(c, b, col, t = 0.5, dy = 0) {
   c.rect(x - 1, y - 1, 3, 3, col)
 }
 
-building("police", 38, (c, oy) => {
+building("police", 42, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 13, H: 12, top: "J", left: "K", right: "u" })
+  const b = block(c, { oy, hw: 13, H: 13, top: "J", left: "K", right: "u" })
   windows(c, b, { floors: 2, fh: 5, col: "d", lit: "l", every: 3 })
+  plinth(c, b, "d", "Z", 2)
   parapet(c, b, "H")
+  // Escadinha e porta de vidro, com escudo dourado ao lado.
   door(c, b, 0.5, "Y")
-  // Giroflex no telhado e viatura.
-  c.rect(b.cx - 1, b.cy - b.H - 3, 3, 2, "N")
-  c.px(b.cx + 1, b.cy - b.H - 3, "c")
-  c.rect(b.R[0] - 6, b.R[1] + 2, 6, 3, "Y")
-  c.rect(b.R[0] - 5, b.R[1] + 1, 3, 1, "d")
+  const [dx, dy] = fL(b, 0.5)
+  c.hline(dx - 2, dy + 1, 6, "e")
+  const [sx, sy] = fL(b, 0.2, 8)
+  c.rect(sx, sy - 3, 3, 4, "Y")
+  c.px(sx + 1, sy - 2, "d")
+  // Faixa azul-e-branca no alto e torre de rádio com luz vermelha.
+  const mx = b.cx + 5, my = b.cy - b.H - 3
+  c.vline(mx, my - 11, 11, "J")
+  c.hline(mx - 2, my - 7, 5, "J")
+  c.hline(mx - 1, my - 4, 3, "J")
+  c.px(mx, my - 12, "N")
+  // Giroflex e viatura estacionada.
+  c.rect(b.cx - 5, b.cy - b.H - 3, 3, 2, "N")
+  c.px(b.cx - 3, b.cy - b.H - 3, "c")
+  c.rect(b.R[0] - 7, b.R[1] + 2, 7, 3, "H")
+  c.rect(b.R[0] - 6, b.R[1] + 1, 4, 1, "d")
+  c.rect(b.R[0] - 7, b.R[1] + 3, 7, 1, "K")
+  c.px(b.R[0] - 4, b.R[1], "N")
 })
-building("fire_station", 38, (c, oy) => {
+building("fire_station", 42, (c, oy) => {
   c.poly(ground(oy, 0), "p")
+  const t = block(c, { oy, hw: 4, H: 24, top: "W", left: "N", right: "R", dx: -7, dy: -1 })
+  c.rect(t.cx - 1, t.cy - t.H + 3, 2, 2, "d")
+  c.hline(t.cx - 3, t.cy - 8, 6, "W")
+  c.hline(t.cx - 3, t.cy - 14, 6, "W")
   const b = block(c, { oy, hw: 13, H: 12, top: "x", left: "N", right: "R" })
-  // Portões da garagem (face direita) e torre de treino.
+  slabs(c, b, { floors: 2, fh: 6, left: "R", right: "O" })
+  plinth(c, b, "R", "Z", 1)
+  // Portões da garagem (face direita), com a viatura aparecendo.
   for (let k = 0; k < 2; k++) {
     const x = b.cx + 2 + k * 5
     const y = Math.round(b.B[1] - (x - b.cx) / 2)
     c.rect(x, y - 7, 4, 7, "Y")
     c.hline(x, y - 4, 4, "J")
+    c.hline(x, y - 6, 4, "H")
   }
   door(c, b, 0.4, "D")
-  const t = block(c, { oy, hw: 4, H: 22, top: "W", left: "N", right: "R", dx: -7, dy: -1 })
-  c.rect(t.cx - 1, t.cy - t.H + 3, 2, 2, "d")
+  // Letreiro e sirene no telhado.
+  const [lx, ly] = fL(b, 0.55, 9)
+  c.rect(lx, ly - 2, 5, 3, "Y")
+  c.px(lx + 1, ly - 1, "N"); c.px(lx + 3, ly - 1, "N")
+  c.rect(b.cx + 3, b.cy - b.H - b.hh - 2, 2, 2, "N")
+  // Escada Magirus: viatura estacionada na frente.
+  c.rect(b.L[0] + 3, b.L[1] + 3, 8, 3, "N")
+  c.rect(b.L[0] + 3, b.L[1] + 2, 8, 1, "J")
+  c.px(b.L[0] + 4, b.L[1] + 6, "k"); c.px(b.L[0] + 9, b.L[1] + 6, "k")
 })
 building("prison", 36, (c, oy) => {
   c.poly(ground(oy, 0), "i")
@@ -1029,78 +1069,153 @@ building("prison", 36, (c, oy) => {
   c.px(16, oy + 1, "l")
   c.hline(6, oy + 6, 20, "i")
 })
-building("hospital", 46, (c, oy) => {
+building("hospital", 50, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 14, H: 20, top: "J", left: "H", right: "J" })
-  windows(c, b, { floors: 3, fh: 6, col: "q", lit: "c", every: 4 })
+  // Torre principal (atrás) e ala baixa com pronto-socorro (na frente).
+  const b = block(c, { oy, hw: 11, H: 22, top: "J", left: "H", right: "J", dx: 3, dy: -3 })
+  windows(c, b, { floors: 3, fh: 7, col: "q", lit: "c", every: 4 })
+  slabs(c, b, { floors: 4, fh: 7, left: "J", right: "I" })
   parapet(c, b, "Y")
-  door(c, b, 0.5, "Q")
-  // Cruz vermelha no telhado.
-  const ty = b.cy - b.H
-  c.rect(b.cx - 1, ty - 3, 3, 7, "N")
-  c.rect(b.cx - 3, ty - 1, 7, 3, "N")
+  // Heliponto no telhado.
+  c.circ(b.cx, b.cy - b.H, 3, "i")
+  c.hline(b.cx - 1, b.cy - b.H - 1, 3, "Y")
+  c.vline(b.cx - 1, b.cy - b.H - 2, 3, "Y")
+  c.vline(b.cx + 1, b.cy - b.H - 2, 3, "Y")
+  const w = block(c, { oy, hw: 9, H: 11, top: "J", left: "H", right: "J", dx: -6, dy: 3 })
+  windows(c, w, { floors: 1, fh: 7, col: "q", lit: "c", every: 3, from: 3 })
+  plinth(c, w, "J", "I", 1)
+  parapet(c, w, "Y")
+  // Marquise do pronto-socorro, porta e cruz vermelha na fachada.
+  const [kx, ky] = fL(w, 0.5)
+  c.rect(kx - 3, ky - 7, 7, 2, "N")
+  c.rect(kx - 2, ky - 5, 5, 5, "Q")
+  const [cx, cy] = fR(w, 0.5, 6)
+  c.rect(cx - 1, cy - 3, 3, 7, "N")
+  c.rect(cx - 3, cy - 1, 7, 3, "N")
+  // Ambulância na entrada.
+  c.rect(1, oy + 12, 7, 3, "H")
+  c.rect(2, oy + 11, 3, 1, "q")
+  c.px(5, oy + 11, "N")
 })
 // Posto médico: casinha branca com faixa verde, cruz vermelha na fachada e toldo.
-building("clinic", 34, (c, oy) => {
+building("clinic", 36, (c, oy) => {
   c.poly(ground(oy, 2), "p")
   const b = block(c, { oy, hw: 11, H: 12, top: "J", left: "Y", right: "H" })
   windows(c, b, { floors: 1, fh: 6, col: "q", lit: "c", every: 4, from: 4 })
+  plinth(c, b, "x", "I", 1)
   parapet(c, b, "E")
+  // Faixa verde e marquise na entrada.
   door(c, b, 0.5, "Q")
+  const [kx, ky] = fL(b, 0.5)
+  c.rect(kx - 3, ky - 7, 7, 2, "E")
   // Cruz vermelha na fachada da direita e placa no telhado.
-  const cx = b.cx + 6, cy = b.B[1] - b.H + 6
+  const [cx, cy] = fR(b, 0.5, 6)
   c.rect(cx - 1, cy - 3, 3, 7, "N")
   c.rect(cx - 3, cy - 1, 7, 3, "N")
   c.rect(b.cx - 1, b.cy - b.H - 4, 3, 5, "N")
   c.rect(b.cx - 2, b.cy - b.H - 3, 5, 3, "N")
+  // Banco e arbusto na frente.
+  c.rect(b.R[0] - 5, b.R[1] + 2, 4, 1, "D")
+  c.circ(5, oy + 12, 1, "F")
 })
 // Fiscalização do Trabalho: sobrado cinza-azulado com placa, relógio de ponto e bandeira.
-building("labor_office", 36, (c, oy) => {
+building("labor_office", 44, (c, oy) => {
   c.poly(ground(oy, 2), "p")
   const b = block(c, { oy, hw: 12, H: 14, top: "i", left: "q", right: "Q" })
   windows(c, b, { floors: 2, fh: 6, col: "u", lit: "Y", every: 3 })
+  slabs(c, b, { floors: 2, fh: 7, left: "Q", right: "u" })
+  plinth(c, b, "u", "d", 1)
   parapet(c, b, "J")
   door(c, b, 0.5, "d")
-  // Placa sobre a porta e relógio na fachada direita.
-  const [dx, dy] = [Math.round(b.L[0] + (b.cx - b.L[0]) * 0.5), Math.round(b.L[1] + ((b.cx - b.L[0]) * 0.5) / 2)]
-  c.rect(dx - 1, dy - 8, 5, 2, "Y")
+  // Pavimento recuado no topo, com a bandeira.
+  const t = block(c, { oy: oy - 14, hw: 6, H: 7, top: "J", left: "q", right: "Q" })
+  windows(c, t, { floors: 1, fh: 6, col: "u", lit: "Y", every: 2, from: 2 })
+  c.vline(t.cx, t.cy - t.H - 9, 9, "J")
+  c.rect(t.cx + 1, t.cy - t.H - 9, 4, 3, "N")
+  // Placa sobre a porta, relógio de ponto e quadro de avisos na fachada direita.
+  const [dx, dy] = fL(b, 0.5, 8)
+  c.rect(dx - 1, dy - 1, 5, 2, "Y")
   c.circ(b.cx + 6, b.B[1] - b.H + 6, 2, "Y")
   c.px(b.cx + 6, b.B[1] - b.H + 5, "d")
   c.px(b.cx + 7, b.B[1] - b.H + 6, "d")
-  // Bandeira vermelha no topo.
-  c.vline(b.cx, b.cy - b.H - 9, 9, "J")
-  c.rect(b.cx + 1, b.cy - b.H - 9, 4, 3, "N")
+  const [nx, ny] = fR(b, 0.55, 5)
+  c.rect(nx, ny - 3, 4, 3, "Y")
+  c.px(nx + 1, ny - 2, "d")
 })
-building("school", 34, (c, oy) => {
+building("school", 40, (c, oy) => {
   c.poly(ground(oy, 0), "g")
-  const b = block(c, { oy, hw: 13, H: 9, left: "L", right: "o" })
+  // Pátio com cerca, escorregador e balanço.
+  c.hline(1, oy + 9, 3, "e")
+  c.line(2, oy + 11, 9, oy + 14, "p")
+  c.rect(24, oy + 12, 2, 1, "N")
+  c.vline(24, oy + 9, 3, "J")
+  c.vline(26, oy + 9, 3, "J")
+  c.hline(24, oy + 9, 3, "J")
+  const b = block(c, { oy, hw: 13, H: 10, left: "L", right: "o" })
   windows(c, b, { floors: 1, fh: 8, col: "d", lit: "q", step: 3, every: 2, h: 3 })
+  slabs(c, b, { floors: 2, fh: 5, left: "S", right: "O" })
+  plinth(c, b, "S", "O", 1)
   door(c, b, 0.5)
   hipRoof(c, b, 6, "r", "R")
+  // Torre do sino sobre o telhado, com cata-vento.
+  const t = block(c, { oy: oy - 12, hw: 3, H: 6, top: "W", left: "w", right: "W" })
+  c.px(t.cx, t.cy - 3, "L")
+  c.poly([t.cx - 3, t.cy - t.H, t.cx, t.cy - t.H - 5, t.cx + 3, t.cy - t.H], "R")
+  c.px(t.cx, t.cy - t.H - 6, "N")
   // Mastro com bandeira.
   c.vline(28, oy - 6, 14, "J")
   c.rect(29, oy - 6, 3, 2, "E")
 })
-building("college", 48, (c, oy) => {
+building("college", 52, (c, oy) => {
   c.poly(ground(oy, 0), "G")
+  c.hline(2, oy + 12, 6, "h")
   const b = block(c, { oy, hw: 14, H: 16, top: "x", left: "o", right: "O" })
   windows(c, b, { floors: 2, fh: 7, col: "d", lit: "l", every: 3, h: 3 })
+  // Fiadas de tijolo, soleira e cornija clara.
+  slabs(c, b, { floors: 8, fh: 2, left: "r", right: "R", from: 1 })
+  plinth(c, b, "R", "Z", 1)
   parapet(c, b, "W")
-  // Torre do relógio.
-  const t = block(c, { oy, hw: 4, H: 30, top: "x", left: "o", right: "O", dy: -1 })
-  c.circ(t.cx + 2, t.cy - t.H + 6, 1, "Y")
-  hipRoof(c, t, 6, "u", "d")
+  door(c, b, 0.5, "D")
+  const [dx, dy] = fL(b, 0.5)
+  c.hline(dx - 2, dy + 1, 6, "e")
+  // Torre do relógio, com faces de relógio nas duas fachadas.
+  const t = block(c, { oy, hw: 4, H: 32, top: "x", left: "o", right: "O", dy: -1 })
+  c.circ(t.cx - 2, t.cy - t.H + 8, 1, "Y")
+  c.circ(t.cx + 2, t.cy - t.H + 8, 1, "Y")
+  c.hline(t.cx - 3, t.cy - 10, 3, "W")
+  c.hline(t.cx + 1, t.cy - 12, 3, "W")
+  hipRoof(c, t, 7, "u", "d")
+  c.vline(t.cx, t.cy - t.H - 12, 5, "J")
+  c.px(t.cx, t.cy - t.H - 13, "N")
 })
-building("library", 34, (c, oy) => {
+building("library", 40, (c, oy) => {
   c.poly(ground(oy, 2), "p")
-  const b = block(c, { oy, hw: 13, H: 10, top: "W", left: "w", right: "W" })
-  // Colunas na fachada esquerda.
+  const b = block(c, { oy, hw: 13, H: 11, top: "W", left: "w", right: "W" })
+  // Colunas com capitel e base, e janelas arqueadas na lateral.
   for (let x = b.L[0] + 2; x < b.cx - 1; x += 3) {
     const y = Math.round(b.L[1] + (x - b.L[0]) / 2)
-    c.rect(x, y - 9, 1, 8, "Y")
+    c.rect(x, y - 10, 1, 8, "Y")
+    c.rect(x - 1, y - 11, 3, 1, "H")
+    c.rect(x - 1, y - 2, 3, 1, "I")
   }
-  windows(c, b, { floors: 1, fh: 8, col: "D", lit: "L", every: 2 })
-  hipRoof(c, b, 4, "K", "u")
+  for (let x = b.cx + 3; x < b.R[0] - 2; x += 5) {
+    const y = Math.round(b.B[1] - (x - b.cx) / 2)
+    c.rect(x, y - 8, 3, 5, "D")
+    c.rect(x, y - 9, 3, 1, "L")
+    c.px(x + 1, y - 10, "L")
+  }
+  plinth(c, b, "x", "m", 1)
+  // Escadaria e cúpula de vidro sobre o salão de leitura.
+  const [dx, dy] = fL(b, 0.5)
+  c.hline(dx - 3, dy + 1, 8, "e")
+  c.hline(dx - 2, dy + 2, 6, "Y")
+  hipRoof(c, b, 3, "K", "u")
+  c.rect(b.cx - 2, b.cy - b.H - b.hh - 3, 5, 2, "u")
+  c.circ(b.cx, b.cy - b.H - b.hh - 4, 2, "q")
+  c.px(b.cx - 1, b.cy - b.H - b.hh - 5, "c")
+  // Poste de luz.
+  c.vline(2, oy + 8, 6, "z")
+  c.px(2, oy + 7, "l")
 })
 building("museum", 42, (c, oy) => {
   c.poly(ground(oy, 0), "p")
@@ -1207,15 +1322,26 @@ building("bus_stop", 30, (c, oy) => {
   c.rect(14, oy + 10, 2, 2, "k")
   c.rect(21, oy + 10, 2, 2, "k")
 })
-building("train_station", 40, (c, oy) => {
+building("train_station", 44, (c, oy) => {
   c.poly(ground(oy, 0), "p")
-  const b = block(c, { oy, hw: 13, H: 11, left: "o", right: "O" })
+  // Plataforma com trilhos e cobertura sobre postes.
+  c.poly([14, oy + 13, 30, oy + 5, 32, oy + 8, 18, oy + 15], "I")
+  c.line(16, oy + 15, 31, oy + 8, "A")
+  for (const x of [18, 24, 29]) {
+    c.vline(x, Math.round(oy + 4 - (x - 18) / 2), 6, "J")
+  }
+  c.line(17, oy + 4, 30, oy - 2, "u")
+  c.line(17, oy + 5, 30, oy - 1, "Q")
+  const b = block(c, { oy, hw: 11, H: 11, left: "o", right: "O", dx: -4, dy: 0 })
   windows(c, b, { floors: 1, fh: 9, col: "d", lit: "l", every: 2, h: 3 })
+  slabs(c, b, { floors: 3, fh: 3, left: "r", right: "R" })
+  plinth(c, b, "R", "Z", 1)
   door(c, b, 0.5)
   hipRoof(c, b, 6, "u", "d")
-  // Relógio no telhado.
-  c.circ(b.cx, b.cy - b.H - 4, 2, "Y")
-  c.px(b.cx, b.cy - b.H - 5, "k")
+  // Frontão com relógio no telhado.
+  c.circ(b.cx, b.cy - b.H - 4, 2, "H")
+  c.px(b.cx, b.cy - b.H - 4, "k")
+  c.px(b.cx + 1, b.cy - b.H - 5, "k")
 })
 building("airport", 40, (c, oy) => {
   c.poly(ground(oy, 0), "I")
