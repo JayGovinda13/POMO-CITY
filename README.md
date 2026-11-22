@@ -371,6 +371,10 @@ O comando roda um robô que joga 15 anos de cidade em vários cenários (focado,
 difícil, inverno rigoroso, sem produção local) e imprime a evolução ano a ano. Os achados e os
 números ajustados estão em [docs/BALANCO.md](docs/BALANCO.md).
 
+## Revisão da pixel art
+
+Passada de refinamento nos sprites: as **quatro construções grandes** ganharam texturas (fiadas de tijolo, lajes, janelas com luz variada, cornijas, quinas claras), jardins e detalhes (universidade com alas de tijolo, pórtico de colunas, torre e relógio; cooperativa com dentes de serra, claraboias, chaminé e letreiro; incubadora com torre de vidro, teto-jardim e painéis solares; terminal com contêineres corrugados, vagão e pórtico amarelo). Também receberam acabamento: **residencial densa** níveis 3 e 4 (lajes, soleira, toldo e terraço), **comercial densa** (toldo e porta no térreo, equipamentos no terraço), **museu** (escadaria, colunas com capitel e frontão com medalhão), **estádio** (assentos e refletores acesos), **ponto de ônibus** (ônibus parado) e **prisão** (guaritas).
+
 ## Sprites (pxl)
 
 Os sprites são código: `art/city.px.js` usa o [pxl](https://github.com/crsolver/claude-pxl) para gerar
