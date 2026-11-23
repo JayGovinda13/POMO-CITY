@@ -134,6 +134,8 @@ export function Hud() {
   const toast = useGame((s) => s.toast);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  /** Tile fixado por toque/clique: mantém as informações (e o botão Reparar) na tela. */
+  const [selected, setSelected] = useState<{ x: number; y: number } | null>(null);
   const [guideOff, setGuideOff] = useState(() => {
     try {
       return localStorage.getItem(GUIDE_KEY) === "1";
@@ -144,11 +146,26 @@ export function Hud() {
 
   useEffect(() => {
     const offs = [
-      bus.on("tile:click", ({ x, y }) => useGame.getState().clickTile(x, y)),
+      bus.on("tile:click", ({ x, y }) => {
+        const st = useGame.getState();
+        st.clickTile(x, y);
+        // Com ferramenta de obra, clicar numa construção que já existe também fixa as informações dela.
+        const c = useGame.getState().city;
+        if (c && st.tool && st.tool !== "demolish" && st.tool !== "pan" && c.buildings.some((b) => b.x === x && b.y === y && b.type !== "road")) setSelected({ x, y });
+      }),
+      bus.on("tile:select", setSelected),
       bus.on("area:select", ({ x0, y0, x1, y1 }) => useGame.getState().selectArea(x0, y0, x1, y1)),
       bus.on("tile:hover", setHover),
     ];
     return () => offs.forEach((off) => off());
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const derived = useMemo(() => {
@@ -284,9 +301,14 @@ export function Hud() {
 
       <div className="flex min-h-0 flex-1 flex-col items-stretch justify-between gap-1 sm:flex-row sm:items-start sm:gap-2">
         <Toolbar locked={phase === "focus"} hint={phase === "focus" ? null : firstStep?.category} />
-        {hover && (
-          <div className="retro-panel pointer-events-auto max-h-40 w-full self-end overflow-y-auto p-2 sm:max-h-none sm:w-56 sm:self-auto">
-            <TileInfo x={hover.x} y={hover.y} status={status} powered={power.powered} access={access} people={people} watered={water.watered} services={services} traffic={traffic} />
+        {(selected ?? hover) && (
+          <div className="retro-panel pointer-events-auto relative max-h-40 w-full self-end overflow-y-auto p-2 sm:max-h-none sm:w-56 sm:self-auto">
+            {selected && (
+              <button type="button" className="absolute right-1 top-1" aria-label="Fechar informações" title="Fechar (Esc)" onClick={() => setSelected(null)}>
+                <Xmark />
+              </button>
+            )}
+            <TileInfo x={(selected ?? hover)!.x} y={(selected ?? hover)!.y} status={status} powered={power.powered} access={access} people={people} watered={water.watered} services={services} traffic={traffic} />
           </div>
         )}
       </div>

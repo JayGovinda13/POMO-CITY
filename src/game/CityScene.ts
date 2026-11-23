@@ -107,6 +107,8 @@ export class CityScene extends Phaser.Scene {
   private lastTerrainKey = "";
   private hover: Tile | null = null;
   private painting = false;
+  /** Início de um toque/clique sem obra (ferramenta vazia ou Mover): vira seleção se não arrastar. */
+  private tap: { x: number; y: number } | null = null;
   private painted = new Set<string>();
   private lastPainted: Tile | null = null;
   private areaFrom: Tile | null = null;
@@ -184,6 +186,7 @@ export class CityScene extends Phaser.Scene {
           return;
         }
       }
+      if ((picker === null || picker === "pan") && !p.rightButtonDown() && !p.middleButtonDown()) this.tap = { x: p.x, y: p.y };
       if (p.rightButtonDown() || p.middleButtonDown() || useGame.getState().tool === "pan") {
         const cam = this.cameras.main;
         this.panFrom = { x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY };
@@ -215,7 +218,13 @@ export class CityScene extends Phaser.Scene {
       }
       if (this.painting) this.paintAt(p);
     });
-    const stop = () => {
+    const stop = (p?: Phaser.Input.Pointer) => {
+      // Toque curto (sem arrastar) com a ferramenta vazia ou Mover: seleciona o tile.
+      if (this.tap && p && Math.hypot(p.x - this.tap.x, p.y - this.tap.y) < 6) {
+        const t = this.tileAt(p);
+        if (t) bus.emit("tile:select", t);
+      }
+      this.tap = null;
       if (this.areaFrom && this.hover) {
         bus.emit("area:select", { x0: this.areaFrom.x, y0: this.areaFrom.y, x1: this.hover.x, y1: this.hover.y });
       }

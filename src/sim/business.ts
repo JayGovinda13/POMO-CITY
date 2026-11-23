@@ -17,7 +17,7 @@ export interface BusinessState {
 export const newBusiness = (): BusinessState => ({ entrepreneurs: 0, coops: 0 });
 
 /** Imposto por ciclo de cada negócio. */
-export const TAX_ENTREPRENEUR = 3;
+export const TAX_ENTREPRENEUR = 2.2;
 export const TAX_COOP = 1.2;
 /** Chance base de quebrar por ciclo (dobra na crise econômica). */
 export const FAIL_ENTREPRENEUR = 0.07;

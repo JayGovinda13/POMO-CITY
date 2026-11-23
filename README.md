@@ -336,7 +336,7 @@ acompanhamentos) e `player.ts` (agendador).
 
 ## Negócios próprios e banco de leis
 
-- **Empreendedores (direita) e cooperativas (esquerda)**: leis votadas na câmara abrem esse caminho para moradores **sem vaga** e uma parte (15%) dos empregados, que viram autônomos. Leis de empreendedorismo (Liberal, Conservador, Centro e Social Democrata: *Microempreendedor individual*, *Crédito para pequenos negócios*, *Polo de startups*, *Imposto simplificado*, *Feira de empreendedores*, *Negócio de família*, *Incubadora municipal*, *Microcrédito solidário*…) criam empreendedores: pagam mais imposto (US$3 por ciclo) e aumentam a demanda de comércio, mas quebram fácil (7% por ciclo, o dobro na crise econômica). Leis de cooperativismo (Esquerda: *Cooperativas de trabalhadores*, *Fábricas recuperadas*, *Banco cooperativo*…) criam cooperados: rendem menos (US$1,2) e resistem melhor (4%), mas deixam os sócios mais felizes. As leis marcadas com 🏪 e 🤝 no painel da Câmara somam a força de cada caminho (`src/sim/business.ts`).
+- **Empreendedores (direita) e cooperativas (esquerda)**: leis votadas na câmara abrem esse caminho para moradores **sem vaga** e uma parte (15%) dos empregados, que viram autônomos. Leis de empreendedorismo (Liberal, Conservador, Centro e Social Democrata: *Microempreendedor individual*, *Crédito para pequenos negócios*, *Polo de startups*, *Imposto simplificado*, *Feira de empreendedores*, *Negócio de família*, *Incubadora municipal*, *Microcrédito solidário*…) criam empreendedores: pagam mais imposto (US$2,20 por ciclo) e aumentam a demanda de comércio, mas quebram fácil (7% por ciclo, o dobro na crise econômica). Leis de cooperativismo (Esquerda: *Cooperativas de trabalhadores*, *Fábricas recuperadas*, *Banco cooperativo*…) criam cooperados: rendem menos (US$1,2) e resistem melhor (4%), mas deixam os sócios mais felizes. As leis marcadas com 🏪 e 🤝 no painel da Câmara somam a força de cada caminho (`src/sim/business.ts`).
 - **Quem vota em quem**: empreendedor vota Liberal/Conservador; cooperado vota Esquerda/Social Democrata. Assim as leis que o prefeito aprova mudam a base eleitoral e a câmara da próxima eleição.
 - **100 leis** (eram 25): 19 da Esquerda, 19 Social Democrata, 17 Centro, 17 Liberal, 16 Conservador e 12 Fascista (só na crise), cada uma ligada a uma mecânica (trabalho, impostos, saúde, crime, família, comércio, pesquisa, poluição…).
 
@@ -395,7 +395,21 @@ Desenhados por quadro em `src/game/sprites2d.ts`. **Carros**: cinco modelos (sed
 
 ## Cenário de desemprego (balanceamento)
 
-`scripts/balance/jobs.balance.ts` fecha 80% dos lotes de comércio e indústria de uma cidade do robô e acompanha 80 ciclos (6 cidades por cenário, sem greves para isolar o efeito). Resultado depois do ajuste, em relação ao cenário base (8 h, sem leis): **jornada 6 h** impostos +5%, caixa +9%, aprovação +9 pontos e bens −18% (a produção cai quando não sobra gente para os turnos); **jornada 10 h** aprovação −10 pontos e impostos −4%; **empreendedorismo** (3 leis) caixa +60% e impostos +11%; **cooperativas** (3 leis) caixa +75%, aprovação +19 pontos e bens +23%; **6 h + as duas** caixa +19%, aprovação +13 pontos. O desemprego some sozinho em poucos ciclos porque os lotes fechados voltam a crescer, por isso o ganho vem mais do humor e dos impostos que da vaga em si. **Variante em crise econômica** (o mesmo teste começando no primeiro ciclo da *Crise*, 30 ciclos, cada política contra a base da própria crise): **empreendedorismo** quebra o dobro (74 negócios fechados em 6 cidades) e termina com o caixa praticamente igual ao da base (−3%), mas com +6 pontos de aprovação e +7% de impostos; **cooperativas** quebram menos da metade (41) e rendem caixa +17% e aprovação +12 pontos; **jornada 6 h** custa caixa (−15%) e bens (−27%) mas dá +8 pontos de aprovação; **jornada 10 h** rende caixa +29% e bens +22%, ao preço de −7 pontos de aprovação; **6 h + as duas** caixa −20%, aprovação +8 pontos. Ou seja, na crise a economia solidária é a mais segura e o empreendedorismo vira aposta, como pretendido. Rode com `npx vitest run --config vitest.balance.config.ts scripts/balance/jobs.balance.ts`. Antes do ajuste a jornada curta cortava a produção pela metade, as leis de negócio davam prejuízo e o bônus dos negócios quase nunca aparecia (agora 15% dos empregados também podem virar autônomos).
+`scripts/balance/jobs.balance.ts` (roda junto com `npm run balance`, ~2,5 min no total) tira 80% dos lotes de comércio e indústria de uma cidade do robô, sem rezonear (o desemprego persiste: ~60 a 125 desempregados) e acompanha 60 ciclos (30 na versão em crise), em 4 cidades por política, sem greves para isolar o efeito. Resultado, contra a base (8 h, sem leis):
+
+| Política | Normal | Em crise econômica |
+|---|---|---|
+| **Jornada 6 h** | desemprego −27%, impostos +5%, bens +4%, aprovação +4 pts, caixa −7% | desemprego −24%, caixa +6%, aprovação +3 pts |
+| **Jornada 10 h** | desemprego −24% (menos vagas, mais saídas), impostos −8%, caixa +30% | caixa +25%, aprovação −8 pts |
+| **Empreendedorismo** (3 leis) | impostos +22%, caixa +48%, aprovação +19 pts, 328 negócios quebrados | caixa +29%, 162 quebras (metade do normal em 30 ciclos) |
+| **Cooperativas** (3 leis) | impostos +17%, aprovação +18 pts, caixa igual | caixa +8%, aprovação +17 pts, só 91 quebras |
+| **6 h + as duas** | caixa +5%, aprovação +16 pts | caixa +27%, aprovação +16 pts |
+
+Leitura: a jornada curta realmente reduz o desemprego sem derrubar a produção; empreendedorismo rende caixa (e quebra mais), cooperativas rendem humor e segurança. Na jornada longa o teste não mostra o custo real porque as greves estão desligadas (fadiga e greve são o contrapeso no jogo). Antes dos ajustes a jornada curta cortava a produção pela metade, as leis de negócio davam prejuízo e o bônus quase nunca aparecia (agora 15% dos empregados também podem virar autônomos). 
+
+## Informações do prédio ao clicar
+
+Com a ferramenta vazia ou **Mover**, um toque ou clique curto (sem arrastar) num tile **fixa** as informações dele no painel, com o botão **Reparar** estável (antes o painel só aparecia ao passar o mouse e sumia ao mover o mouse até o botão). Com uma ferramenta de obra, clicar numa construção que já existe também fixa. Fecha no **X** ou com **Esc**; no celular, o toque faz o mesmo.
 
 ## Revisão da pixel art
 
