@@ -1,6 +1,6 @@
 import { it } from "vitest";
 import { runBotState } from "./bot";
-import { applyCommands, buildingStatus, citizensView, laborStats, moodSummary, resolveCycle, ZONE, ecoState, type CityState, type LawId, type Command } from "../../src/sim";
+import { applyCommands, buildingStatus, citizensView, laborStats, moodSummary, resolveCycle, ZONE, ecoState, ECO_PERIOD, type CityState, type LawId, type Command } from "../../src/sim";
 
 const T0 = Date.UTC(2026, 0, 5, 8);
 
@@ -23,21 +23,25 @@ const SCEN: { name: string; laws: LawId[]; hours?: 6 | 8 | 10 }[] = [
   { name: "6h + empreend. + coop.", laws: ["microempreendedor", "credito_pequenos_negocios", "cooperativas_trabalhadores", "banco_cooperativo"], hours: 6 },
 ];
 
-it("desemprego alto: jornada, empreendedores e cooperativas", () => {
+for (const mode of ["normal", "crise"] as const) it(`desemprego alto (${mode}): jornada, empreendedores e cooperativas`, () => {
   const out: string[] = [];
   for (const sc of SCEN) {
-    const agg = { unemp: 0, pop: 0, money: 0, taxes: 0, goods: 0, food: 0, appr: 0, ent: 0, coop: 0, biz: 0, strike: 0 };
+    const agg = { fail: 0, min: 0, unemp: 0, pop: 0, money: 0, taxes: 0, goods: 0, food: 0, appr: 0, ent: 0, coop: 0, biz: 0, strike: 0 };
     const N = 6;
     for (let seed = 1; seed <= N; seed++) {
       let s = unemployedCity(seed);
+      if (mode === "crise") {
+        // Começa no primeiro ciclo da crise econômica (a fase dura 10 ciclos; os 20 seguintes são de recuperação).
+        for (let g = 0; g < ECO_PERIOD && !(ecoState(s).phase === "crise" && ecoState(s).left === 10); g++) s.cyclesCompleted++;
+      }
       s.council.laws = [...sc.laws, "proibicao_greves"]; // isola o efeito: sem greves em nenhum cenário
       const cmds: Command[] = [];
       if (sc.hours) for (const sector of ["campo", "oficina", "fabrica"] as const) cmds.push({ type: "labor", sector, hours: sc.hours });
       s = applyCommands(s, cmds).state;
       let t = T0 + 40 * 24 * 3600000;
       if (sc === SCEN[0]) out.push(`  [seed ${seed}] desempregados no início: ${laborStats(s, buildingStatus(s)).unemployed} de pop ${s.population}`);
-      let goods = 0, taxes = 0, strikes = 0, unempSum = 0, apprSum = 0, entSum = 0, coopSum = 0, popSum = 0;
-      const W = 80;
+      let goods = 0, taxes = 0, strikes = 0, failed = 0, minMoney = Infinity, unempSum = 0, apprSum = 0, entSum = 0, coopSum = 0, popSum = 0;
+      const W = mode === "crise" ? 30 : 80;
       for (let k = 0; k < W; k++) {
         t += 4 * 3600000; // ~6 ciclos por dia (sem estourar o limite diário)
         const res = resolveCycle(s, t);
@@ -46,13 +50,15 @@ it("desemprego alto: jornada, empreendedores e cooperativas", () => {
         apprSum += moodSummary(citizensView(s)).approval; entSum += s.business.entrepreneurs; coopSum += s.business.coops; popSum += s.population;
         goods += Object.entries(res.report.produced).filter(([n]) => n.startsWith("goods")).reduce((a, [, v]) => a + (v ?? 0), 0);
         taxes += res.report.taxes + res.report.finance.business;
+        failed += res.report.business?.failed ?? 0;
+        minMoney = Math.min(minMoney, s.money);
       }
       const lab = laborStats(s, buildingStatus(s));
       agg.unemp += unempSum / W; agg.pop += s.population; agg.money += s.money; agg.taxes += taxes / W; agg.goods += goods / W;
-      agg.appr += apprSum / W; agg.ent += entSum / W; agg.coop += coopSum / W; agg.pop += popSum / W - s.population;
+      agg.fail += failed; agg.min += minMoney; agg.appr += apprSum / W; agg.ent += entSum / W; agg.coop += coopSum / W; agg.pop += popSum / W - s.population;
     }
     const f = (v: number, d = 0) => (v / N).toFixed(d);
-    out.push(`${sc.name.padEnd(26)} pop ${f(agg.pop)} · desempregados ${f(agg.unemp)} · empreend. ${f(agg.ent, 1)} coop. ${f(agg.coop, 1)} · impostos/ciclo ${f(agg.taxes)} · bens/ciclo ${f(agg.goods, 1)} · caixa ${f(agg.money)} · aprovação ${(agg.appr / N * 100).toFixed(0)}% · greve ${(agg.strike / N * 100).toFixed(0)}%`);
+    out.push(`${sc.name.padEnd(26)} pop ${f(agg.pop)} · desempregados ${f(agg.unemp)} · empreend. ${f(agg.ent, 1)} coop. ${f(agg.coop, 1)} · impostos/ciclo ${f(agg.taxes)} · bens/ciclo ${f(agg.goods, 1)} · negócios quebrados ${f(agg.fail, 1)} · caixa ${f(agg.money)} (mín ${f(agg.min)}) · aprovação ${(agg.appr / N * 100).toFixed(0)}% · greve ${(agg.strike / N * 100).toFixed(0)}%`);
   }
-  console.log("\n" + out.join("\n"));
+  console.log(`\n── ${mode} ──\n` + out.join("\n"));
 });
