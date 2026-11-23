@@ -196,7 +196,7 @@ describe("cooperativa fabril e bônus de bens", () => {
       return (Object.entries(report.produced) as [string, number][]).filter(([k]) => k.startsWith("goods")).reduce((a, [, v]) => a + (v ?? 0), 0);
     };
     const base = run([], []);
-    const boosted = run(["aco", "maquina_vapor", "linha_montagem"], ["isencao_industria"]);
+    const boosted = run(["linha_montagem", "conteineres", "automacao"], ["isencao_industria"]);
     expect(base).toBeGreaterThan(0);
     expect(boosted).toBeGreaterThan(base);
   });

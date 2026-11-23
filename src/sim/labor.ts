@@ -57,18 +57,28 @@ export const inspected = (s: Pick<CityState, "buildings"> & Partial<Pick<CitySta
 /** Decreto "Escola-fábrica" em vigor? */
 export const schoolFactory = (s: Pick<CityState, "ordinances">): boolean => s.ordinances?.escola_fabrica !== undefined;
 
-const HOURS_OUTPUT: Record<Hours, number> = { 6: 0.88, 8: 1, 10: 1.12, 12: 1.22 };
+/** Produtividade de cada hora trabalhada: descansados rendem mais por hora (a jornada longa rende mais no total, mas cansa). */
+const HOURS_OUTPUT: Record<Hours, number> = { 6: 1.04, 8: 1, 10: 1.1, 12: 1.18 };
 /** Quem é pago por peça produz mais (e é mais pressionado). */
 const PIECE_OUTPUT = 1.08;
 const HOURS_MOOD: Record<Hours, number> = { 6: 1, 8: 0, 10: -1, 12: -3 };
 const PIECE_MOOD = -1;
+
+/**
+ * Turnos: jornada curta exige mais gente para manter as máquinas funcionando o dia todo (6 h = 1,33× as vagas),
+ * e jornada longa exige menos (12 h = 0,67×). É assim que reduzir a jornada combate o desemprego.
+ */
+export const shiftFactor = (s: Pick<CityState, "labor">, sector: Sector): number => 8 / rulesOf(s, sector).hours;
+
+/** Humor da cidade → produtividade: de −15% (todo mundo triste) a +15% (todo mundo feliz). `approval` vai de −1 a 1. */
+export const moodOutput = (approval: number): number => 1 + Math.max(-1, Math.min(1, approval)) * 0.15;
 
 /** Multiplicador da produção do setor (jornada × forma de pagamento). */
 export function outputFactor(s: LaborCity, sector: Sector): number {
   const r = rulesOf(s, sector);
   const raw = HOURS_OUTPUT[r.hours] * (r.pay === "peca" ? PIECE_OUTPUT : 1);
   // Fiscais cortam pela metade o ganho de produção acima do normal (a jornada curta não muda).
-  const f = raw > 1 && inspected(s) ? 1 + (raw - 1) / 2 : raw;
+  const f = raw > 1 && inspected(s) && (r.hours > 8 || r.pay === "peca") ? 1 + (raw - 1) / 2 : raw;
   // Aprendizes na escola-fábrica: a indústria perde 8% da produção.
   const school = sector === "fabrica" && schoolFactory(s) ? f * 0.92 : f;
   // Trabalhadores mais educados produzem mais (até +25%).
@@ -115,5 +125,5 @@ export function displacedJobs(s: Pick<CityState, "techs" | "eq"> & Partial<Pick<
 export const jobFactor = (s: Pick<CityState, "techs" | "eq"> & Partial<Pick<CityState, "ordinances">>): number => 1 - displacedJobs(s);
 
 /** Empregos de um lote industrial, já descontada a automação. */
-export const industrialLotJobs = (s: Pick<CityState, "techs" | "eq"> & Partial<Pick<CityState, "ordinances">>, level: number, perLevel: number): number =>
-  Math.round(level * perLevel * jobFactor(s));
+export const industrialLotJobs = (s: Pick<CityState, "techs" | "eq"> & Partial<Pick<CityState, "ordinances" | "labor">>, level: number, perLevel: number): number =>
+  Math.round(level * perLevel * jobFactor(s) * shiftFactor({ labor: s.labor } as Pick<CityState, "labor">, "fabrica"));

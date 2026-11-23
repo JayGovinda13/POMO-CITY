@@ -1,7 +1,7 @@
 import { BUILDINGS, ZONES } from "./catalog";
 import { UNPOWERED_EFFICIENCY } from "./config";
 import { ZONE, type CityState } from "./types";
-import { SECTOR_OF_BUILDING, industrialLotJobs, jobFactor } from "./labor";
+import { SECTOR_OF_BUILDING, industrialLotJobs, jobFactor, shiftFactor } from "./labor";
 import { isDown, wearFactor } from "./lifecycle";
 import { activeWorkers } from "./strikes";
 import { workingPopulation } from "./people";
@@ -31,7 +31,9 @@ export function buildingStatus(s: CityState, powered?: Uint8Array): Map<number, 
     const def = BUILDINGS[b.type];
     const connected = !def.needsRoad || isRoadConnected(s, b, network);
     // Máquinas (automação) dispensam parte dos operários das fábricas de produção; o resto produz igual.
-    const required = def.workers > 0 && SECTOR_OF_BUILDING[b.type] ? Math.max(1, Math.ceil(def.workers * jobs)) : def.workers;
+    const sector = SECTOR_OF_BUILDING[b.type];
+    // Jornada curta pede mais gente (turnos); a longa, menos.
+    const required = def.workers > 0 && sector ? Math.max(1, Math.ceil(def.workers * jobs * shiftFactor(s, sector))) : def.workers;
     let staffed = 0;
     // Construção danificada por desastre não opera nem contrata até ser reparada.
     if (connected && required > 0 && !isDown(b, s)) {

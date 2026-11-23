@@ -18,8 +18,12 @@ import {
   laborMood,
   laborStats,
   outputFactor,
+  citizensView,
   rulesOf,
+  moodOutput,
+  moodSummary,
   sectorWorkers,
+  shiftFactor,
   techMods,
   type Hours,
   type Pay,
@@ -56,6 +60,7 @@ function LaborModal({ onClose }: { onClose: () => void }) {
   const strike = computeStrike(city);
   const relief = educationRelief(city);
   const automation = techMods(city).automation;
+  const happyApproval = moodSummary(citizensView(city)).approval;
   const set = (sector: Sector, patch: { hours?: Hours; pay?: Pay }) => useGame.getState().queue({ type: "labor", sector, ...patch });
 
   return (
@@ -71,6 +76,12 @@ function LaborModal({ onClose }: { onClose: () => void }) {
           <p className="text-zinc-400">
             Jornada longa e pagamento por peça aumentam a produção, mas cansam os trabalhadores: o humor cai, a vida média diminui e a greve fica mais provável.
             {locked && <span className="text-red-300"> Em foco: as mudanças só valem na pausa.</span>}
+          </p>
+          <p className="border border-zinc-700 p-2">
+            <strong>Jornada curta e humor.</strong> Reduzir a jornada pede mais gente para manter as máquinas funcionando (6 h = +33% de vagas): se há desempregados, eles ganham emprego, e
+            trabalhadores descansados rendem mais por hora. Se não sobra ninguém, os turnos ficam sem gente e a produção cai. Além disso, <strong>quanto mais feliz a cidade, mais ela produz</strong>:
+            agora o humor dá{" "}
+            <strong className={moodOutput(happyApproval) >= 1 ? "text-emerald-300" : "text-red-300"}>{pct(moodOutput(happyApproval))}</strong> na produção (de −15% a +15%).
           </p>
 
           {SECTOR_IDS.map((sector) => {
@@ -114,7 +125,8 @@ function LaborModal({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
                 <p>
-                  Produção <strong className={outputFactor(city, sector) >= 1 ? "text-emerald-300" : "text-amber-300"}>{pct(outputFactor(city, sector))}</strong> · humor dos
+                  Produção <strong className={outputFactor(city, sector) >= 1 ? "text-emerald-300" : "text-amber-300"}>{pct(outputFactor(city, sector))}</strong> · vagas{" "}
+                  <strong className={shiftFactor(city, sector) > 1 ? "text-emerald-300" : shiftFactor(city, sector) < 1 ? "text-amber-300" : ""}>{pct(shiftFactor(city, sector))}</strong> · humor dos
                   trabalhadores{" "}
                   <strong className={mood < 0 ? "text-red-300" : mood > 0 ? "text-emerald-300" : ""}>{mood > 0 ? `+${mood}` : mood}</strong>
                 </p>

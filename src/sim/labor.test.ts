@@ -10,6 +10,9 @@ import {
   displacedJobs,
   educationRelief,
   jobFactor,
+  shiftFactor,
+  moodOutput,
+  buildingStatus,
   laborStats,
   migrateState,
   outputFactor,
@@ -70,18 +73,20 @@ describe("jornada e pagamento", () => {
 
   it("jornada longa e pagamento por peça produzem mais; jornada curta produz menos", () => {
     const s = createCity(1, T0);
-    expect(outputFactor(withLabor(s, "campo", 12), "campo")).toBeCloseTo(1.22);
-    expect(outputFactor(withLabor(s, "campo", 10, "peca"), "campo")).toBeCloseTo(1.12 * 1.08);
-    expect(outputFactor(withLabor(s, "campo", 6), "campo")).toBeCloseTo(0.88);
+    expect(outputFactor(withLabor(s, "campo", 12), "campo")).toBeCloseTo(1.18);
+    expect(outputFactor(withLabor(s, "campo", 10, "peca"), "campo")).toBeCloseTo(1.1 * 1.08);
+    expect(outputFactor(withLabor(s, "campo", 6), "campo")).toBeCloseTo(1.04);
     // O efeito é só do setor mexido.
     expect(outputFactor(withLabor(s, "campo", 12), "fabrica")).toBe(1);
   });
 
-  it("a fazenda colhe mais com jornada longa (e menos com jornada curta)", () => {
+  it("a fazenda colhe mais com jornada longa; a jornada curta só rende se houver gente para os turnos", () => {
     const base = productive();
     const food = (s: CityState) => resolveCycle(s, T0).report.produced["food:D"] ?? 0;
     expect(food(withLabor(base, "campo", 12))).toBeGreaterThan(food(base));
-    expect(food(withLabor(base, "campo", 6))).toBeLessThan(food(base));
+    // Sem desempregados para cobrir os turnos extras, a jornada curta não rende mais.
+    const scarce = withLabor(base, "campo", 6);
+    expect(food(scarce)).toBeLessThanOrEqual(food(withLabor(base, "campo", 8)) + 1);
   });
 
   it("jornada longa deixa os trabalhadores do setor tristes; jornada curta anima", () => {
@@ -234,10 +239,10 @@ describe("fiscal de fábrica", () => {
   it("corta o ganho de produção acima de 8 h pela metade e não mexe na jornada curta", () => {
     const s = withLabor(createCity(1, T0), "campo", 12);
     expect(inspected(s)).toBe(false);
-    expect(outputFactor(s, "campo")).toBeCloseTo(1.22);
-    expect(outputFactor(office(s), "campo")).toBeCloseTo(1.11);
+    expect(outputFactor(s, "campo")).toBeCloseTo(1.18);
+    expect(outputFactor(office(s), "campo")).toBeCloseTo(1.09);
     const curta = withLabor(createCity(1, T0), "campo", 6);
-    expect(outputFactor(office(curta), "campo")).toBeCloseTo(0.88);
+    expect(outputFactor(office(curta), "campo")).toBeCloseTo(1.04);
   });
   it("segura o desgaste e o humor pela metade", () => {
     const s = withLabor(createCity(1, T0), "campo", 12, "peca");
@@ -279,5 +284,34 @@ describe("decreto Escola-fábrica", () => {
     const d = on(s);
     expect(applyCommands(d, [{ type: "ordinance", id: "escola_fabrica", active: true }]).rejected).toHaveLength(1);
     expect(ORDINANCES.escola_fabrica.money?.(d)).toBeLessThan(0);
+  });
+});
+
+describe("jornada curta e humor", () => {
+  it("jornada curta cria vagas (turnos) e jornada longa tira", () => {
+    const s = createCity(1, T0);
+    expect(shiftFactor(withLabor(s, "campo", 6), "campo")).toBeCloseTo(8 / 6);
+    expect(shiftFactor(withLabor(s, "campo", 12), "campo")).toBeCloseTo(8 / 12);
+    expect(shiftFactor(s, "campo")).toBe(1);
+  });
+
+  it("reduzir a jornada reduz o desemprego quando há gente sobrando", () => {
+    const base = productive();
+    base.citizens = Array.from({ length: base.population }, (_, i) => i + 1);
+    const jobs = (c: CityState) => laborStats(c, buildingStatus(c)).totalJobs;
+    const curta = withLabor(withLabor(withLabor(base, "campo", 6), "oficina", 6), "fabrica", 6);
+    const longa = withLabor(withLabor(withLabor(base, "campo", 12), "oficina", 12), "fabrica", 12);
+    expect(jobs(curta)).toBeGreaterThanOrEqual(jobs(base));
+    expect(jobs(longa)).toBeLessThanOrEqual(jobs(base));
+  });
+
+  it("quanto mais feliz a cidade, mais ela produz (de −15% a +15%)", () => {
+    expect(moodOutput(0)).toBe(1);
+    expect(moodOutput(1)).toBeCloseTo(1.15);
+    expect(moodOutput(-1)).toBeCloseTo(0.85);
+    expect(moodOutput(5)).toBeCloseTo(1.15);
+    const { report } = resolveCycle(productive(), T0);
+    expect(report.happyOutput).toBeGreaterThanOrEqual(0.85);
+    expect(report.happyOutput).toBeLessThanOrEqual(1.15);
   });
 });

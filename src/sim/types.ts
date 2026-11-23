@@ -288,6 +288,8 @@ export interface CycleReport {
   council?: import("./council").CouncilReport;
   /** Aposentadoria do ciclo (ver pensionsystem.ts). */
   pension?: import("./pensionsystem").PensionReport;
+  /** Multiplicador de produção pelo humor da cidade neste ciclo (0,85 a 1,15). */
+  happyOutput?: number;
   /** Negócios próprios no ciclo (ver business.ts). */
   business?: import("./business").BusinessReport;
   /** Greve que valeu neste ciclo (ver strikes.ts). */
