@@ -3,9 +3,11 @@
 
 import { citizenProfile, citizensView, type CitizenView } from "./citizens";
 import { CYCLES_PER_YEAR } from "./config";
-import { LAWS, LAW_IDS, PARTIES, PARTY_IDS, newCouncil, type Bill, type CouncilState, type LawId, type PartyId } from "./laws";
+import { LAWS, LAW_ERA, LAW_IDS, PARTIES, PARTY_IDS, newCouncil, type Bill, type CouncilState, type LawId, type PartyId } from "./laws";
 import { ageYears } from "./people";
 import { ORDINANCE_POLITICS, ORDINANCES, type OrdinanceId } from "./finance";
+import { hasTech } from "./tech";
+import { cityYear } from "./world";
 import type { CityState } from "./types";
 
 /** Mandato: 4 anos. */
@@ -263,11 +265,21 @@ export function holdElection(s: CityState, rand: () => number): ElectionResult |
 
 // ───────────────────────── propostas ─────────────────────────
 
-/** Leis que o partido ainda pode propor (nem em vigor, nem já na pauta). */
+/** Por que a lei ainda não faz sentido na época da cidade (null = pode ser proposta). */
+export function lawEraLock(s: Pick<CityState, "cyclesCompleted" | "techs">, id: LawId): string | null {
+  const e = LAW_ERA[id];
+  if (!e) return null;
+  const year = cityYear(s);
+  if (year < e.year) return `Só a partir de ${e.year}`;
+  if (e.tech && !hasTech(s, e.tech)) return `Exige a tecnologia ${e.tech}`;
+  return null;
+}
+
+/** Leis que o partido ainda pode propor (nem em vigor, nem já na pauta, e que cabem na época). */
 function available(s: CityState, party: PartyId): LawId[] {
   const c = s.council!;
   const taken = new Set<LawId>([...c.laws, ...c.bills.map((b) => b.law)]);
-  return LAW_IDS.filter((id) => LAWS[id].party === party && !taken.has(id));
+  return LAW_IDS.filter((id) => LAWS[id].party === party && !taken.has(id) && lawEraLock(s, id) === null);
 }
 
 /** Que indicadores da cidade cada lei responde (quanto mais alto o indicador, mais o partido a propõe). */

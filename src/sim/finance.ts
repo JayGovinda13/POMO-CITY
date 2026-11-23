@@ -126,7 +126,10 @@ export type OrdinanceId =
   | "cortes_gabinete"
   | "parada_civica"
   | "censura_jornais"
-  | "alistamento_obrigatorio";
+  | "alistamento_obrigatorio"
+  | "lucros_extraordinarios"
+  | "compras_coletivas"
+  | "auditoria_popular";
 
 export interface OrdinanceDef {
   name: string;
@@ -229,6 +232,27 @@ export const ORDINANCES: Record<OrdinanceId, OrdinanceDef> = {
     money: () => 0,
     mood: { delta: 1, text: "Feriado do trabalhador" },
     mods: { goods: -0.02 },
+  },
+  lucros_extraordinarios: {
+    name: "Taxação de lucros extraordinários",
+    category: "Finanças",
+    description: "Quem lucra muito paga mais: a prefeitura arrecada por ciclo, mas a indústria esfria um pouco (−8% de demanda industrial).",
+    money: (s) => Math.ceil(pop(s) * 0.3),
+    demand: { I: -0.08 },
+  },
+  compras_coletivas: {
+    name: "Compras públicas coletivas",
+    category: "Finanças",
+    description: "A prefeitura compra em grande quantidade, com os trabalhadores fiscalizando os preços: manutenção 5% mais barata.",
+    money: () => 0,
+    mods: { upkeep: -0.05 },
+  },
+  auditoria_popular: {
+    name: "Auditoria popular das contas",
+    category: "Finanças",
+    description: "Conselhos de moradores caçam desperdício: manutenção 3% mais barata e uma economia por ciclo.",
+    money: (s) => Math.ceil(pop(s) * 0.08),
+    mods: { upkeep: -0.03 },
   },
   // ── Social Democrata ──
   mutirao_saude: {
@@ -353,6 +377,9 @@ export const ORDINANCE_POLITICS: Record<OrdinanceId, { party: PartyId; foes?: Pa
   habitacao_popular: { party: "esquerda", foes: ["liberal"] },
   tarifa_social_energia: { party: "esquerda", foes: ["liberal"] },
   cozinha_comunitaria: { party: "esquerda" },
+  lucros_extraordinarios: { party: "esquerda", foes: ["liberal", "conservador"] },
+  compras_coletivas: { party: "esquerda", foes: ["liberal"] },
+  auditoria_popular: { party: "esquerda" },
   feriado_trabalhador: { party: "esquerda", foes: ["liberal", "conservador"] },
   mutirao_saude: { party: "socialdemocrata" },
   campanha_leitura: { party: "socialdemocrata" },

@@ -11,6 +11,9 @@ import {
   citizensView,
   createCity,
   leaning,
+  lawEraLock,
+  councilStep,
+  rng,
   newCouncil,
   syncCitizens,
   techMods,
@@ -87,5 +90,51 @@ describe("decretos políticos", () => {
 
   it("as leis novas têm efeitos e partido válidos", () => {
     for (const p of PARTY_IDS) expect(LAW_IDS.filter((id) => LAWS[id].party === p).length, p).toBeGreaterThanOrEqual(p === "fascista" ? 10 : 15);
+  });
+});
+
+describe("leis e decretos por época", () => {
+  it("a câmara não propõe leis de uma época que ainda não chegou", () => {
+    const s = town();
+    s.population = 100;
+    s.council = newCouncil();
+    s.cyclesCompleted = 4 * 3; // 1903
+    // 1903: nada de internet, startups, mercado de carbono ou governo digital.
+    expect(lawEraLock(s, "governo_digital")).toMatch(/1990/);
+    expect(lawEraLock(s, "polo_startups")).toMatch(/1995/);
+    expect(lawEraLock(s, "jornada_8h")).toMatch(/1915/);
+    expect(s.techs ?? []).toEqual([]);
+    expect(lawEraLock(s, "guarda_municipal")).toBeNull();
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 300; seed++) {
+      const c = town();
+      c.cyclesCompleted = 4 * 3; // 1903
+      c.council = { ...newCouncil(), members: PARTY_IDS.slice(0, 5).map((p, i) => ({ id: c.citizens[i], party: p })), electedAt: c.cyclesCompleted - 1 };
+      councilStep(c, rng(seed));
+      for (const b of c.council.bills) seen.add(b.law);
+    }
+    expect(seen.size).toBeGreaterThan(3);
+    for (const id of seen) expect(lawEraLock(s, id as never), id).toBeNull();
+  });
+
+  it("com o tempo e a tecnologia, as leis novas ficam disponíveis", () => {
+    const s = town();
+    s.cyclesCompleted = 4 * 95; // 1995
+    expect(lawEraLock(s, "polo_startups")).toMatch(/internet/); // exige a tecnologia
+    s.techs = ["internet"];
+    expect(lawEraLock(s, "polo_startups")).toBeNull();
+    expect(lawEraLock(s, "microempreendedor")).toBeNull();
+    expect(lawEraLock(s, "mercado_carbono")).toMatch(/2000/);
+  });
+
+  it("alguns decretos da esquerda baixam o custo da cidade", () => {
+    const s = town();
+    s.population = 200;
+    const left = ORDINANCE_IDS.filter((id) => ORDINANCE_POLITICS[id].party === "esquerda");
+    const saves = left.filter((id) => ORDINANCES[id].money(s) > 0 || (ORDINANCES[id].mods?.upkeep ?? 0) < 0);
+    expect(saves.length).toBeGreaterThanOrEqual(3);
+    expect(ORDINANCES.lucros_extraordinarios.money(s)).toBeGreaterThan(0);
+    s.ordinances = { compras_coletivas: 0 };
+    expect(techMods(s).upkeep).toBeCloseTo(techMods(town()).upkeep - 0.05);
   });
 });
