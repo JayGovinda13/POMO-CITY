@@ -347,9 +347,17 @@ export function citizensView(s: CityState): CitizenView[] {
     if (foodFactor >= 1.3 && wealth === "baixa") reasons.push({ text: "Comida cara", delta: -1 });
     else if (foodFactor >= 1.5 && wealth === "media") reasons.push({ text: "Comida cara", delta: -1 });
     // Decretos que mexem com o humor (Fase 4).
+    // (Os decretos que animam também têm teto: no máximo +3 somados.)
+    let decreeGain = 0;
     for (const oid of ORDINANCE_IDS) {
       const mood = ORDINANCES[oid].mood;
-      if (mood && isActive(s, oid)) reasons.push({ text: mood.text, delta: mood.delta });
+      if (!mood || !isActive(s, oid)) continue;
+      if (mood.delta > 0) {
+        const allowed = Math.min(mood.delta, 3 - decreeGain);
+        if (allowed <= 0) continue;
+        decreeGain += allowed;
+        reasons.push({ text: mood.text, delta: allowed });
+      } else reasons.push({ text: mood.text, delta: mood.delta });
     }
     if (isActive(s, "premio_produtividade") && s.streak >= 4) reasons.push({ text: "Prêmio de produtividade", delta: 1 });
     // Eventos em andamento (festival, greve, gripe, calor).

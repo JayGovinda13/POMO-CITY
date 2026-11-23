@@ -17,6 +17,7 @@ import {
   landRentRevenue,
   migrateState,
   resolveCycle,
+  rng,
   syncCitizens,
   type CityState,
 } from "./index";
@@ -168,7 +169,9 @@ describe("eleição extraordinária", () => {
   it("em crise grave, depois de um ano de mandato, o povo exige novas urnas", () => {
     const s = town();
     s.population = 100;
-    const first = councilStep(s, () => 0.99);
+    // Eleição calma: sem crise, o Fascista nem está na urna (sorteio fixo, sem golpe).
+    s.money = 5000;
+    const first = councilStep(s, rng(2));
     expect(first.election).toBeDefined();
     const elected = s.council.electedAt;
     s.cyclesCompleted = elected + 5;
@@ -183,7 +186,8 @@ describe("eleição extraordinária", () => {
     // Antes de um ano, nem em crise.
     const t = town();
     t.population = 100;
-    councilStep(t, () => 0.99);
+    t.money = 5000;
+    councilStep(t, rng(2));
     t.cyclesCompleted = t.council.electedAt + 2;
     t.money = -500;
     expect(councilStep(t, () => 0).election).toBeUndefined();

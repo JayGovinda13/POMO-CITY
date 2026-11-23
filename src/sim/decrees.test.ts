@@ -12,6 +12,7 @@ import {
   createCity,
   leaning,
   lawEraLock,
+  lawMoods,
   councilStep,
   rng,
   newCouncil,
@@ -136,5 +137,24 @@ describe("leis e decretos por época", () => {
     expect(ORDINANCES.lucros_extraordinarios.money(s)).toBeGreaterThan(0);
     s.ordinances = { compras_coletivas: 0 };
     expect(techMods(s).upkeep).toBeCloseTo(techMods(town()).upkeep - 0.05);
+  });
+});
+
+describe("teto de humor das leis e decretos", () => {
+  it("os ganhos de humor das leis somam no máximo +3 (as perdas valem inteiras)", () => {
+    const s = town();
+    s.council = { ...newCouncil(), laws: ["renda_basica", "arborizacao", "orcamento_participativo", "fundo_cultura", "ouvidoria_publica", "restaurante_popular", "estado_de_excecao"] };
+    const m = lawMoods(s, false);
+    expect(m.filter((x) => x.delta > 0).reduce((a, x) => a + x.delta, 0)).toBe(3);
+    expect(m.find((x) => x.text === "Estado de exceção")!.delta).toBe(-2);
+  });
+
+  it("decretos que animam também têm teto de +3 na ficha do morador", () => {
+    const s = town();
+    s.ordinances = { embelezamento: 0, festival: 0, cozinha_comunitaria: 0, tarifa_social_energia: 0, ciclo_cultural: 0, dia_da_familia: 0 };
+    const v = citizensView(s)[0];
+    const decree = ["Cidade bonita", "Festival da cidade", "Cozinha comunitária", "Tarifa social de energia", "Ciclo cultural", "Dia da família"];
+    const total = v.reasons.filter((r) => decree.includes(r.text)).reduce((a, r) => a + r.delta, 0);
+    expect(total).toBe(3);
   });
 });

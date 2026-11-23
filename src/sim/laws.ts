@@ -1029,12 +1029,26 @@ export const lawCoop = (s: Partial<Pick<CityState, "council">>) => Math.min(1.6,
 export const lawEq = (s: Partial<Pick<CityState, "council">>) => sumOf(s, (d) => d.eq);
 
 /** Humor das leis para um morador (trabalhador empregado ou qualquer um). */
+export const LAW_MOOD_CAP = 3;
 export function lawMoods(s: Partial<Pick<CityState, "council">>, worker: boolean): { text: string; delta: number }[] {
   const out: { text: string; delta: number }[] = [];
+  // Os ganhos de humor das leis não se acumulam sem fim: no máximo +3 para todos e +3 para trabalhadores
+  // (as perdas valem por inteiro).
+  let posAll = 0;
+  let posWorkers = 0;
+  const push = (m: { text: string; delta: number }, pos: "all" | "workers") => {
+    if (m.delta <= 0) return void out.push(m);
+    const used = pos === "all" ? posAll : posWorkers;
+    const allowed = Math.min(m.delta, LAW_MOOD_CAP - used);
+    if (allowed <= 0) return;
+    if (pos === "all") posAll += allowed;
+    else posWorkers += allowed;
+    out.push(allowed === m.delta ? m : { text: m.text, delta: allowed });
+  };
   for (const id of activeLaws(s)) {
     const d = LAWS[id];
-    if (d.moodAll) out.push(d.moodAll);
-    if (worker && d.moodWorkers) out.push(d.moodWorkers);
+    if (d.moodAll) push(d.moodAll, "all");
+    if (worker && d.moodWorkers) push(d.moodWorkers, "workers");
   }
   return out;
 }

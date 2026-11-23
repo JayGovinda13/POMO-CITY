@@ -161,10 +161,10 @@ export function generateNewspaper(state: CityState, report: CycleReport): Newspa
       tone: "neutral",
     });
   }
-  if (cr?.proposal) {
+  for (const pr of cr?.proposals ?? (cr?.proposal ? [cr.proposal] : [])) {
     stories.push({
-      title: `Câmara propõe: ${LAWS[cr.proposal.law].name}`,
-      body: `Projeto do vereador ${cr.proposal.proposer} (${PARTIES[cr.proposal.party].short}). O prefeito decide: aprovar ou vetar, na pausa.`,
+      title: `Câmara propõe: ${LAWS[pr.law].name}`,
+      body: `Projeto do vereador ${pr.proposer} (${PARTIES[pr.party].short}). O prefeito decide: aprovar ou vetar, na pausa.`,
       tone: "neutral",
     });
   }

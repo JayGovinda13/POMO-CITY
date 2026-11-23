@@ -120,7 +120,9 @@ describe("eleição", () => {
     expect(ballot(0)).not.toContain("fascista");
     expect(ballot(1.6)).toContain("fascista");
     const normal = town(120);
-    expect(holdElection(normal, rng(3))!.votes.fascista).toBe(0);
+    const calm = holdElection(normal, rng(3))!;
+    // Sem crise (menos de 3 sinais) o Fascista nem está na urna.
+    if (calm.crisis < 3) expect(calm.votes.fascista).toBe(0);
     const crise = town(120);
     crise.money = -500; // caixa no vermelho
     crise.strike = { share: 0.3, causes: [] }; // greve geral
@@ -307,7 +309,12 @@ describe("golpe fascista", () => {
     s.strike = { share: 0.4, causes: [] }; // greve geral
     s.lastDisasterCycle = s.cyclesCompleted - 1; // desastre
     // Todos desempregados, tristes e em bairro perigoso: cenário de crise total.
-    const rep = councilStep(s, rng(11));
+    // Numa crise assim o voto se polariza: com a semente certa, o Fascista leva 2/3.
+    let rep = councilStep(structuredClone(s), rng(1));
+    for (let seed = 1; seed < 40 && !rep.coup; seed++) rep = councilStep(structuredClone(s), rng(seed));
+    const seedOk = Array.from({ length: 40 }, (_, i) => i + 1).find((sd) => councilStep(structuredClone(s), rng(sd)).coup)!;
+    expect(seedOk).toBeDefined();
+    rep = councilStep(s, rng(seedOk));
     expect(rep.election?.crisis).toBeGreaterThanOrEqual(5);
     expect(rep.election!.seats.fascista).toBeGreaterThan(0);
     expect(rep.coup).toBe(true);
@@ -334,5 +341,40 @@ describe("golpe fascista", () => {
     old.schemaVersion = 18;
     delete old.ended;
     expect(migrateState(old as CityState).ended).toBeNull();
+  });
+});
+
+describe("pluralidade e propostas proporcionais", () => {
+  it("o voto sorteado espalha as cadeiras: raramente um partido leva tudo", () => {
+    let plural = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const r = holdElection(town(120), rng(seed))!;
+      const total = Object.values(r.seats).reduce((acc, v) => acc + v, 0);
+      if (Math.max(...Object.values(r.seats)) / total < 0.85) plural++;
+    }
+    expect(plural).toBeGreaterThanOrEqual(15);
+  });
+
+  it("cada partido propõe na proporção das suas cadeiras (e todos propõem)", () => {
+    const s = town(120);
+    s.council = {
+      ...newCouncil(),
+      electedAt: s.cyclesCompleted,
+      members: [
+        ...Array.from({ length: 4 }, (_, i) => ({ id: s.citizens[i], party: "esquerda" as const })),
+        ...Array.from({ length: 2 }, (_, i) => ({ id: s.citizens[4 + i], party: "liberal" as const })),
+        { id: s.citizens[6], party: "conservador" as const },
+      ],
+    };
+    const count: Record<string, number> = {};
+    for (let seed = 1; seed <= 400; seed++) {
+      const c = structuredClone(s);
+      c.council.bills = [];
+      const r = councilStep(c, rng(seed));
+      for (const p of r.proposals ?? []) count[p.party] = (count[p.party] ?? 0) + 1;
+    }
+    expect(count.esquerda).toBeGreaterThan(count.liberal);
+    expect(count.liberal).toBeGreaterThan(count.conservador);
+    expect(count.conservador).toBeGreaterThan(20); // a minoria também propõe
   });
 });

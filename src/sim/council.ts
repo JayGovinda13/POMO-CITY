@@ -19,6 +19,8 @@ export const TERM_CYCLES = 4 * CYCLES_PER_YEAR;
 export const MIN_COUNCIL_POPULATION = 30;
 /** Propostas esperando decisão (as mais antigas são arquivadas). */
 export const MAX_PENDING_BILLS = 3;
+/** Temperatura do voto (softmax): maior = votos mais espalhados entre os partidos. */
+export const VOTE_TEMPERATURE = 3;
 
 /** Fração da câmara que dá o golpe. */
 export const COUP_SHARE = 2 / 3;
@@ -229,14 +231,18 @@ export function holdElection(s: CityState, rand: () => number): ElectionResult |
   const byParty: Record<PartyId, CitizenView[]> = { esquerda: [], socialdemocrata: [], centro: [], liberal: [], conservador: [], fascista: [] };
   for (const v of views) {
     const w = leaning(v, s, crisis);
-    // Cada eleitor decide pelo partido de maior peso, com uma pitada de acaso.
-    let best: PartyId = parties[0];
-    let bestW = -1;
-    for (const p of parties) {
-      const x = w[p] + rand() * 1.6;
-      if (x > bestW) {
-        bestW = x;
-        best = p;
+    // Cada eleitor sorteia o voto: a chance de cada partido cresce com o peso dele (softmax), então a
+    // câmara sai plural em vez de um partido levar tudo. Quanto maior a TEMPERATURA, mais espalhado.
+    // Na crise o eleitorado se polariza (temperatura menor): a vitória do mais forte fica mais provável.
+    const temp = VOTE_TEMPERATURE / (1 + crisis * 1.6);
+    const probs = parties.map((p) => Math.exp(w[p] / temp));
+    let x = rand() * probs.reduce((acc, v) => acc + v, 0);
+    let best: PartyId = parties[parties.length - 1];
+    for (let i = 0; i < parties.length; i++) {
+      x -= probs[i];
+      if (x <= 0) {
+        best = parties[i];
+        break;
       }
     }
     votes[best]++;
@@ -362,7 +368,14 @@ function proposeBill(s: CityState, rand: () => number, g: Signals): Bill | null 
       break;
     }
   }
+  return proposeFor(s, rand, g, party);
+}
+
+/** Um projeto de lei do espectro do partido, favorecendo o que a cidade está precisando. */
+function proposeFor(s: CityState, rand: () => number, g: Signals, party: PartyId): Bill | null {
+  const c = s.council!;
   const laws = available(s, party);
+  if (!laws.length) return null;
   const lw = laws.map((l) => relevance(l, g));
   let y = rand() * lw.reduce((a, b) => a + b, 0);
   let law = laws[laws.length - 1];
@@ -378,12 +391,19 @@ function proposeBill(s: CityState, rand: () => number, g: Signals): Bill | null 
   return { id: c.nextBillId++, law, party, proposer, cycle: s.cyclesCompleted };
 }
 
+/** Chance, por ciclo, de um partido propor: sua fatia das cadeiras vezes esta taxa (cada partido sorteia sozinho). */
+export const PROPOSAL_RATE = 1;
+/** No máximo, tantos projetos novos por ciclo. */
+export const MAX_NEW_BILLS = 2;
+
 export interface CouncilReport {
   /** O Fascista conquistou 2/3 da câmara: golpe e fim de jogo. */
   coup?: boolean;
   election?: { seats: Record<PartyId, number>; members: { name: string; party: PartyId }[]; crisis: number; extraordinary?: boolean };
-  /** Lei proposta neste ciclo. */
+  /** Primeira lei proposta neste ciclo (compatível com o jornal antigo). */
   proposal?: { id: number; law: LawId; party: PartyId; proposer: string };
+  /** Todas as leis propostas neste ciclo (cada partido propõe na proporção das suas cadeiras). */
+  proposals?: { id: number; law: LawId; party: PartyId; proposer: string }[];
   /** Propostas arquivadas por falta de decisão. */
   expired: number;
   /** Vereadores que morreram ou se mudaram e foram substituídos. */
@@ -439,16 +459,34 @@ export function councilStep(s: CityState, rand: () => number): CouncilReport {
     }
   }
 
+  // Cada partido com cadeiras sorteia sozinho se propõe neste ciclo: a chance é a sua fatia da câmara.
+  const g = signalsOf(citizensView(s), s);
+  const total = c.members.length || 1;
+  const made: Bill[] = [];
+  for (const p of PARTY_IDS) {
+    const seats = c.members.filter((m) => m.party === p).length;
+    if (!seats || made.length >= MAX_NEW_BILLS) continue;
+    if (rand() < Math.min(0.85, (seats / total) * PROPOSAL_RATE)) {
+      const b = proposeFor(s, rand, g, p);
+      if (b) made.push(b);
+    }
+  }
+  // Ciclo sem sorteio de ninguém: a câmara sempre tem pelo menos um projeto (sorteado pelas cadeiras).
+  if (!made.length) {
+    const b = proposeBill(s, rand, g);
+    if (b) made.push(b);
+  }
   // Propostas sem decisão: ficam na pauta até o limite; as mais antigas são arquivadas.
-  while (c.bills.length >= MAX_PENDING_BILLS) {
+  while (c.bills.length + made.length > MAX_PENDING_BILLS && c.bills.length > 0) {
     const old = c.bills.shift()!;
     out.expired++;
     note(c, now, `Arquivada sem decisão: ${LAWS[old.law].name}`);
   }
-  const bill = proposeBill(s, rand, signalsOf(citizensView(s), s));
-  if (bill) {
+  for (const bill of made) {
     c.bills.push(bill);
-    out.proposal = { id: bill.id, law: bill.law, party: bill.party, proposer: citizenProfile(s, bill.proposer).name };
+    const info = { id: bill.id, law: bill.law, party: bill.party, proposer: citizenProfile(s, bill.proposer).name };
+    (out.proposals ??= []).push(info);
+    out.proposal ??= info;
   }
   return out;
 }
