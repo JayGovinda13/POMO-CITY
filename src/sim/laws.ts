@@ -381,7 +381,7 @@ export const LAWS: Record<LawId, LawDef> = {
     name: "Cooperativas de trabalhadores",
     description: "A prefeitura apoia quem se junta para tocar o próprio negócio: moradores sem emprego fundam cooperativas, que dividem o lucro e resistem melhor às crises. Custa uma verba por ciclo.",
     coop: 1,
-    cost: perPop(0.1),
+    cost: perPop(0.06),
   },
   fabricas_recuperadas: {
     party: "esquerda",
@@ -396,7 +396,7 @@ export const LAWS: Record<LawId, LawDef> = {
     name: "Banco cooperativo",
     description: "Crédito sem juros abusivos para cooperativas: mais cooperados, com uma verba por ciclo.",
     coop: 0.5,
-    cost: perPop(0.08),
+    cost: perPop(0.05),
   },
   reforma_agraria: {
     party: "esquerda",
@@ -488,7 +488,7 @@ export const LAWS: Record<LawId, LawDef> = {
     description: "Pequenos empréstimos para quem quer empreender sozinho ou em grupo: mais empreendedores e cooperados, com uma verba por ciclo.",
     entrepreneur: 0.3,
     coop: 0.4,
-    cost: perPop(0.1),
+    cost: perPop(0.06),
   },
   licenca_parental: {
     party: "socialdemocrata",
@@ -519,7 +519,7 @@ export const LAWS: Record<LawId, LawDef> = {
     description: "Espaço, mentoria e contabilidade para novos negócios: moradores sem emprego abrem empresas e cooperativas (mais empreendedores que cooperados). Custa uma verba por ciclo.",
     entrepreneur: 0.5,
     coop: 0.3,
-    cost: perPop(0.1),
+    cost: perPop(0.06),
   },
   governo_digital: {
     party: "centro",
@@ -589,7 +589,7 @@ export const LAWS: Record<LawId, LawDef> = {
     name: "Crédito para pequenos negócios",
     description: "A prefeitura avaliza empréstimos para empreender: mais empreendedores, com uma verba por ciclo.",
     entrepreneur: 0.6,
-    cost: perPop(0.12),
+    cost: perPop(0.06),
   },
   polo_startups: {
     party: "liberal",
@@ -610,7 +610,7 @@ export const LAWS: Record<LawId, LawDef> = {
     name: "Feira de empreendedores",
     description: "Vitrine anual para quem tem ideia e pouco capital: mais empreendedores, com uma pequena verba por ciclo.",
     entrepreneur: 0.4,
-    cost: perPop(0.06),
+    cost: perPop(0.04),
   },
   privatizacao_servicos: {
     party: "liberal",

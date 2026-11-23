@@ -58,17 +58,17 @@ export const inspected = (s: Pick<CityState, "buildings"> & Partial<Pick<CitySta
 export const schoolFactory = (s: Pick<CityState, "ordinances">): boolean => s.ordinances?.escola_fabrica !== undefined;
 
 /** Produtividade de cada hora trabalhada: descansados rendem mais por hora (a jornada longa rende mais no total, mas cansa). */
-const HOURS_OUTPUT: Record<Hours, number> = { 6: 1.04, 8: 1, 10: 1.1, 12: 1.18 };
+const HOURS_OUTPUT: Record<Hours, number> = { 6: 1.08, 8: 1, 10: 1.1, 12: 1.18 };
 /** Quem é pago por peça produz mais (e é mais pressionado). */
 const PIECE_OUTPUT = 1.08;
 const HOURS_MOOD: Record<Hours, number> = { 6: 1, 8: 0, 10: -1, 12: -3 };
 const PIECE_MOOD = -1;
 
 /**
- * Turnos: jornada curta exige mais gente para manter as máquinas funcionando o dia todo (6 h = 1,33× as vagas),
- * e jornada longa exige menos (12 h = 0,67×). É assim que reduzir a jornada combate o desemprego.
+ * Turnos: jornada curta exige mais gente para manter as máquinas funcionando o dia todo (6 h = 1,17× as vagas),
+ * e jornada longa exige menos (12 h = 0,83×); o outro tanto é absorvido por ritmo e revezamento. É assim que reduzir a jornada combate o desemprego.
  */
-export const shiftFactor = (s: Pick<CityState, "labor">, sector: Sector): number => 8 / rulesOf(s, sector).hours;
+export const shiftFactor = (s: Pick<CityState, "labor">, sector: Sector): number => 1 + (8 / rulesOf(s, sector).hours - 1) / 2;
 
 /** Humor da cidade → produtividade: de −15% (todo mundo triste) a +15% (todo mundo feliz). `approval` vai de −1 a 1. */
 export const moodOutput = (approval: number): number => 1 + Math.max(-1, Math.min(1, approval)) * 0.15;

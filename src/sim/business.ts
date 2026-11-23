@@ -17,11 +17,11 @@ export interface BusinessState {
 export const newBusiness = (): BusinessState => ({ entrepreneurs: 0, coops: 0 });
 
 /** Imposto por ciclo de cada negócio. */
-export const TAX_ENTREPRENEUR = 1.5;
-export const TAX_COOP = 0.8;
+export const TAX_ENTREPRENEUR = 3;
+export const TAX_COOP = 1.2;
 /** Chance base de quebrar por ciclo (dobra na crise econômica). */
-export const FAIL_ENTREPRENEUR = 0.08;
-export const FAIL_COOP = 0.03;
+export const FAIL_ENTREPRENEUR = 0.07;
+export const FAIL_COOP = 0.04;
 
 export interface BusinessReport {
   entrepreneurs: number;
@@ -36,7 +36,10 @@ export interface BusinessReport {
  * Um ciclo de negócios. `unemployed` = adultos sem vaga; só eles abrem negócio. Muta `s.business`.
  * Devolve o imposto arrecadado (já descontando a crise).
  */
-export function businessStep(s: CityState, unemployed: number, rand: () => number): BusinessReport {
+/** Parte dos adultos empregados que também pode abrir negócio (autônomos e sócios). */
+export const SIDE_BUSINESS_SHARE = 0.15;
+
+export function businessStep(s: CityState, unemployed: number, rand: () => number, employed = 0): BusinessReport {
   s.business ??= newBusiness();
   const b = s.business;
   // Incubadoras e cooperativas fabris em operação reforçam o que as leis fazem (e funcionam sem lei).
@@ -61,19 +64,22 @@ export function businessStep(s: CityState, unemployed: number, rand: () => numbe
   b.coops -= failedC;
 
   // Aberturas: uma fração dos desempregados que ainda não têm negócio.
-  const free = Math.max(0, unemployed - b.entrepreneurs - b.coops);
+  // Quem pode ter negócio: os sem vaga e uma parte dos empregados (autônomos).
+  const pool = unemployed + Math.floor(employed * SIDE_BUSINESS_SHARE);
+  const free = Math.max(0, pool - b.entrepreneurs - b.coops);
   const openE = E > 0 ? Math.floor(free * Math.min(0.5, 0.12 * E) + rand()) : 0;
   const freeC = Math.max(0, free - openE);
   const openC = C > 0 ? Math.floor(freeC * Math.min(0.5, 0.1 * C) + rand()) : 0;
   b.entrepreneurs += Math.min(openE, free);
   b.coops += Math.min(openC, freeC);
 
-  // Ninguém pode ter negócio sem ter ficado sem vaga: o excesso fecha.
-  const over = b.entrepreneurs + b.coops - unemployed;
-  if (over > 0) {
-    const cutE = Math.min(b.entrepreneurs, Math.ceil(over / 2));
-    b.entrepreneurs -= cutE;
-    b.coops -= Math.min(b.coops, over - cutE);
+  // O excesso sobre quem pode ter negócio fecha.
+  let over = b.entrepreneurs + b.coops - pool;
+  for (let k = 0; over > 0; k++) {
+    // Fecha um de cada vez, alternando (o maior grupo primeiro).
+    if (b.entrepreneurs >= b.coops ? b.entrepreneurs > 0 : b.coops === 0) b.entrepreneurs--;
+    else b.coops--;
+    over--;
   }
 
   const tax = Math.floor((b.entrepreneurs * TAX_ENTREPRENEUR + b.coops * TAX_COOP) * (crise ? 0.5 : 1));

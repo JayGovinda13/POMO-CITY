@@ -535,7 +535,7 @@ const councilSystem: CycleSystem = ({ s, report, rand }) => {
 
 /** 10d) Negócios próprios: quem está sem vaga abre empresa ou cooperativa (conforme as leis). */
 const businessSystem: CycleSystem = ({ s, report, rand }) => {
-  const r = businessStep(s, report.jobs.unemployed, rand);
+  const r = businessStep(s, report.jobs.unemployed, rand, report.jobs.filled);
   report.business = r;
   report.finance.business = r.tax;
   s.money += r.tax;

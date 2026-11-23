@@ -75,7 +75,7 @@ describe("jornada e pagamento", () => {
     const s = createCity(1, T0);
     expect(outputFactor(withLabor(s, "campo", 12), "campo")).toBeCloseTo(1.18);
     expect(outputFactor(withLabor(s, "campo", 10, "peca"), "campo")).toBeCloseTo(1.1 * 1.08);
-    expect(outputFactor(withLabor(s, "campo", 6), "campo")).toBeCloseTo(1.04);
+    expect(outputFactor(withLabor(s, "campo", 6), "campo")).toBeCloseTo(1.08);
     // O efeito é só do setor mexido.
     expect(outputFactor(withLabor(s, "campo", 12), "fabrica")).toBe(1);
   });
@@ -242,7 +242,7 @@ describe("fiscal de fábrica", () => {
     expect(outputFactor(s, "campo")).toBeCloseTo(1.18);
     expect(outputFactor(office(s), "campo")).toBeCloseTo(1.09);
     const curta = withLabor(createCity(1, T0), "campo", 6);
-    expect(outputFactor(office(curta), "campo")).toBeCloseTo(1.04);
+    expect(outputFactor(office(curta), "campo")).toBeCloseTo(1.08);
   });
   it("segura o desgaste e o humor pela metade", () => {
     const s = withLabor(createCity(1, T0), "campo", 12, "peca");
@@ -290,8 +290,8 @@ describe("decreto Escola-fábrica", () => {
 describe("jornada curta e humor", () => {
   it("jornada curta cria vagas (turnos) e jornada longa tira", () => {
     const s = createCity(1, T0);
-    expect(shiftFactor(withLabor(s, "campo", 6), "campo")).toBeCloseTo(8 / 6);
-    expect(shiftFactor(withLabor(s, "campo", 12), "campo")).toBeCloseTo(8 / 12);
+    expect(shiftFactor(withLabor(s, "campo", 6), "campo")).toBeCloseTo(1 + (8 / 6 - 1) / 2);
+    expect(shiftFactor(withLabor(s, "campo", 12), "campo")).toBeCloseTo(1 + (8 / 12 - 1) / 2);
     expect(shiftFactor(s, "campo")).toBe(1);
   });
 

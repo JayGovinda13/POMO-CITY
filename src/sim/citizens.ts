@@ -279,7 +279,7 @@ export function citizensView(s: CityState): CitizenView[] {
     }
     if (slot) reasons.push({ text: "Tem emprego", delta: 2 });
     else if (business === "empreendedor") reasons.push({ text: "Tem o próprio negócio", delta: 1 });
-    else if (business === "cooperado") reasons.push({ text: "Sócio(a) de uma cooperativa", delta: 2 });
+    else if (business === "cooperado") reasons.push({ text: "Sócio(a) de uma cooperativa", delta: 1 });
     else if (stage === "adulto") reasons.push({ text: "Desempregado(a)", delta: -2 });
     // Família: casal junto anima; luto pesa por 4 ciclos.
     if (life?.partner !== undefined && s.people[life.partner]?.died === undefined) reasons.push({ text: "Vive em família", delta: 1 });

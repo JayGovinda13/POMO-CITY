@@ -71,7 +71,7 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
               <strong>{city.business?.coops ?? 0}</strong> cooperados<span className="hidden sm:inline"> (rendem menos, resistem à crise; a esquerda os apoia)</span>
             </p>
             <p className="hidden text-zinc-400 sm:block">
-              Só quem está sem vaga abre negócio. Força das leis em vigor: empreendedorismo {lawEntrepreneur(city).toFixed(1)} · cooperativismo {lawCoop(city).toFixed(1)}. Leis
+              Abrem negócio os moradores sem vaga e uma parte dos empregados (autônomos). Força das leis em vigor: empreendedorismo {lawEntrepreneur(city).toFixed(1)} · cooperativismo {lawCoop(city).toFixed(1)}. Leis
               marcadas com 🏪 ou 🤝 aumentam esses números.
             </p>
           </div>
