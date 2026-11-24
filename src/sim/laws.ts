@@ -161,7 +161,27 @@ export type LawId =
   | "registro_cidadaos"
   | "culto_lider"
   | "rearmamento"
-  | "milicia_urbana";
+  | "milicia_urbana"
+  | "imposto_heranca"
+  | "contribuicao_solidaria"
+  | "pedagio_urbano"
+  | "concessao_servicos"
+  | "taxa_lixo"
+  | "subsidio_empresarial"
+  | "reducao_imposto_comercio"
+  | "fundo_garantidor"
+  | "pensao_viuvas"
+  | "imposto_predial"
+  | "licenca_armas"
+  | "venda_terras_publicas"
+  | "juventude_partido"
+  | "obras_monumentais"
+  | "policia_secreta"
+  | "confisco_bens"
+  | "imposto_guerra"
+  | "trabalho_obrigatorio"
+  | "expropriacao_empresas"
+  | "banco_do_estado";
 
 export interface LawDef {
   party: PartyId;
@@ -197,28 +217,32 @@ export interface LawDef {
 }
 
 const perPop = (k: number) => (s: { population: number }) => Math.ceil(s.population * k);
+/** Receita por ciclo (custo negativo): multas, taxas e contribuições que a lei arrecada. */
+const earn = (k: number) => (s: { population: number }) => -Math.ceil(s.population * k);
 
 export const LAWS: Record<LawId, LawDef> = {
   // ── Esquerda Radical ──
   jornada_8h: {
     party: "esquerda",
     name: "Jornada máxima de 8 horas",
-    description: "Nenhum setor passa de 8 horas por dia (jornadas longas voltam a 8 h). Os trabalhadores ficam mais contentes, mas o ganho de produção de jornadas longas some.",
+    description: "Nenhum setor passa de 8 horas por dia (jornadas longas voltam a 8 h). Trabalhadores descansados consomem mais: +2% de arrecadação e mais contentes, mas o ganho de produção de jornadas longas some.",
     hoursCap: 8,
     moodWorkers: { text: "Jornada limitada por lei", delta: 1 },
+    mods: { tax: 0.02 },
   },
   salario_minimo: {
     party: "esquerda",
     name: "Salário mínimo municipal",
-    description: "Piso salarial: trabalhadores contentes (+1 de humor), mas as fábricas produzem 5% menos bens.",
-    mods: { goods: -0.05 },
+    description: "Piso salarial: trabalhadores contentes (+1 de humor) e mais imposto sobre a renda (+3% de arrecadação), mas as fábricas produzem 5% menos bens.",
     moodWorkers: { text: "Salário mínimo", delta: 1 },
+    mods: { goods: -0.05, tax: 0.03 },
   },
   fiscalizacao: {
     party: "esquerda",
     name: "Fiscalização obrigatória do trabalho",
-    description: "Fiscais em toda a cidade, sem precisar do prédio: humor e desgaste dos trabalhadores pela metade, e o ganho de jornada longa também.",
+    description: "Fiscais em toda a cidade, sem precisar do prédio: humor e desgaste dos trabalhadores pela metade, e o ganho de jornada longa também. As multas aplicadas rendem uma receita por ciclo.",
     inspection: true,
+    cost: earn(0.08),
   },
   taxar_grandes_empresas: {
     party: "esquerda",
@@ -266,8 +290,9 @@ export const LAWS: Record<LawId, LawDef> = {
   taxa_carbono: {
     party: "socialdemocrata",
     name: "Taxa de carbono",
-    description: "A indústria paga para poluir: 20% menos poluição e 4% menos bens.",
+    description: "A indústria paga para poluir: 20% menos poluição e 4% menos bens, e a taxa rende uma receita por ciclo.",
     mods: { pollution: -0.2, goods: -0.04 },
+    cost: earn(0.1),
   },
   // ── Centro ──
   orcamento_participativo: {
@@ -307,9 +332,9 @@ export const LAWS: Record<LawId, LawDef> = {
   jornada_flexivel: {
     party: "liberal",
     name: "Jornada flexível",
-    description: "Empresas negociam horários: +4% de bens e de refino, mas os trabalhadores ficam mais cansados (−1 de humor).",
-    mods: { goods: 0.04, refine: 0.04 },
+    description: "Empresas negociam horários: +4% de bens e de refino e +2% de arrecadação, mas os trabalhadores ficam mais cansados (−1 de humor).",
     moodWorkers: { text: "Jornada flexível (banco de horas)", delta: -1 },
+    mods: { goods: 0.04, refine: 0.04, tax: 0.02 },
   },
   livre_comercio: {
     party: "liberal",
@@ -327,9 +352,10 @@ export const LAWS: Record<LawId, LawDef> = {
   toque_recolher: {
     party: "conservador",
     name: "Toque de recolher",
-    description: "20% menos crime, mas ninguém gosta de ser vigiado (−1 de humor para todos).",
-    mods: { crime: -0.2 },
+    description: "20% menos crime, e as multas de quem desobedece rendem uma receita por ciclo, mas ninguém gosta de ser vigiado (−1 de humor para todos).",
     moodAll: { text: "Toque de recolher", delta: -1 },
+    mods: { crime: -0.2 },
+    cost: earn(0.06),
   },
   guarda_municipal: {
     party: "conservador",
@@ -355,16 +381,18 @@ export const LAWS: Record<LawId, LawDef> = {
   estado_de_excecao: {
     party: "fascista",
     name: "Estado de exceção",
-    description: "Repressão total: 35% menos crime, mas o medo derruba o humor de todos (−2).",
-    mods: { crime: -0.35 },
+    description: "Repressão total: 35% menos crime e confisco de bens que rende uma receita por ciclo, mas o medo derruba o humor de todos (−2).",
     moodAll: { text: "Estado de exceção", delta: -2 },
+    mods: { crime: -0.35 },
+    cost: earn(0.2),
   },
   proibicao_greves: {
     party: "fascista",
     name: "Proibição de greves",
-    description: "Ninguém para de trabalhar, nem com motivo. Os trabalhadores ficam revoltados (−2) e o problema continua embaixo do tapete.",
+    description: "Ninguém para de trabalhar, nem com motivo (+3% de arrecadação). Os trabalhadores ficam revoltados (−2) e o problema continua embaixo do tapete.",
     noStrike: true,
     moodWorkers: { text: "Greves proibidas", delta: -2 },
+    mods: { tax: 0.03 },
   },
   milicia_urbana: {
     party: "fascista",
@@ -386,10 +414,10 @@ export const LAWS: Record<LawId, LawDef> = {
   fabricas_recuperadas: {
     party: "esquerda",
     name: "Fábricas recuperadas",
-    description: "Trabalhadores assumem fábricas falidas: mais cooperativas e trabalhadores orgulhosos (+1), mas 2% menos bens.",
+    description: "Trabalhadores assumem fábricas falidas, que voltam a pagar imposto: mais cooperativas, trabalhadores orgulhosos (+1) e 3% mais arrecadação, mas 2% menos bens.",
     coop: 0.6,
-    mods: { goods: -0.02 },
     moodWorkers: { text: "Fábrica nas mãos dos trabalhadores", delta: 1 },
+    mods: { goods: -0.02, tax: 0.03 },
   },
   banco_cooperativo: {
     party: "esquerda",
@@ -415,9 +443,9 @@ export const LAWS: Record<LawId, LawDef> = {
   participacao_lucros: {
     party: "esquerda",
     name: "Participação nos lucros",
-    description: "Os trabalhadores levam parte do lucro: +1 de humor, mas 3% menos bens.",
-    mods: { goods: -0.03 },
+    description: "Os trabalhadores levam parte do lucro e consomem mais: +1 de humor e 3% mais arrecadação, mas 3% menos bens.",
     moodWorkers: { text: "Participação nos lucros", delta: 1 },
+    mods: { goods: -0.03, tax: 0.03 },
   },
   grandes_fortunas: {
     party: "esquerda",
@@ -429,9 +457,10 @@ export const LAWS: Record<LawId, LawDef> = {
   descanso_remunerado: {
     party: "esquerda",
     name: "Descanso semanal remunerado",
-    description: "Folga paga para todos: +1 de humor dos trabalhadores e 2% menos bens.",
-    mods: { goods: -0.02 },
+    description: "Folga paga para todos: +1 de humor dos trabalhadores e 2% menos bens, com uma verba por ciclo.",
     moodWorkers: { text: "Descanso remunerado", delta: 1 },
+    mods: { goods: -0.02 },
+    cost: perPop(0.08),
   },
   moradia_publica: {
     party: "esquerda",
@@ -451,9 +480,9 @@ export const LAWS: Record<LawId, LawDef> = {
   seguro_desemprego: {
     party: "socialdemocrata",
     name: "Seguro-desemprego",
-    description: "Quem perde o emprego tem renda por um tempo: +1 de humor para todos, com uma verba por ciclo.",
+    description: "Quem perde o emprego tem renda por um tempo: +1 de humor para todos; a contribuição de patrões e empregados cobre mais que o gasto.",
     moodAll: { text: "Seguro-desemprego", delta: 1 },
-    cost: perPop(0.2),
+    cost: earn(0.06),
   },
   creche_publica: {
     party: "socialdemocrata",
@@ -472,44 +501,44 @@ export const LAWS: Record<LawId, LawDef> = {
   vacinacao_massa: {
     party: "socialdemocrata",
     name: "Vacinação em massa",
-    description: "Campanhas todo ano: hospitais atendem 10% mais gente e as pestes são 10% mais fracas.",
-    mods: { health: 0.1, disaster: -0.1 },
-    cost: perPop(0.1),
+    description: "Campanhas todo ano: hospitais atendem 10% mais gente, as pestes são 10% mais fracas e a prevenção poupa 4% da manutenção.",
+    mods: { health: 0.1, disaster: -0.1, upkeep: -0.04 },
   },
   ciclovias: {
     party: "socialdemocrata",
     name: "Ciclovias",
-    description: "Menos carros nas ruas: 8% menos poluição e vias 5% mais fluidas.",
-    mods: { pollution: -0.08, traffic: 0.05 },
+    description: "Menos carros nas ruas: 8% menos poluição, vias 5% mais fluidas e 3% menos gasto de manutenção.",
+    mods: { pollution: -0.08, traffic: 0.05, upkeep: -0.03 },
   },
   microcredito_solidario: {
     party: "socialdemocrata",
     name: "Microcrédito solidário",
-    description: "Pequenos empréstimos para quem quer empreender sozinho ou em grupo: mais empreendedores e cooperados, com uma verba por ciclo.",
+    description: "Pequenos empréstimos para quem quer empreender sozinho ou em grupo: mais empreendedores e cooperados; os juros pagos rendem uma pequena receita.",
     entrepreneur: 0.3,
     coop: 0.4,
-    cost: perPop(0.06),
+    cost: earn(0.04),
   },
   licenca_parental: {
     party: "socialdemocrata",
     name: "Licença parental",
-    description: "Pais e mães com tempo para os filhos: 20% mais nascimentos e +1 de humor dos trabalhadores.",
+    description: "Pais e mães com tempo para os filhos: 20% mais nascimentos e +1 de humor dos trabalhadores, com uma verba por ciclo.",
     births: 0.2,
     moodWorkers: { text: "Licença parental", delta: 1 },
+    cost: perPop(0.1),
   },
   restaurante_popular: {
     party: "socialdemocrata",
     name: "Restaurante popular",
-    description: "Refeição barata para todos: +1 de humor, com uma verba por ciclo.",
+    description: "Refeição a preço de custo para todos: +1 de humor, e a venda das refeições rende uma receita por ciclo.",
     moodAll: { text: "Comida barata", delta: 1 },
-    cost: perPop(0.2),
+    cost: earn(0.04),
   },
   habitacao_social: {
     party: "socialdemocrata",
     name: "Habitação social",
-    description: "Aluguel social para quem tem pouco: +1 de humor para todos, com uma verba por ciclo.",
+    description: "Aluguel social para quem tem pouco: +1 de humor para todos, e os aluguéis rendem uma receita por ciclo.",
     moodAll: { text: "Habitação social", delta: 1 },
-    cost: perPop(0.25),
+    cost: earn(0.05),
   },
 
   // ── Centro: parcerias, gestão e incubação ──
@@ -550,9 +579,10 @@ export const LAWS: Record<LawId, LawDef> = {
   conciliacao_trabalhista: {
     party: "centro",
     name: "Câmara de conciliação trabalhista",
-    description: "Patrões e empregados negociam antes do conflito: +1 de humor dos trabalhadores e 1% menos bens.",
-    mods: { goods: -0.01 },
+    description: "Patrões e empregados negociam antes do conflito: +1 de humor dos trabalhadores e 1% menos bens, com uma pequena verba por ciclo.",
     moodWorkers: { text: "Conciliação trabalhista", delta: 1 },
+    mods: { goods: -0.01 },
+    cost: perPop(0.05),
   },
   convenio_universidades: {
     party: "centro",
@@ -572,17 +602,18 @@ export const LAWS: Record<LawId, LawDef> = {
   fundo_cultura: {
     party: "centro",
     name: "Fundo de cultura",
-    description: "Teatro, música e festas de rua: +1 de humor para todos, com uma verba por ciclo.",
+    description: "Teatro, música e festas de rua: +1 de humor para todos, e a venda de ingressos rende uma receita por ciclo.",
     moodAll: { text: "Vida cultural", delta: 1 },
-    cost: perPop(0.12),
+    cost: earn(0.04),
   },
 
   // ── Liberal: empreendedorismo e livre mercado ──
   microempreendedor: {
     party: "liberal",
     name: "Microempreendedor individual",
-    description: "Abrir um negócio fica fácil e barato: muitos moradores sem emprego viram empreendedores, que pagam imposto. Mas negócios novos quebram, sobretudo nas crises.",
+    description: "Abrir um negócio fica fácil e barato: muitos moradores viram empreendedores, que pagam imposto (+2% de arrecadação). Mas negócios novos quebram, sobretudo nas crises.",
     entrepreneur: 0.8,
+    mods: { tax: 0.02 },
   },
   credito_pequenos_negocios: {
     party: "liberal",
@@ -594,9 +625,10 @@ export const LAWS: Record<LawId, LawDef> = {
   polo_startups: {
     party: "liberal",
     name: "Polo de startups",
-    description: "Empresas de tecnologia nascem na cidade: mais empreendedores e 6% mais pesquisa.",
+    description: "Empresas de tecnologia nascem na cidade: mais empreendedores e 6% mais pesquisa, ao custo de subsídios por ciclo.",
     entrepreneur: 0.6,
     mods: { research: 0.06 },
+    cost: perPop(0.08),
   },
   imposto_simplificado: {
     party: "liberal",
@@ -621,9 +653,9 @@ export const LAWS: Record<LawId, LawDef> = {
   terceirizacao: {
     party: "liberal",
     name: "Terceirização irrestrita",
-    description: "Contratos flexíveis para as empresas: 6% mais bens, mas os trabalhadores perdem direitos (−1 de humor).",
-    mods: { goods: 0.06 },
+    description: "Contratos flexíveis para as empresas: 6% mais bens e +2% de arrecadação, mas os trabalhadores perdem direitos (−1 de humor).",
     moodWorkers: { text: "Contratos precários", delta: -1 },
+    mods: { goods: 0.06, tax: 0.02 },
   },
   zona_franca: {
     party: "liberal",
@@ -635,31 +667,33 @@ export const LAWS: Record<LawId, LawDef> = {
   comercio_24h: {
     party: "liberal",
     name: "Comércio aberto 24 horas",
-    description: "Lojas e fábricas sem horário: 3% mais bens, mas os trabalhadores ficam mais cansados (−1 de humor).",
-    mods: { goods: 0.03 },
+    description: "Lojas e fábricas sem horário: 3% mais bens e +3% de arrecadação, mas os trabalhadores ficam mais cansados (−1 de humor).",
     moodWorkers: { text: "Comércio 24 horas", delta: -1 },
+    mods: { goods: 0.03, tax: 0.03 },
   },
 
   // ── Conservador: ordem, família e pequeno negócio ──
   credito_rural: {
     party: "conservador",
     name: "Crédito rural",
-    description: "Financiamento para o campo: 8% mais comida e alguns moradores abrem pequenos negócios (empreendedores).",
-    mods: { farm: 0.08 },
+    description: "Financiamento para o campo: 8% mais comida, +2% de arrecadação e alguns moradores abrem pequenos negócios (empreendedores).",
     entrepreneur: 0.3,
+    mods: { farm: 0.08, tax: 0.02 },
   },
   negocio_familiar: {
     party: "conservador",
     name: "Negócio de família",
-    description: "Isenção para pequenos negócios tocados pela família: mais empreendedores e 10% mais nascimentos.",
+    description: "Isenção para pequenos negócios tocados pela família: mais empreendedores, 10% mais nascimentos e +2% de arrecadação.",
     entrepreneur: 0.5,
     births: 0.1,
+    mods: { tax: 0.02 },
   },
   disciplina_escolar: {
     party: "conservador",
     name: "Disciplina escolar",
-    description: "Escolas rígidas, com ordem e tarefa: QE alvo +4.",
+    description: "Escolas rígidas, com ordem e tarefa: QE alvo +4, com uma verba por ciclo.",
     eq: 4,
+    cost: perPop(0.05),
   },
   reforco_policial: {
     party: "conservador",
@@ -700,10 +734,10 @@ export const LAWS: Record<LawId, LawDef> = {
   corporativismo_estado: {
     party: "fascista",
     name: "Corporativismo de Estado",
-    description: "Patrões e sindicatos subordinados ao governo: 8% mais bens e alguns empreendedores aliados do regime, mas os trabalhadores ficam revoltados (−2).",
-    mods: { goods: 0.08 },
+    description: "Patrões e sindicatos subordinados ao governo: 8% mais bens, +4% de arrecadação e alguns empreendedores aliados do regime, mas os trabalhadores ficam revoltados (−2).",
     entrepreneur: 0.3,
     moodWorkers: { text: "Sindicato oficial", delta: -2 },
+    mods: { goods: 0.08, tax: 0.04 },
   },
   propaganda_oficial: {
     party: "fascista",
@@ -724,8 +758,9 @@ export const LAWS: Record<LawId, LawDef> = {
   controle_imprensa: {
     party: "fascista",
     name: "Controle da imprensa",
-    description: "Só se publica o que o governo aprova: 10% menos crime, mas 10% menos pesquisa.",
+    description: "Só se publica o que o governo aprova: 10% menos crime e 10% menos pesquisa; as licenças de imprensa rendem uma receita por ciclo.",
     mods: { crime: -0.1, research: -0.1 },
+    cost: earn(0.08),
   },
   economia_de_guerra: {
     party: "fascista",
@@ -737,9 +772,10 @@ export const LAWS: Record<LawId, LawDef> = {
   vigilancia_total: {
     party: "fascista",
     name: "Vigilância total",
-    description: "Delação e câmeras em toda esquina: 30% menos crime, mas o medo derruba o humor de todos (−2).",
-    mods: { crime: -0.3 },
+    description: "Delação e câmeras em toda esquina: 30% menos crime, mas o medo derruba o humor de todos (−2), com uma verba grande por ciclo.",
     moodAll: { text: "Vigilância total", delta: -2 },
+    mods: { crime: -0.3 },
+    cost: perPop(0.2),
   },
 
   // ── Esquerda Radical (mais) ──
@@ -753,9 +789,9 @@ export const LAWS: Record<LawId, LawDef> = {
   comissao_fabrica: {
     party: "esquerda",
     name: "Comissões de fábrica",
-    description: "Os trabalhadores participam da gestão: +1 de humor e 1% menos bens.",
-    mods: { goods: -0.01 },
+    description: "Os trabalhadores participam da gestão e cortam desperdício: +1 de humor, manutenção 2% mais barata e 1% menos bens.",
     moodWorkers: { text: "Comissão de fábrica", delta: 1 },
+    mods: { goods: -0.01, upkeep: -0.02 },
   },
   biblioteca_bairro: {
     party: "esquerda",
@@ -789,17 +825,15 @@ export const LAWS: Record<LawId, LawDef> = {
   atencao_basica: {
     party: "socialdemocrata",
     name: "Atenção básica de saúde",
-    description: "Postos de saúde em cada bairro: hospitais atendem 12% mais gente, com uma verba por ciclo.",
-    mods: { health: 0.12 },
-    cost: perPop(0.1),
+    description: "Postos de saúde em cada bairro: hospitais atendem 12% mais gente e a prevenção poupa 4% da manutenção.",
+    mods: { health: 0.12, upkeep: -0.04 },
   },
   parques_lineares: {
     party: "socialdemocrata",
     name: "Parques lineares",
-    description: "Verde ao longo dos rios: 6% menos poluição e +1 de humor, com uma verba por ciclo.",
-    mods: { pollution: -0.06 },
+    description: "Verde ao longo dos rios: 6% menos poluição, +1 de humor e bairros valorizados (+3% de arrecadação).",
     moodAll: { text: "Parques lineares", delta: 1 },
-    cost: perPop(0.15),
+    mods: { pollution: -0.06, tax: 0.03 },
   },
   centro_dia_idoso: {
     party: "socialdemocrata",
@@ -812,8 +846,8 @@ export const LAWS: Record<LawId, LawDef> = {
   selo_qualidade: {
     party: "centro",
     name: "Selo de qualidade",
-    description: "Produtos certificados valem mais: 3% mais bens e 3% menos poluição.",
-    mods: { goods: 0.03, pollution: -0.03 },
+    description: "Produtos certificados valem mais: 3% mais bens, 3% menos poluição e 2% mais arrecadação.",
+    mods: { goods: 0.03, pollution: -0.03, tax: 0.02 },
   },
   hortas_urbanas: {
     party: "centro",
@@ -853,8 +887,9 @@ export const LAWS: Record<LawId, LawDef> = {
   mercado_carbono: {
     party: "liberal",
     name: "Mercado de carbono",
-    description: "Empresas negociam o direito de poluir: 10% menos poluição e 2% mais bens.",
+    description: "Empresas negociam o direito de poluir: 10% menos poluição, 2% mais bens e uma receita por ciclo com a venda de créditos.",
     mods: { pollution: -0.1, goods: 0.02 },
+    cost: earn(0.1),
   },
   dados_abertos_mercado: {
     party: "liberal",
@@ -881,9 +916,9 @@ export const LAWS: Record<LawId, LawDef> = {
   lavoura_familiar: {
     party: "conservador",
     name: "Apoio à lavoura familiar",
-    description: "Sítios de família recebem ajuda: 6% mais comida e 10% mais nascimentos.",
-    mods: { farm: 0.06 },
+    description: "Sítios de família recebem ajuda: 6% mais comida, 10% mais nascimentos e +2% de arrecadação.",
     births: 0.1,
+    mods: { farm: 0.06, tax: 0.02 },
   },
   previdencia_incentivada: {
     party: "conservador",
@@ -895,9 +930,10 @@ export const LAWS: Record<LawId, LawDef> = {
   registro_cidadaos: {
     party: "fascista",
     name: "Registro de cidadãos",
-    description: "Todo morador fichado: 15% menos crime, mas −1 de humor para todos.",
-    mods: { crime: -0.15 },
+    description: "Todo morador fichado, com taxa de registro: 15% menos crime e uma receita por ciclo, mas −1 de humor para todos.",
     moodAll: { text: "Fichado pelo Estado", delta: -1 },
+    mods: { crime: -0.15 },
+    cost: earn(0.06),
   },
   culto_lider: {
     party: "fascista",
@@ -914,6 +950,145 @@ export const LAWS: Record<LawId, LawDef> = {
     mods: { goods: 0.1, upkeep: 0.05 },
     moodWorkers: { text: "Rearmamento", delta: -1 },
   },
+
+  // ── Leis financeiras novas (para equilibrar receita e custo em cada partido) ──
+  imposto_heranca: {
+    party: "esquerda",
+    name: "Imposto sobre heranças",
+    description: "Grandes fortunas pagam ao herdar: uma receita por ciclo, mas parte dos ricos reclama (a indústria perde 2% de bens).",
+    mods: { goods: -0.02 },
+    cost: earn(0.15),
+  },
+  contribuicao_solidaria: {
+    party: "socialdemocrata",
+    name: "Contribuição solidária",
+    description: "Quem ganha mais contribui para um fundo social: uma receita por ciclo.",
+    cost: earn(0.15),
+  },
+  pedagio_urbano: {
+    party: "centro",
+    name: "Pedágio urbano",
+    description: "Quem entra no centro paga: uma receita por ciclo e vias 5% mais fluidas.",
+    mods: { traffic: 0.05 },
+    cost: earn(0.12),
+  },
+  concessao_servicos: {
+    party: "centro",
+    name: "Concessão de serviços públicos",
+    description: "A prefeitura concede serviços a empresas por contrato: manutenção 4% mais barata.",
+    mods: { upkeep: -0.04 },
+  },
+  taxa_lixo: {
+    party: "centro",
+    name: "Taxa de coleta de lixo",
+    description: "Cada domicílio paga a coleta: uma receita por ciclo e 3% menos poluição.",
+    mods: { pollution: -0.03 },
+    cost: earn(0.08),
+  },
+  subsidio_empresarial: {
+    party: "liberal",
+    name: "Subsídio a empresas",
+    description: "A prefeitura banca parte do custo das empresas: 6% mais bens, com uma verba por ciclo.",
+    mods: { goods: 0.06 },
+    cost: perPop(0.12),
+  },
+  reducao_imposto_comercio: {
+    party: "liberal",
+    name: "Redução do imposto sobre o comércio",
+    description: "Lojas pagam menos: a arrecadação cai 4% e mais gente se arrisca a abrir negócio.",
+    entrepreneur: 0.3,
+    mods: { tax: -0.04 },
+  },
+  fundo_garantidor: {
+    party: "liberal",
+    name: "Fundo garantidor de crédito",
+    description: "A prefeitura cobre calotes de pequenos negócios: mais empreendedores, com uma verba por ciclo.",
+    entrepreneur: 0.4,
+    cost: perPop(0.07),
+  },
+  pensao_viuvas: {
+    party: "conservador",
+    name: "Pensão às viúvas",
+    description: "Amparo às famílias que perderam o provedor: +1 de humor para todos, com uma verba por ciclo.",
+    moodAll: { text: "Pensão às viúvas", delta: 1 },
+    cost: perPop(0.12),
+  },
+  imposto_predial: {
+    party: "conservador",
+    name: "Imposto predial",
+    description: "Quem tem imóvel paga: +4% de arrecadação.",
+    mods: { tax: 0.04 },
+  },
+  licenca_armas: {
+    party: "conservador",
+    name: "Taxa de licença de armas",
+    description: "Registro e taxa para quem porta arma: 5% menos crime e uma receita por ciclo.",
+    mods: { crime: -0.05 },
+    cost: earn(0.08),
+  },
+  venda_terras_publicas: {
+    party: "conservador",
+    name: "Venda de terras públicas",
+    description: "A prefeitura vende terrenos ociosos: uma receita por ciclo.",
+    cost: earn(0.15),
+  },
+  juventude_partido: {
+    party: "fascista",
+    name: "Juventude do partido",
+    description: "Desfiles e treino paramilitar: 10% menos crime e +1 de humor para todos, com uma verba por ciclo.",
+    mods: { crime: -0.1 },
+    moodAll: { text: "Juventude do partido", delta: 1 },
+    cost: perPop(0.15),
+  },
+  obras_monumentais: {
+    party: "fascista",
+    name: "Obras monumentais",
+    description: "Arcos, estádios e avenidas para glorificar o regime: +1 de humor para todos, com uma verba grande por ciclo.",
+    moodAll: { text: "Obras monumentais", delta: 1 },
+    cost: perPop(0.25),
+  },
+  policia_secreta: {
+    party: "fascista",
+    name: "Polícia secreta",
+    description: "Informantes e prisões sem julgamento: 30% menos crime e −1 de humor para todos, com uma verba por ciclo.",
+    mods: { crime: -0.3 },
+    moodAll: { text: "Polícia secreta", delta: -1 },
+    cost: perPop(0.2),
+  },
+  confisco_bens: {
+    party: "fascista",
+    name: "Confisco de bens de opositores",
+    description: "O regime toma o que é dos adversários: uma receita por ciclo, mas −1 de humor para todos.",
+    moodAll: { text: "Confisco de bens", delta: -1 },
+    cost: earn(0.3),
+  },
+  imposto_guerra: {
+    party: "fascista",
+    name: "Imposto de guerra",
+    description: "Todos pagam pelo esforço de guerra: +6% de arrecadação e −1 de humor para os trabalhadores.",
+    mods: { tax: 0.06 },
+    moodWorkers: { text: "Imposto de guerra", delta: -1 },
+  },
+  trabalho_obrigatorio: {
+    party: "fascista",
+    name: "Trabalho voluntário obrigatório",
+    description: "Mutirões obrigatórios para o Estado: manutenção 6% mais barata e −1 de humor dos trabalhadores.",
+    mods: { upkeep: -0.06 },
+    moodWorkers: { text: "Trabalho obrigatório", delta: -1 },
+  },
+  expropriacao_empresas: {
+    party: "fascista",
+    name: "Expropriação de empresas",
+    description: "O Estado toma fábricas inteiras: a indústria paga 20% mais imposto, mas produz 6% menos bens.",
+    taxIndustry: -0.2,
+    mods: { goods: -0.06 },
+  },
+  banco_do_estado: {
+    party: "fascista",
+    name: "Banco do Estado",
+    description: "Um banco público controlado pelo regime: uma receita por ciclo.",
+    cost: earn(0.1),
+  },
 };
 
 
@@ -922,6 +1097,26 @@ export const LAWS: Record<LawId, LawDef> = {
  * Leis fora da lista valem desde 1900.
  */
 export const LAW_ERA: Partial<Record<LawId, { year: number; tech?: string }>> = {
+  imposto_heranca: { year: 1930 },
+  contribuicao_solidaria: { year: 1945 },
+  pedagio_urbano: { year: 1960 },
+  concessao_servicos: { year: 1950 },
+  taxa_lixo: { year: 1930 },
+  subsidio_empresarial: { year: 1930 },
+  reducao_imposto_comercio: { year: 1900 },
+  fundo_garantidor: { year: 1950 },
+  pensao_viuvas: { year: 1915 },
+  imposto_predial: { year: 1900 },
+  licenca_armas: { year: 1920 },
+  venda_terras_publicas: { year: 1900 },
+  juventude_partido: { year: 1925 },
+  obras_monumentais: { year: 1925 },
+  policia_secreta: { year: 1925 },
+  confisco_bens: { year: 1930 },
+  imposto_guerra: { year: 1915 },
+  trabalho_obrigatorio: { year: 1930 },
+  expropriacao_empresas: { year: 1930 },
+  banco_do_estado: { year: 1925 },
   jornada_8h: { year: 1915 },
   salario_minimo: { year: 1920 },
   fiscalizacao: { year: 1910 },
@@ -1057,3 +1252,27 @@ export function lawMoods(s: Partial<Pick<CityState, "council">>, worker: boolean
 export function lawCost(s: Pick<CityState, "population" | "citizens" | "people" | "cyclesCompleted" | "pension"> & Partial<Pick<CityState, "council">>, retirees: number): number {
   return activeLaws(s).reduce((a, id) => a + (LAWS[id].cost?.(s, retirees) ?? 0), 0);
 }
+
+// ───────────────────────── resultado financeiro ─────────────────────────
+
+/** Cidade de referência para estimar o resultado financeiro de uma lei ($ por ciclo). */
+const REF = { population: 200, upkeep: 250, tax: 500, industryTax: 150, trade: 300, retirees: 40 };
+
+/**
+ * Resultado financeiro estimado de uma lei, em $ por ciclo numa cidade de 200 moradores: receita direta (custo negativo),
+ * manutenção e arrecadação (modificadores), imposto industrial e frete. Positivo = rende, negativo = custa.
+ */
+export function lawFinanceScore(id: LawId): number {
+  const d = LAWS[id];
+  let v = 0;
+  if (d.cost) v -= d.cost({ population: REF.population, citizens: [], people: {}, cyclesCompleted: 0, pension: undefined as never }, REF.retirees);
+  v -= (d.mods?.upkeep ?? 0) * REF.upkeep;
+  v += (d.mods?.tax ?? 0) * REF.tax;
+  v -= (d.taxIndustry ?? 0) * REF.industryTax;
+  v += (d.trade ?? 0) * REF.trade;
+  return Math.round(v * 10) / 10;
+}
+
+export type LawFinance = "positiva" | "negativa";
+/** Lei financeiramente positiva (rende ou economiza) ou negativa (custa ou reduz a receita). */
+export const lawFinance = (id: LawId): LawFinance => (lawFinanceScore(id) > 0 ? "positiva" : "negativa");

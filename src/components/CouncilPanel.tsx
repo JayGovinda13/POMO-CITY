@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LAWS, PARTIES, lawCoop, lawEntrepreneur, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, fascistSeats, type LawId, type PartyId } from "@/sim";
+import { LAWS, PARTIES, lawCoop, lawEntrepreneur, lawFinance, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, fascistSeats, type LawId, type PartyId } from "@/sim";
 import { useGame } from "@/store/game";
 import { Gavel, Xmark } from "./icons";
 
@@ -116,7 +116,7 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
             {c.bills.map((b) => (
               <div key={b.id} className="space-y-1 border border-zinc-600 bg-zinc-900/50 p-2">
                 <p>
-                  <Tag party={b.party} /> <strong>{LAWS[b.law].name}</strong>{LAWS[b.law].entrepreneur ? " 🏪" : ""}{LAWS[b.law].coop ? " 🤝" : ""}
+                  <Tag party={b.party} /> <strong>{LAWS[b.law].name}</strong> <FinChip id={b.law} />{LAWS[b.law].entrepreneur ? " 🏪" : ""}{LAWS[b.law].coop ? " 🤝" : ""}
                 </p>
                 <p className="text-zinc-300">{LAWS[b.law].description}</p>
                 <p className="text-zinc-500">
@@ -142,7 +142,7 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
               <div key={id} className="flex flex-col gap-1 border-t border-zinc-800 pt-1 sm:flex-row sm:items-start sm:gap-2 sm:border-0 sm:pt-0">
                 <div className="min-w-0 flex-1">
                   <p>
-                    <Tag party={LAWS[id].party} /> <strong>{LAWS[id].name}</strong>{LAWS[id].entrepreneur ? " 🏪" : ""}{LAWS[id].coop ? " 🤝" : ""}
+                    <Tag party={LAWS[id].party} /> <strong>{LAWS[id].name}</strong> <FinChip id={id} />{LAWS[id].entrepreneur ? " 🏪" : ""}{LAWS[id].coop ? " 🤝" : ""}
                   </p>
                   <p className="text-zinc-400">{LAWS[id].description}</p>
                 </div>
@@ -186,5 +186,18 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
         </div>
       </section>
     </div>
+  );
+}
+
+/** Marca de resultado financeiro da lei: rende/economiza ou custa/reduz a receita. */
+function FinChip({ id }: { id: LawId }) {
+  const pos = lawFinance(id) === "positiva";
+  return (
+    <span
+      className={`border px-1 text-[10px] ${pos ? "border-emerald-700 text-emerald-300" : "border-red-800 text-red-300"}`}
+      title={pos ? "Financeiramente positiva: rende ou economiza dinheiro" : "Financeiramente negativa: custa dinheiro ou reduz a receita"}
+    >
+      {pos ? "💰 rende" : "💸 custa"}
+    </span>
   );
 }

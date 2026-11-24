@@ -338,7 +338,7 @@ acompanhamentos) e `player.ts` (agendador).
 
 - **Empreendedores (direita) e cooperativas (esquerda)**: leis votadas na câmara abrem esse caminho para moradores **sem vaga** e uma parte (15%) dos empregados, que viram autônomos. Leis de empreendedorismo (Liberal, Conservador, Centro e Social Democrata: *Microempreendedor individual*, *Crédito para pequenos negócios*, *Polo de startups*, *Imposto simplificado*, *Feira de empreendedores*, *Negócio de família*, *Incubadora municipal*, *Microcrédito solidário*…) criam empreendedores: pagam mais imposto (US$2,20 por ciclo) e aumentam a demanda de comércio, mas quebram fácil (7% por ciclo, o dobro na crise econômica). Leis de cooperativismo (Esquerda: *Cooperativas de trabalhadores*, *Fábricas recuperadas*, *Banco cooperativo*…) criam cooperados: rendem menos (US$1,2) e resistem melhor (4%), mas deixam os sócios mais felizes. As leis marcadas com 🏪 e 🤝 no painel da Câmara somam a força de cada caminho (`src/sim/business.ts`).
 - **Quem vota em quem**: empreendedor vota Liberal/Conservador; cooperado vota Esquerda/Social Democrata. Assim as leis que o prefeito aprova mudam a base eleitoral e a câmara da próxima eleição.
-- **100 leis** (eram 25): 19 da Esquerda, 19 Social Democrata, 17 Centro, 17 Liberal, 16 Conservador e 12 Fascista (só na crise), cada uma ligada a uma mecânica (trabalho, impostos, saúde, crime, família, comércio, pesquisa, poluição…).
+- **120 leis** (eram 25): 20 por partido (o Fascista só aparece na crise), cada uma ligada a uma mecânica (trabalho, impostos, saúde, crime, família, comércio, pesquisa, poluição…).
 
 ## Decretos políticos
 
@@ -410,6 +410,12 @@ Leitura: a jornada curta realmente reduz o desemprego sem derrubar a produção;
 ## Informações do prédio ao clicar
 
 Com a ferramenta vazia ou **Mover**, um toque ou clique curto (sem arrastar) num tile **fixa** as informações dele no painel, com o botão **Reparar** estável (antes o painel só aparecia ao passar o mouse e sumia ao mover o mouse até o botão). Com uma ferramenta de obra, clicar numa construção que já existe também fixa. Fecha no **X** ou com **Esc**; no celular, o toque faz o mesmo.
+
+## Leis equilibradas financeiramente
+
+- Cada lei agora tem resultado financeiro claro: **positiva** (rende ou economiza: receita por ciclo com multas, taxas e contribuições, manutenção mais barata, mais arrecadação, imposto industrial maior, frete menor) ou **negativa** (custa uma verba por ciclo, encarece a manutenção ou reduz a receita). `lawFinanceScore(id)` estima o saldo em $ por ciclo numa cidade de 200 moradores e `lawFinance(id)` devolve `"positiva"` ou `"negativa"`; não há lei neutra. No painel da Câmara cada lei mostra a marca 💰 rende ou 💸 custa.
+- **Todos os partidos têm 20 leis: 10 positivas e 10 negativas** (120 no total; eram 100, de 12 a 19 por partido, com muitas negativas na esquerda e na social-democracia e quase nenhuma positiva no fascismo). Para isso, 20 leis novas (por exemplo *Imposto sobre heranças*, *Pedágio urbano*, *Subsídio a empresas*, *Imposto predial*, *Banco do Estado*, *Confisco de bens*) e ajustes em outras: leis de custo que ganharam receita (restaurante popular, habitação social, seguro-desemprego, fundo de cultura, microcrédito) ou economia (vacinação, atenção básica), e leis sem efeito financeiro que ganharam um (fiscalização rende multas, salário mínimo aumenta a arrecadação, vigilância total custa uma verba). Um teste garante a igualdade.
+- Leis que rendem têm custo negativo: a linha "Leis municipais (verbas e receitas)" do Livro-caixa pode ficar verde.
 
 ## Revisão da pixel art
 

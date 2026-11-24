@@ -13,6 +13,9 @@ import {
   leaning,
   lawEraLock,
   lawMoods,
+  lawFinance,
+  lawFinanceScore,
+  lawCost,
   councilStep,
   rng,
   newCouncil,
@@ -156,5 +159,31 @@ describe("teto de humor das leis e decretos", () => {
     const decree = ["Cidade bonita", "Festival da cidade", "Cozinha comunitária", "Tarifa social de energia", "Ciclo cultural", "Dia da família"];
     const total = v.reasons.filter((r) => decree.includes(r.text)).reduce((a, r) => a + r.delta, 0);
     expect(total).toBe(3);
+  });
+});
+
+describe("leis financeiramente equilibradas entre os partidos", () => {
+  it("todo partido tem o mesmo número de leis positivas e negativas, e nenhuma é neutra", () => {
+    const counts = PARTY_IDS.map((p) => {
+      const ids = LAW_IDS.filter((id) => LAWS[id].party === p);
+      for (const id of ids) expect(lawFinanceScore(id), id).not.toBe(0);
+      return { pos: ids.filter((id) => lawFinance(id) === "positiva").length, neg: ids.filter((id) => lawFinance(id) === "negativa").length };
+    });
+    for (const c of counts) {
+      expect(c.pos).toBe(counts[0].pos);
+      expect(c.neg).toBe(counts[0].neg);
+      expect(c.pos).toBe(c.neg);
+    }
+    expect(counts[0].pos).toBe(10);
+  });
+
+  it("leis que rendem de fato entram no caixa do ciclo (custo negativo)", () => {
+    const s = town();
+    s.population = 200;
+    s.council = { ...newCouncil(), laws: ["venda_terras_publicas"] };
+    const cost = lawCost(s, 0);
+    expect(cost).toBeLessThan(0);
+    expect(lawFinance("venda_terras_publicas")).toBe("positiva");
+    expect(lawFinance("moradia_publica")).toBe("negativa");
   });
 });

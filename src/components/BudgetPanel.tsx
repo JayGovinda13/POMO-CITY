@@ -294,7 +294,7 @@ const FIN_ROWS: { key: keyof CycleReport["finance"]; label: string; sign: 1 | -1
   { key: "insurance", label: "Seguro (prêmio)", sign: -1 },
   { key: "storage", label: "Armazenagem (estoque parado)", sign: -1 },
   { key: "pension", label: "Previdência (déficit e subsídio)", sign: -1 },
-  { key: "laws", label: "Leis municipais (verbas)", sign: -1 },
+  { key: "laws", label: "Leis municipais (verbas e receitas)", sign: -1 },
 ];
 
 function LedgerTab({ city }: { city: CityState }) {
@@ -324,9 +324,11 @@ function LedgerTab({ city }: { city: CityState }) {
               <td className="text-left">{row.label}</td>
               {cols.map((c) => {
                 const v = c.r?.finance?.[row.key] ?? 0;
+                // Valor com sinal: as leis podem render (custo negativo) ou custar.
+                const signed = row.sign * v;
                 return (
-                  <td key={c.title} className={v ? (row.sign > 0 ? "text-emerald-300" : "text-red-300") : "text-zinc-600"}>
-                    {c.r ? `${row.sign > 0 ? "+" : "−"}$${v}` : "—"}
+                  <td key={c.title} className={v ? (signed > 0 ? "text-emerald-300" : "text-red-300") : "text-zinc-600"}>
+                    {c.r ? `${signed >= 0 ? "+" : "−"}$${Math.abs(v)}` : "—"}
                   </td>
                 );
               })}
