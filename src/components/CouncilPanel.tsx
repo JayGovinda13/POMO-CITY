@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LAWS, PARTIES, lawCoop, lawEntrepreneur, lawFinance, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, fascistSeats, type LawId, type PartyId } from "@/sim";
+import { LAWS, PARTIES, lawCoop, lawEntrepreneur, lawFinance, lawHappiness, lawProduction, PARTY_IDS, TERM_CYCLES, citizenProfile, cyclesToElection, ageOfCitizen, fascistSeats, type LawId, type PartyId } from "@/sim";
 import { useGame } from "@/store/game";
 import { Gavel, Xmark } from "./icons";
 
@@ -189,15 +189,18 @@ function CouncilModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Marca de resultado financeiro da lei: rende/economiza ou custa/reduz a receita. */
+/** Marcas da lei: dinheiro (rende/custa), humor (feliz/triste) e produção (produtiva/improdutiva). */
 function FinChip({ id }: { id: LawId }) {
-  const pos = lawFinance(id) === "positiva";
+  const chip = (ok: boolean, yes: string, no: string, tipYes: string, tipNo: string) => (
+    <span className={`border px-1 text-[10px] ${ok ? "border-emerald-700 text-emerald-300" : "border-red-800 text-red-300"}`} title={ok ? tipYes : tipNo}>
+      {ok ? yes : no}
+    </span>
+  );
   return (
-    <span
-      className={`border px-1 text-[10px] ${pos ? "border-emerald-700 text-emerald-300" : "border-red-800 text-red-300"}`}
-      title={pos ? "Financeiramente positiva: rende ou economiza dinheiro" : "Financeiramente negativa: custa dinheiro ou reduz a receita"}
-    >
-      {pos ? "💰 rende" : "💸 custa"}
+    <span className="inline-flex flex-wrap gap-1 align-middle">
+      {chip(lawFinance(id) === "positiva", "💰 rende", "💸 custa", "Financeiramente positiva: rende ou economiza dinheiro", "Financeiramente negativa: custa dinheiro ou reduz a receita")}
+      {chip(lawHappiness(id) === "feliz", "😊 alegra", "☹️ desagrada", "Deixa a cidade mais feliz", "Deixa a cidade mais triste")}
+      {chip(lawProduction(id) === "produtiva", "📈 produz", "📉 freia", "Aumenta a produção", "Reduz a produção")}
     </span>
   );
 }

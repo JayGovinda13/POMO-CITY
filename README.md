@@ -458,3 +458,4 @@ src/components/ HUD retrô em React + Tailwind
 - [ ] Fases 2–10 do roadmap (orçamento, água, serviços, transporte, eras…)
 - [ ] Sprites pixel art no lugar das formas procedurais
 - [ ] Galeria de arte e páginas públicas da cidade (SSR)
+- **Humor e produção também meio a meio.** Em cada partido, 10 das 20 leis deixam a cidade **mais feliz** e 10 **mais triste** (`lawMoodScore`/`lawHappiness`), e 10 **aumentam** e 10 **reduzem a produção** (`lawProductionScore`/`lawProduction`, soma dos modificadores de comida, madeira, minério, refino, bens e energia). Leis que não tinham esses efeitos ganharam ±1 de humor para todos e ±3% de bens; no Fascista, *Economia de guerra*, *Rearmamento* e *Proibição de greves* ganharam um lado positivo (fervor patriótico, orgulho nacional, ordem nas ruas). O humor das leis tem teto +3 e piso −4 por grupo (`LAW_MOOD_CAP`/`LAW_MOOD_FLOOR`). A Câmara mostra as marcas 💰/💸, 😊/☹️ e 📈/📉 em cada lei; testes garantem 10/10 nos três eixos.
